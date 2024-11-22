@@ -14,10 +14,6 @@ env:
 
 jobs:
   test-and-build:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest
-
-  build-docker:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: build
