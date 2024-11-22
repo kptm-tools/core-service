@@ -37,6 +37,10 @@ jobs:
       - name: 📦 Build Docker Image
         run: |
           docker build -t core-service:latest .
+        #
+      # Debug Step: List Docker images to verify build
+      - name: 🧐 List Docker Images
+        run: docker images
 
       # - name: ✅ Run Tests in Docker Container
       #   run: |
