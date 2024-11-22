@@ -1,9 +1,6 @@
 name: test-and-build
 
 on:
-  push:
-    branches:
-      - devops/add-ci-cd
   pull_request:
     branches:
       - main
