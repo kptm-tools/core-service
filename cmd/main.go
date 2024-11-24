@@ -17,7 +17,9 @@ func main() {
 		log.Fatal("Failed to create DB store ", err.Error())
 	}
 
-	log.Printf("Created DB store successfully: `%+v`", store)
+	if err := store.Init(); err != nil {
+		log.Fatalf("Error initializing DB: `%+v`", err)
+	}
 
 	// Services
 	targetService := services.NewTargetService()

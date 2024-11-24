@@ -36,3 +36,35 @@ func NewPostgreSQLStore() (*PostgreSQLStore, error) {
 		db: db,
 	}, nil
 }
+
+func (s *PostgreSQLStore) Init() error {
+
+	err := s.CreateTargetsTable()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) CreateTargetsTable() error {
+	query := `create table if not exists gyms (
+      id SERIAL PRIMARY KEY,
+      tenant_id UUID,
+      user_id UUID,
+      value VARCHAR(2048) UNIQUE NOT NULL,
+      type VARCHAR(10) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`
+
+	_, err := s.db.Query(query)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
