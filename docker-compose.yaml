@@ -1,0 +1,24 @@
+services:
+
+  go_db:
+    image: postgres:latest
+    restart: always
+    container_name: postgres_container
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - DATABASE_HOST=${DB_HOST}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+        - go-network
+
+volumes:
+  pg_data: {}
+
+networks:
+  go-network:
+    driver: bridge
