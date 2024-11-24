@@ -1,9 +1,10 @@
-package main
+package http
 
 import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kptm-tools/core-service/pkg/handlers"
 )
 
 type APIServer struct {
@@ -24,7 +25,7 @@ func (s *APIServer) Init() error {
 
 	// server.ListenAndServe()
 	rootRoutes := v1.Group("/")
-	rootRoutes.Get("/healthcheck", HandleHealthCheck)
+	rootRoutes.Get("/healthcheck", handlers.HandleHealthCheck)
 
 	return app.Listen(s.listenAddr)
 

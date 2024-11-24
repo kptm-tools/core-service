@@ -1,4 +1,0 @@
-[submodule "docs"]
-	path = docs
-	url = git@github.com:kptm-tools/core-api.git
-	branch = main
