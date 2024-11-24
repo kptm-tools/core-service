@@ -15,23 +15,23 @@ const (
 )
 
 type Target struct {
-	ID        string     `json:"id"`
-	TenantID  string     `json:"tenant_id"`
-	UserID    string     `json:"user_id"`
-	Value     string     `json:"target_value"`
-	Type      TargetType `json:"target_type"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID         string     `json:"id"`
+	TenantID   string     `json:"tenant_id"`
+	OperatorID string     `json:"user_id"`
+	Value      string     `json:"target_value"`
+	Type       TargetType `json:"target_type"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 func NewTarget(value string, targetType TargetType, tenantID string, userID string) *Target {
 	return &Target{
-		TenantID:  tenantID,
-		UserID:    userID,
-		Value:     value,
-		Type:      targetType,
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
+		TenantID:   tenantID,
+		OperatorID: userID,
+		Value:      value,
+		Type:       targetType,
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
 	}
 }
 
