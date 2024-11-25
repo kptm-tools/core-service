@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"log"
 	"net"
 	"net/url"
 	"regexp"
@@ -24,15 +25,39 @@ type Target struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
-func NewTarget(value string, targetType TargetType, tenantID string, userID string) *Target {
+func NewTarget(value string, targetType TargetType, tenantID string, operatorID string) *Target {
 	return &Target{
 		TenantID:   tenantID,
-		OperatorID: userID,
+		OperatorID: operatorID,
 		Value:      value,
 		Type:       targetType,
 		CreatedAt:  time.Now().UTC(),
 		UpdatedAt:  time.Now().UTC(),
 	}
+}
+
+func IsValidTargetValue(value string) bool {
+
+	if IsValidURL(value) {
+		domain, err := ExtractDomainFromURL(value)
+
+		if err != nil {
+			log.Println("Invalid URL/Domain")
+			return false
+		}
+
+		if IsValidDomain(domain) {
+			return true
+		}
+	}
+
+	if IsValidIP(value) {
+		return true
+	}
+
+	log.Println("Invalid IP")
+	return false
+
 }
 
 func IsValidIP(value string) bool {
@@ -58,4 +83,12 @@ func ExtractDomainFromURL(input string) (string, error) {
 func IsValidDomain(domain string) bool {
 	re := regexp.MustCompile(`^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$`)
 	return re.MatchString(domain)
+}
+
+func ParseTargetType(value string) TargetType {
+	if IsValidIP(value) {
+		return IP
+	} else {
+		return Domain
+	}
 }
