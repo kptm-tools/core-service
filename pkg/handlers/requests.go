@@ -6,6 +6,6 @@ type CreateTargetRequest struct {
 	Value      string `json:"value"`
 }
 
-type GetTargetByTenantID struct {
+type GetTargetByTenantIDRequest struct {
 	TenantID string `json:"tenant_id"`
 }

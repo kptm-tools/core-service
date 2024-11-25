@@ -52,7 +52,13 @@ func (h *TargetHandlers) CreateTarget(w http.ResponseWriter, req *http.Request) 
 
 func (h *TargetHandlers) GetTargetsByTenantID(w http.ResponseWriter, req *http.Request) error {
 
-	targets, err := h.targetService.GetTargetsByTenantID("fcde6d34-ac74-4f29-8e48-bdc5670e1d69")
+	getTargetByTenantIDRequest := new(GetTargetByTenantIDRequest)
+
+	if err := json.NewDecoder(req.Body).Decode(getTargetByTenantIDRequest); err != nil {
+		return err
+	}
+
+	targets, err := h.targetService.GetTargetsByTenantID(getTargetByTenantIDRequest.TenantID)
 
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
