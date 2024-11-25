@@ -33,7 +33,7 @@ func (s *APIServer) Init() error {
 
 	router.HandleFunc("/healthcheck", makeHTTPHandlerFunc(HandleHealthCheck))
 
-	router.HandleFunc("/targets", makeHTTPHandlerFunc(s.targetHandler.GetAllTargets))
+	router.HandleFunc("/targets", makeHTTPHandlerFunc(s.targetHandler.GetTargetsByTenantID))
 
 	server := http.Server{
 		Addr: s.listenAddr,

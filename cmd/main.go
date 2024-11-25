@@ -22,7 +22,7 @@ func main() {
 	}
 
 	// Services
-	targetService := services.NewTargetService()
+	targetService := services.NewTargetService(store)
 
 	// Handlers
 	targetHandlers := handlers.NewTargetHandlers(targetService)

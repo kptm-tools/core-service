@@ -7,9 +7,14 @@ import (
 )
 
 type ITargetService interface {
-	GetAllTargets(tenantID string) (*[]domain.Target, error)
+	GetTargetsByTenantID(tenantID string) ([]*domain.Target, error)
 }
 
 type ITargetHandlers interface {
-	GetAllTargets(w http.ResponseWriter, req *http.Request) error
+	GetTargetsByTenantID(w http.ResponseWriter, req *http.Request) error
+}
+
+type IStorage interface {
+	CreateTarget(*domain.Target) (*domain.Target, error)
+	GetTargetsByTenantID(string) ([]*domain.Target, error)
 }
