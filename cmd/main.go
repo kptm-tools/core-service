@@ -30,6 +30,8 @@ func main() {
 	// Server
 	s := api.NewAPIServer(":8000", targetHandlers)
 
-	err := s.Init()
+	if err := s.Init(); err != nil {
+		log.Fatalf("Failed to initialize APIServer: `%+v`", err)
+	}
 
 }
