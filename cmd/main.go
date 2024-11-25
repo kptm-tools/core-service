@@ -1,10 +1,14 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/kptm-tools/core-service/pkg/http"
+)
 
 func main() {
 
-	s := NewAPIServer(":8000")
+	s := http.NewAPIServer(":8000")
 
 	err := s.Init()
 

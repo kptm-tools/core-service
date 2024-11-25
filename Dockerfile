@@ -6,11 +6,11 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY *.go ./
+COPY cmd/ ./cmd
 
-COPY /docs ./docs
+COPY /pkg ./pkg
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o ./bin/core-service 
+RUN CGO_ENABLED=0 GOOS=linux go build -o ./bin/core-service ./cmd/main.go
 
 EXPOSE 8000
 

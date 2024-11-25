@@ -24,7 +24,7 @@ jobs:
       - name: 📦 Build docker image
         run: docker build -t ${IMAGE_NAME}:latest .
 
-      # - name: ✅ Run Tests in Docker Container
-      #   run: |
-      #     docker run ${IMAGE_NAME}:latest make test
-        #
+      - name: ✅ Run Tests in Docker Container
+        run: |
+          docker run ${IMAGE_NAME}:latest go test -v ./...
+
