@@ -3,12 +3,21 @@ package main
 import (
 	"log"
 
-	"github.com/kptm-tools/core-service/pkg/http"
+	"github.com/kptm-tools/core-service/pkg/api"
+	"github.com/kptm-tools/core-service/pkg/handlers"
+	"github.com/kptm-tools/core-service/pkg/services"
 )
 
 func main() {
 
-	s := http.NewAPIServer(":8000")
+	// Services
+	targetService := services.NewTargetService()
+
+	// Handlers
+	targetHandlers := handlers.NewTargetHandlers(targetService)
+
+	// Server
+	s := api.NewAPIServer(":8000", targetHandlers)
 
 	err := s.Init()
 
