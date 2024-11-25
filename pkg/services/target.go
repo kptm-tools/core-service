@@ -17,6 +17,11 @@ func NewTargetService(storage interfaces.IStorage) *TargetService {
 	}
 }
 
+func (s *TargetService) CreateTarget(t *domain.Target) (*domain.Target, error) {
+
+	return s.storage.CreateTarget(t)
+}
+
 func (s *TargetService) GetTargetsByTenantID(tenantID string) ([]*domain.Target, error) {
 
 	// targets := &[]domain.Target{

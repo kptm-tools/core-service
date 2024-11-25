@@ -32,7 +32,7 @@ func (s *PostgreSQLStore) CreateTarget(t *domain.Target) (*domain.Target, error)
 
 	query := `
     INSERT INTO targets (tenant_id, operator_id, value, type,  created_at, updated_at)
-    values ($1, $2, $3, $4)
+    values ($1, $2, $3, $4, $5, $6)
     RETURNING id, tenant_id, operator_id, value, type, created_at, updated_at`
 
 	rows, err := s.db.Query(query, t.TenantID, t.OperatorID, t.Value, t.Type, t.CreatedAt, t.UpdatedAt)
@@ -84,6 +84,8 @@ func scanIntoTarget(rows *sql.Rows) (*domain.Target, error) {
 		&target.ID,
 		&target.TenantID,
 		&target.OperatorID,
+		&target.Value,
+		&target.Type,
 		&target.CreatedAt,
 		&target.UpdatedAt,
 	)
