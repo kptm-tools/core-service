@@ -31,9 +31,10 @@ func NewAPIServer(listenAddr string, uHandlers interfaces.ITargetHandlers) *APIS
 func (s *APIServer) Init() error {
 	router := http.NewServeMux()
 
-	router.HandleFunc("/healthcheck", makeHTTPHandlerFunc(HandleHealthCheck))
+	router.HandleFunc("GET /healthcheck", makeHTTPHandlerFunc(HandleHealthCheck))
 
-	router.HandleFunc("/targets", makeHTTPHandlerFunc(s.targetHandler.GetAllTargets))
+	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandler.CreateTarget))
+	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandler.GetTargetsByTenantID))
 
 	server := http.Server{
 		Addr: s.listenAddr,
