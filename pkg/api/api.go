@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"reflect"
+	"runtime"
+	"strings"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -31,7 +34,10 @@ func NewAPIServer(listenAddr string, uHandlers interfaces.ITargetHandlers) *APIS
 func (s *APIServer) Init() error {
 	router := http.NewServeMux()
 
-	router.HandleFunc("GET /healthcheck", makeHTTPHandlerFunc(HandleHealthCheck))
+	router.HandleFunc("GET /healthcheck",
+		WithAuth(makeHTTPHandlerFunc(HandleHealthCheck),
+			GetFunctionName(HandleHealthCheck),
+		))
 
 	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandler.CreateTarget))
 	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandler.GetTargetsByTenantID))
@@ -68,4 +74,9 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)               // Write the status
 	return json.NewEncoder(w).Encode(v) // To encode anything
+}
+
+func GetFunctionName(i interface{}) string {
+	strs := strings.Split(runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name(), ".")
+	return strs[len(strs)-1]
 }

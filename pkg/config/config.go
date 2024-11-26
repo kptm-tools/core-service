@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	ApplicationID    string
 	DatabaseUser     string
 	DatabasePassword string
 	DatabaseName     string
@@ -25,6 +26,7 @@ func fetchEnv(varString string, fallbackString string) string {
 
 func LoadConfig() *Config {
 	config := &Config{
+		ApplicationID:    fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
 		DatabaseUser:     fetchEnv("DB_USER", "postgres"),
 		DatabasePassword: fetchEnv("DB_PASSWORD", "postgres"),
 		DatabaseName:     fetchEnv("CORE_DB_NAME", "core_service_db"),
