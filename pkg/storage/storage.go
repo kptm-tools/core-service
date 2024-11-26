@@ -99,6 +99,6 @@ func (s *PostgreSQLStore) dbExists(dbName string) (bool, error) {
 }
 
 func isValidDatabaseName(name string) bool {
-	validName := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	validName := regexp.MustCompile(`^[a-zA-Z0-9_]{1,62}$`)
 	return validName.MatchString(name)
 }
