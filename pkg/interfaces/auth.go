@@ -5,7 +5,7 @@ import (
 )
 
 type IAuthService interface {
-	Login(email, password, applicationID string) error
+	Login(email, password, applicationID string) (*http.Response, error)
 }
 
 type IAuthHandlers interface {
