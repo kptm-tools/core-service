@@ -14,7 +14,8 @@ import (
 type APIServer struct {
 	listenAddr string
 
-	targetHandler interfaces.ITargetHandlers
+	targetHandlers interfaces.ITargetHandlers
+	authHandlers   interfaces.IAuthHandlers
 }
 
 type APIError struct {
@@ -23,11 +24,15 @@ type APIError struct {
 
 type APIFunc func(http.ResponseWriter, *http.Request) error
 
-func NewAPIServer(listenAddr string, uHandlers interfaces.ITargetHandlers) *APIServer {
+func NewAPIServer(listenAddr string,
+	tHandlers interfaces.ITargetHandlers,
+	aHandlers interfaces.IAuthHandlers,
+) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
 
-		targetHandler: uHandlers,
+		targetHandlers: tHandlers,
+		authHandlers:   aHandlers,
 	}
 }
 
@@ -39,8 +44,10 @@ func (s *APIServer) Init() error {
 			GetFunctionName(HandleHealthCheck),
 		))
 
-	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandler.CreateTarget))
-	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandler.GetTargetsByTenantID))
+	router.HandleFunc("POST /api/login", makeHTTPHandlerFunc(s.authHandlers.Login))
+
+	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandlers.CreateTarget))
+	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandlers.GetTargetsByTenantID))
 
 	server := http.Server{
 		Addr: s.listenAddr,

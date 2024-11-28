@@ -34,13 +34,15 @@ func main() {
 	}
 
 	// Services
+	authService := services.NewAuthService()
 	targetService := services.NewTargetService(coreStore)
 
 	// Handlers
+	authHandlers := handlers.NewAuthHandlers(authService)
 	targetHandlers := handlers.NewTargetHandlers(targetService)
 
 	// Server
-	s := api.NewAPIServer(":8000", targetHandlers)
+	s := api.NewAPIServer(":8000", targetHandlers, authHandlers)
 
 	if err := s.Init(); err != nil {
 		log.Fatalf("Failed to initialize APIServer: `%+v`", err)
