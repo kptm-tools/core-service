@@ -83,6 +83,16 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	return json.NewEncoder(w).Encode(v) // To encode anything
 }
 
+func UnmarshalGenericJSON(stringBytes []byte) (map[string]interface{}, error) {
+	// This method receives an array of bytes and unmarshals them into a JSON
+	m := map[string]interface{}{}
+
+	if err := json.Unmarshal(stringBytes, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func GetFunctionName(i interface{}) string {
 	strs := strings.Split(runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name(), ".")
 	return strs[len(strs)-1]
