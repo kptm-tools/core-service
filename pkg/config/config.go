@@ -6,6 +6,10 @@ import (
 )
 
 type Config struct {
+	ApplicationID    string
+	FusionAuthAPIKey string
+	FusionAuthHost   string
+	FusionAuthPort   string
 	DatabaseUser     string
 	DatabasePassword string
 	DatabaseName     string
@@ -25,6 +29,10 @@ func fetchEnv(varString string, fallbackString string) string {
 
 func LoadConfig() *Config {
 	config := &Config{
+		ApplicationID:    fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
+		FusionAuthAPIKey: fetchEnv("FUSIONAUTH_API_KEY", "this_really_should_be_a_long_random_alphanumeric_value_but_this_still_works"),
+		FusionAuthHost:   fetchEnv("FUSIONAUTH_HOST", "localhost"),
+		FusionAuthPort:   fetchEnv("FUSIONAUTH_PORT", "9011"),
 		DatabaseUser:     fetchEnv("DB_USER", "postgres"),
 		DatabasePassword: fetchEnv("DB_PASSWORD", "postgres"),
 		DatabaseName:     fetchEnv("CORE_DB_NAME", "core_service_db"),
