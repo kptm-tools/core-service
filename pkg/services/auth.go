@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -40,19 +39,6 @@ func (s *AuthService) Login(email, password, applicationID string) (*http.Respon
 		return nil, err
 	}
 
-	// Read the response
-	// defer resp.Body.Close()
-
-	log.Printf("FusionAuthResponse: STATUS: %d - `%+v`", resp.StatusCode, resp.Body)
-
-	// responseBody, err := io.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//
-	// // Return the response, or do something conditionally
-	// log.Printf("FusionAuthResponse: `%+v`", responseBody)
-
 	return resp, nil
 }
 
@@ -63,8 +49,6 @@ func buildFusionAuthLoginRequest(email, password, applicationID string) (*http.R
 	url := fmt.Sprintf("http://%s:%s/api/login", c.FusionAuthHost, c.FusionAuthPort)
 
 	// Connect to fusionauth and return the response
-
-	log.Printf("Attempting to connect to fusionAuth with:\n\temail `%s`\n\tpass `%s`\n\tappID `%s`\n\tapi_key `%s`\n", email, password, applicationID, apiKey)
 
 	body := handlers.FusionAuthLoginRequest{
 		LoginID:       email,
