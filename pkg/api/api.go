@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 )
 
 type APIServer struct {
@@ -40,19 +41,23 @@ func (s *APIServer) Init() error {
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /healthcheck",
-		WithAuth(makeHTTPHandlerFunc(HandleHealthCheck),
-			GetFunctionName(HandleHealthCheck),
-		))
+		makeHTTPHandlerFunc(HandleHealthCheck),
+	)
 
 	router.HandleFunc("POST /api/login", makeHTTPHandlerFunc(s.authHandlers.Login))
 
 	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandlers.CreateTarget))
 	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandlers.GetTargetsByTenantID))
 
+	stack := middleware.CreateStack(
+		middleware.Logging,
+		middleware.CheckCORS,
+	)
+
 	server := http.Server{
 		Addr: s.listenAddr,
 
-		Handler: router,
+		Handler: stack(router),
 	}
 
 	log.Println("Server listening on port: ", s.listenAddr)
