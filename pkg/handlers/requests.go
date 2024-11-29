@@ -9,3 +9,15 @@ type CreateTargetRequest struct {
 type GetTargetByTenantIDRequest struct {
 	TenantID string `json:"tenant_id"`
 }
+
+type LoginRequest struct {
+	LoginID       string `json:"loginId"`
+	Password      string `json:"password"`
+	ApplicationID string `json:"applicationId"`
+}
+
+type FusionAuthLoginRequest struct {
+	LoginID       string `json:"loginId"`
+	Password      string `json:"password"`
+	ApplicationID string `json:"applicationId"`
+}
