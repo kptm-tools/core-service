@@ -32,12 +32,16 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 
 	// Write the response from the service
 	resp, err := h.authService.Login(loginRequest.LoginID, loginRequest.Password, loginRequest.ApplicationID)
+	defer resp.Body.Close()
 
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	defer resp.Body.Close()
+	// Handle FusionAuth errors...
+	if resp.StatusCode != http.StatusOK {
+		return handleFusionAuthErrorResponse(w, resp)
+	}
 
 	// Read the response byes
 	responseBody, err := io.ReadAll(resp.Body)
@@ -47,9 +51,35 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 	// Unmarshal into a map[string]string
 	m, err := api.UnmarshalGenericJSON(responseBody)
 	if err != nil {
-		return err
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
 	return api.WriteJSON(w, resp.StatusCode, m)
 
+}
+
+func handleFusionAuthErrorResponse(w http.ResponseWriter, resp *http.Response) error {
+
+	// If the response is a 400 error, standardize it into APIError
+	if resp.StatusCode == http.StatusBadRequest {
+		fusionAuthLoginErrorResponse := new(FusionAuthErrorResponse)
+		if err := json.NewDecoder(resp.Body).Decode(fusionAuthLoginErrorResponse); err != nil {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+
+		if len(fusionAuthLoginErrorResponse.GeneralErrors) > 0 {
+			return api.WriteJSON(w, resp.StatusCode, api.APIError{Error: fusionAuthLoginErrorResponse.GeneralErrors[0].Message})
+		}
+
+		if len(fusionAuthLoginErrorResponse.FieldErrors) > 0 {
+			for _, fieldErrors := range fusionAuthLoginErrorResponse.FieldErrors {
+				if len(fieldErrors) > 0 {
+					return api.WriteJSON(w, resp.StatusCode, api.APIError{Error: fieldErrors[0].Message})
+				}
+			}
+		}
+	}
+
+	// Handle other error statuses in a generic way
+	return api.WriteJSON(w, resp.StatusCode, resp.Body)
 }
