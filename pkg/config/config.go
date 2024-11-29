@@ -3,10 +3,12 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Config struct {
 	ApplicationID    string
+	AllowedOrigins   string
 	FusionAuthAPIKey string
 	FusionAuthHost   string
 	FusionAuthPort   string
@@ -30,6 +32,7 @@ func fetchEnv(varString string, fallbackString string) string {
 func LoadConfig() *Config {
 	config := &Config{
 		ApplicationID:    fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
+		AllowedOrigins:   fetchEnv("ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:5173"),
 		FusionAuthAPIKey: fetchEnv("FUSIONAUTH_API_KEY", "this_really_should_be_a_long_random_alphanumeric_value_but_this_still_works"),
 		FusionAuthHost:   fetchEnv("FUSIONAUTH_HOST", "localhost"),
 		FusionAuthPort:   fetchEnv("FUSIONAUTH_PORT", "9011"),
@@ -56,4 +59,8 @@ func (c *Config) PostgreSQLCoreConnStr() string {
 		"host=%s user=%s dbname=%s password=%s sslmode=disable",
 		c.DatabaseHost, c.DatabaseUser, c.DatabaseName, c.DatabasePassword,
 	)
+}
+
+func (c *Config) GetAllowedOrigins() []string {
+	return strings.Split(c.AllowedOrigins, ",")
 }
