@@ -82,7 +82,10 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid token"})
 
 			}
-
+			var tenantId = token.Claims.(jwt.MapClaims)["tid"]
+			log.Print(tenantId)
+			var userId = token.Claims.(jwt.MapClaims)["sub"]
+			log.Print(userId)
 			var roles = token.Claims.(jwt.MapClaims)["roles"]
 
 			parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
