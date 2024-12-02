@@ -9,7 +9,7 @@ import (
 )
 
 var originAllowlist = config.LoadConfig().GetAllowedOrigins()
-var methodAllowlist = []string{"GET", "POST", "OPTIONS", "OPTIONS"}
+var methodAllowlist = []string{"GET", "POST", "DELETE", "OPTIONS"}
 var allowedHeaders = []string{"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token", "Authorization"}
 
 func CheckCORS(next http.Handler) http.Handler {
