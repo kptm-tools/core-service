@@ -82,12 +82,26 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid token"})
 
 			}
-			var tenantId = token.Claims.(jwt.MapClaims)["tid"]
-			log.Print(tenantId)
-			var userId = token.Claims.(jwt.MapClaims)["sub"]
-			log.Print(userId)
-			var roles = token.Claims.(jwt.MapClaims)["roles"]
+			var tenantID = token.Claims.(jwt.MapClaims)["tid"]
+			log.Print(tenantID)
+			var userID = token.Claims.(jwt.MapClaims)["sub"]
+			log.Print(userID)
+			// Build request
+			req, err := buildFusionAuthVerifyRequest(tenantID.(string), userID.(string))
 
+			if err != nil {
+				fmt.Errorf("Invalid request build")
+				return
+			}
+			// Send request
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Not able to verify with AuthProvider"})
+			}
+			log.Print(resp)
+
+			var roles = token.Claims.(jwt.MapClaims)["roles"]
 			parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 
 			if err != nil {
@@ -145,4 +159,20 @@ func setPublicKey(kid string) {
 			log.Fatalln(("problem retreiving public key"))
 		}
 	}
+}
+
+
+func buildFusionAuthVerifyRequest(tenantID string, userID string) (*http.Request, error) {
+	c := config.LoadConfig()
+	apiKey := c.FusionAuthAPIKey
+	url := fmt.Sprintf("http://%s:%s/api/user/%s", c.FusionAuthHost, c.FusionAuthPort, userID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", apiKey)
+	req.Header.Set("X-FusionAuth-TenantId", tenantID)
+	return req, nil
 }
