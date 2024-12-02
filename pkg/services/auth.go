@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -40,6 +41,15 @@ func (s *AuthService) Login(email, password, applicationID string) (*http.Respon
 	}
 
 	return resp, nil
+}
+
+func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
+
+	fmt.Println("Attempting to register Tenant with name: ", tenantName)
+
+	// Fetch blueprint tenant by it's ID
+
+	return nil, nil
 }
 
 func buildFusionAuthLoginRequest(email, password, applicationID string) (*http.Request, error) {

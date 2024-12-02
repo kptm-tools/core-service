@@ -44,7 +44,9 @@ func (s *APIServer) Init() error {
 		makeHTTPHandlerFunc(HandleHealthCheck),
 	)
 
+	// Auth routes
 	router.HandleFunc("POST /api/login", makeHTTPHandlerFunc(s.authHandlers.Login))
+	router.HandleFunc("POST /api/tenant", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
 
 	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandlers.CreateTarget))
 	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandlers.GetTargetsByTenantID))

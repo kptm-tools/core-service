@@ -58,6 +58,12 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 
 }
 
+func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) error {
+	h.authService.RegisterTenant("New Tenant")
+
+	return nil
+}
+
 func handleFusionAuthErrorResponse(w http.ResponseWriter, resp *http.Response) error {
 
 	// If the response is a 400 error, standardize it into APIError
