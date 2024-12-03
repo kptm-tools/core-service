@@ -99,6 +99,17 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 
 	// Use this blueprint to build a new App and assign it to our tenant
 	appID := uuid.NewString()
+	var roles []fusionauth.ApplicationRole
+	for _, r := range appResp.Application.Roles {
+		role := fusionauth.ApplicationRole{
+			Name:        r.Name,
+			Description: r.Description,
+			IsDefault:   r.IsDefault,
+			IsSuperRole: r.IsSuperRole,
+		}
+		roles = append(roles, role)
+	}
+
 	app := &fusionauth.Application{
 		Id:                        appID,
 		TenantId:                  tenantID,
@@ -106,7 +117,7 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 		OauthConfiguration:        appResp.Application.OauthConfiguration,
 		JwtConfiguration:          appResp.Application.JwtConfiguration,
 		RegistrationConfiguration: appResp.Application.RegistrationConfiguration,
-		// Roles:                     appResp.Application.Roles,
+		Roles:                     roles,
 	}
 
 	// Create mock users
