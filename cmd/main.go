@@ -8,7 +8,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
-	//"github.com/kptm-tools/core-service/pkg/utils"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
 
 func main() {
@@ -37,12 +37,13 @@ func main() {
 	// Services
 	authService := services.NewAuthService()
 	targetService := services.NewTargetService(coreStore)
-	//tenantService := services.NewTenantService(coreStore)
+	tenantService := services.NewTenantService(coreStore)
 
 	// Handlers
 	authHandlers := handlers.NewAuthHandlers(authService)
 	targetHandlers := handlers.NewTargetHandlers(targetService)
-	//utils.openAndReadKickstartJson(tenantService)
+	result, err := utils.openAndReadKickstartJson(tenantService)
+	log.Fatalf("Failed to initialize APIServer");
 	// Server
 	s := api.NewAPIServer(":8000", targetHandlers, authHandlers)
 

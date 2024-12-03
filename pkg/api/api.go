@@ -47,7 +47,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/login", makeHTTPHandlerFunc(s.authHandlers.Login))
 
 	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandlers.CreateTarget))
-	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandlers.GetTargetsByTenantID))
+	router.HandleFunc("GET /targets", WithAuth(makeHTTPHandlerFunc(s.targetHandlers.GetTargetsByTenantID), "targets"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,

@@ -9,13 +9,16 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
+	"context"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 var verifyKey *rsa.PublicKey
+type ContextKey string
+
+const ContextTenantID ContextKey = "tenantID"
 
 func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,8 +128,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid role"})
 				return
 			}
-
-			endpoint(w, r)
+			ctx := context.WithValue(r.Context(), ContextTenantID, tenantID)
+			endpoint(w, r.WithContext(ctx))
 
 		}
 	})
