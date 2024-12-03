@@ -59,9 +59,20 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) error {
-	h.authService.RegisterTenant("New Tenant")
 
-	return nil
+	registerTenantRequest := new(RegisterTenantRequest)
+
+	if err := decodeJSONBody(w, r, registerTenantRequest); err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+	}
+
+	t, err := h.authService.RegisterTenant(registerTenantRequest.Name)
+
+	if err != nil {
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+
+	return api.WriteJSON(w, http.StatusOK, t)
 }
 
 func handleFusionAuthErrorResponse(w http.ResponseWriter, resp *http.Response) error {
