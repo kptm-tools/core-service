@@ -14,4 +14,3 @@ type ITenantHandlers interface {
 	CreateTenant(w http.ResponseWriter, req *http.Request) error
 	GetTenant(w http.ResponseWriter, req *http.Request) error
 }
-

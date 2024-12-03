@@ -7,7 +7,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-
 func (s *PostgreSQLStore) CreateTenantsTable() error {
 	query := `create table if not exists tenants (
       id SERIAL PRIMARY KEY,
@@ -46,7 +45,6 @@ func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error)
 
 	return nil, fmt.Errorf("Error creating Tenant")
 }
-
 
 func scanIntoTenant(rows *sql.Rows) (*domain.Tenant, error) {
 

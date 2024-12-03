@@ -15,4 +15,3 @@ type ITargetHandlers interface {
 	CreateTarget(w http.ResponseWriter, req *http.Request) error
 	GetTargetsByTenantID(w http.ResponseWriter, req *http.Request) error
 }
-
