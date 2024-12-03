@@ -66,13 +66,16 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
 	}
 
-	t, err := h.authService.RegisterTenant(registerTenantRequest.Name)
+	t, faErr, err := h.authService.RegisterTenant(registerTenantRequest.Name)
 
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
+	if faErr != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: faErr.Error()})
+	}
 
-	return api.WriteJSON(w, http.StatusOK, t)
+	return api.WriteJSON(w, http.StatusCreated, t)
 }
 
 func handleFusionAuthErrorResponse(w http.ResponseWriter, resp *http.Response) error {

@@ -47,7 +47,7 @@ func (s *AuthService) Login(email, password, applicationID string) (*http.Respon
 	return resp, nil
 }
 
-func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
+func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusionauth.Errors, error) {
 
 	fmt.Println("Attempting to register Tenant with name: ", tenantName)
 	c := config.LoadConfig()
@@ -59,7 +59,7 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 
 	baseURL, err := url.Parse(host)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	client := fusionauth.NewClient(httpClient, baseURL, c.FusionAuthAPIKey)
@@ -69,11 +69,11 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	resp, faErr, err := client.RetrieveTenant(c.BlueprintTenantID)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if faErr != nil {
-		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
+		return nil, faErr, nil
 	}
 
 	// Use this blueprint to build a new tenant with our name
@@ -93,7 +93,7 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	appResp, err := client.RetrieveApplication(c.BlueprintApplicationID)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// fmt.Printf("Got BlueprintAPP `%+v`\n", appResp)
 
@@ -125,10 +125,10 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	resp, faErr, err = client.CreateTenant(tenantID, tenantReq)
 	// TODO: Handle errors
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if faErr != nil {
-		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
+		return nil, faErr, nil
 	}
 	fmt.Printf("%d: CreateTenant `%s`\n", resp.StatusCode, tenantID)
 
@@ -149,10 +149,10 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 
 	// 3.1.1 Handle key generation errors
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if faErr != nil {
-		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
+		return nil, faErr, nil
 	}
 
 	// fmt.Println("POST Key Response: ", keyResp)
@@ -166,10 +166,10 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	appResp, faErr, err = client.CreateApplication(appID, appReq)
 	// TODO: Handle errors
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if faErr != nil {
-		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
+		return nil, faErr, nil
 	}
 	fmt.Printf("%d: CreateApp `%s`\n", appResp.StatusCode, appID)
 
@@ -196,17 +196,17 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	userResp, faErr, err := client.CreateUser("", userReq)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if faErr != nil {
-		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
+		return nil, faErr, nil
 	}
 
 	fmt.Printf("%d: CreateUser `%s`\n", userResp.StatusCode, operatorUser.Email)
 
 	domainTenant := domain.NewTenant(tenantID, appID)
 
-	return domainTenant, nil
+	return domainTenant, nil, nil
 }
 
 func buildFusionAuthLoginRequest(email, password, applicationID string) (*http.Request, error) {
