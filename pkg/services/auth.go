@@ -120,8 +120,6 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 		Roles:                     roles,
 	}
 
-	// Create mock users
-
 	// Register this tenant to fusionAuth
 	tenantReq := fusionauth.TenantRequest{Tenant: *tenant}
 	resp, faErr, err = client.CreateTenant(tenantID, tenantReq)
@@ -149,14 +147,13 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 
 	_, faErr, err = client.GenerateKey(keyID, keyReq)
 
+	// 3.1.1 Handle key generation errors
 	if err != nil {
 		return nil, err
 	}
 	if faErr != nil {
 		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
 	}
-
-	// 3.1.1 TODO: handle key generation errors
 
 	// fmt.Println("POST Key Response: ", keyResp)
 
@@ -174,12 +171,38 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	if faErr != nil {
 		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
 	}
-
-	// TODO: FIX ERROR WHEN CREATING APP
-	// "Encountered a FusionAuth Error: `A tenant Id is required to complete this request. To complete this request, you may assign a tenant to your API key, or add the X-FusionAuth-TenantId HTTP request header with the tenant Id.`"
 	fmt.Printf("%d: CreateApp `%s`\n", appResp.StatusCode, appID)
 
 	// Parse fusionauth Tenant Object into Domain Tenant Object
+
+	// Create initial operator user
+
+	operatorUser := domain.NewUser("operator@example.com", uuid.NewString(), appID)
+	userReq := fusionauth.UserRequest{
+		ApplicationId: appID,
+		User: fusionauth.User{
+			Email:          operatorUser.Email,
+			SecureIdentity: fusionauth.SecureIdentity{Password: operatorUser.Password},
+
+			Registrations: []fusionauth.UserRegistration{
+				{
+					ApplicationId: appID,
+					Roles:         []string{"operator"},
+				},
+			},
+		},
+	}
+
+	userResp, faErr, err := client.CreateUser("", userReq)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, fmt.Errorf("Encountered a FusionAuth Error: `%+v`", faErr.Error())
+	}
+
+	fmt.Printf("%d: CreateUser `%s`\n", userResp.StatusCode, operatorUser.Email)
 
 	domainTenant := domain.NewTenant(tenantID, appID)
 
