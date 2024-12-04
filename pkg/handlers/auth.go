@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -63,7 +64,13 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 	registerTenantRequest := new(RegisterTenantRequest)
 
 	if err := decodeJSONBody(w, r, registerTenantRequest); err != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
 	}
 
 	t, faErr, err := h.authService.RegisterTenant(registerTenantRequest.Name)
