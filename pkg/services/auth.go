@@ -205,40 +205,46 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
-	// fmt.Printf("%d: CreateApp `%s`\n", appResp.StatusCode, appID)
-
-	// Parse fusionauth Tenant Object into Domain Tenant Object
-
 	// Create initial operator user
 
-	operatorUser := domain.NewUser("operator@example.com", uuid.NewString(), appID)
+	if err := createInitialUser(appID, client); err != nil {
+		return nil, err
+	}
+
+	// Parse fusionauth Tenant Object into Domain Tenant Object
+	domainTenant := domain.NewTenant(tenantID, appID)
+
+	return domainTenant, nil
+}
+
+func createInitialUser(appID string, client *fusionauth.FusionAuthClient) error {
+
+	email := "operator@example.com"
+	pass := uuid.NewString()
+	roles := []string{"operator"}
+
 	userReq := fusionauth.UserRequest{
 		ApplicationId: appID,
 		User: fusionauth.User{
-			Email:          operatorUser.Email,
-			SecureIdentity: fusionauth.SecureIdentity{Password: operatorUser.Password},
+			Email:          email,
+			SecureIdentity: fusionauth.SecureIdentity{Password: pass},
 
 			Registrations: []fusionauth.UserRegistration{
 				{
 					ApplicationId: appID,
-					Roles:         []string{"operator"},
+					Roles:         roles,
 				},
 			},
 		},
 	}
 
-	userResp, faErr, err := client.CreateUser("", userReq)
-
+	resp, faErr, err := client.CreateUser("", userReq)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if faErr != nil {
-		return nil, NewFaError(resp.StatusCode, faErr.Error())
+		return NewFaError(resp.StatusCode, faErr.Error())
 	}
 
-	fmt.Printf("%d: CreateUser `%s`\n", userResp.StatusCode, operatorUser.Email)
-
-	domainTenant := domain.NewTenant(tenantID, appID)
-
-	return domainTenant, nil
+	return nil
 }
