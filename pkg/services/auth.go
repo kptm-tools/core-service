@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
@@ -21,8 +20,12 @@ type FaError struct {
 	msg    string
 }
 
-func (m *FaError) Error() string {
-	return m.msg
+func (e *FaError) Error() string {
+	return e.msg
+}
+
+func (e *FaError) Status() int {
+	return e.status
 }
 
 func NewFaError(status int, msg string) *FaError {
@@ -30,6 +33,18 @@ func NewFaError(status int, msg string) *FaError {
 		status: status,
 		msg:    msg,
 	}
+}
+
+type FusionAuthLoginRequest struct {
+	LoginID       string `json:"loginId"`
+	Password      string `json:"password"`
+	ApplicationID string `json:"applicationId"`
+}
+
+type FusionAuthPostTenantRequest struct {
+	Name          string `json:"name"`
+	Password      string `json:"password"`
+	ApplicationID string `json:"applicationId"`
 }
 
 type AuthService struct {
@@ -234,7 +249,7 @@ func buildFusionAuthLoginRequest(email, password, applicationID string) (*http.R
 
 	// Connect to fusionauth and return the response
 
-	body := handlers.FusionAuthLoginRequest{
+	body := FusionAuthLoginRequest{
 		LoginID:       email,
 		Password:      password,
 		ApplicationID: applicationID,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/services"
 )
 
 type AuthHandlers struct {
@@ -76,6 +77,11 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 	t, err := h.authService.RegisterTenant(registerTenantRequest.Name)
 
 	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		}
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
