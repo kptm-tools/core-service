@@ -2,55 +2,52 @@ package utils
 
 import (
 	"encoding/json"
-    "io"
-	"io/ioutil"
 	"fmt"
-    "strings"
-    "github.com/kptm-tools/core-service/pkg/interfaces"
-    "github.com/kptm-tools/core-service/pkg/domain"
+	"io"
+	"io/ioutil"
+	"strings"
 )
 
+func readFileJson(readerJsonFile io.Reader) (map[string]interface{}, error) {
 
-
-func readFileJson(readerJsonFile io.Reader) (map[string]interface{}, error){
-	
 	byteValue, err := ioutil.ReadAll(readerJsonFile)
 	var result map[string]interface{}
 	json.Unmarshal([]byte(byteValue), &result)
 	return result, err
 }
 
-
-func parseMap(aMap map[string]interface{}, searchWord string, tenantService interfaces.ITenantService, appID string) {
-    for key, val := range aMap {
-        switch concreteVal := val.(type) {
-        case map[string]interface{}:
-            parseMap(val.(map[string]interface{}),searchWord, tenantService, appID)
-        case []interface{}:
-            parseArray(val.([]interface{}),searchWord, tenantService, appID)
-
-        default:
-            strVal := concreteVal.(string)
-            if strings.Contains(key, searchWord) {
-                tenant := domain.NewTenant(strVal, appID)
-                fmt.Println(tenant)
-                tenantService.CreateTenant(tenant)
-            }
-            //fmt.Println(key, "v:", concreteVal)
-        }
-    }
+func parseMap(aMap map[string]interface{}, searchWord string, tenantIDs []string) []string {
+	for key, val := range aMap {
+		switch concreteVal := val.(type) {
+		case map[string]interface{}:
+			tenantIDs = parseMap(val.(map[string]interface{}), searchWord, tenantIDs)
+		case []interface{}:
+			tenantIDs = parseArray(val.([]interface{}), searchWord, tenantIDs)
+		default:
+			if strVal, ok := concreteVal.(string); ok {
+				if strings.Contains(key, searchWord) && !strings.Contains(strVal, "#") {
+					tenantIDs = append(tenantIDs, strVal)
+				}
+			}
+		}
+	}
+	return tenantIDs
 }
 
-func parseArray(anArray []interface{},searchWord string, tenantService interfaces.ITenantService, appID string) {
-    for i, val := range anArray {
-        switch concreteVal := val.(type) {
-        case map[string]interface{}:
-            parseMap(val.(map[string]interface{}),searchWord, tenantService, appID)
-        case []interface{}:
-            parseArray(val.([]interface{}), searchWord, tenantService, appID)
-        default:
-            fmt.Println("Index", i, ":", concreteVal)
-        }
-    }
+func parseArray(anArray []interface{}, searchWord string, tenantsIDs []string) []string {
+	for _, val := range anArray {
+		switch concreteVal := val.(type) {
+		case map[string]interface{}:
+			tenantsIDs = parseMap(val.(map[string]interface{}), searchWord, tenantsIDs)
+		case []interface{}:
+			parseArray(val.([]interface{}), searchWord, tenantsIDs)
+		default:
+			if strVal, ok := concreteVal.(string); ok {
+				if strings.Contains(strVal, searchWord) {
+					fmt.Println("")
+				}
+			}
+		}
+	}
+	return tenantsIDs
 }
-

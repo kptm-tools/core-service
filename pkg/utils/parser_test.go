@@ -1,13 +1,17 @@
 package utils
-import "testing"
+
+import (
+	"bytes"
+	"testing"
+)
 
 func Test_isValidParsing(t *testing.T) {
 	var buffer1 bytes.Buffer
-    buffer1.WriteString(`{ "data" : "good" }`)
+	buffer1.WriteString(`{ "data" : "good" }`)
 	var buffer2 bytes.Buffer
-    buffer1.WriteString(`No Json`)
-	var buffer1 bytes.Buffer
-    buffer1.WriteString(`{ }`)
+	buffer2.WriteString(`No Json`)
+	var buffer3 bytes.Buffer
+	buffer3.WriteString(`{ }`)
 	// Arrange
 	var tests = []struct {
 		name     string
@@ -23,7 +27,7 @@ func Test_isValidParsing(t *testing.T) {
 			name:     "Valid Json",
 			input:    buffer1,
 			expected: true,
-		}
+		},
 	}
 
 	for _, tt := range tests {

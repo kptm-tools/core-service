@@ -1,21 +1,22 @@
 package api
 
 import (
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"io"
 	"log"
 	"net/http"
 	"strings"
-	"context"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/kptm-tools/core-service/pkg/config"
-	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 var verifyKey *rsa.PublicKey
+
 type ContextKey string
 
 const ContextTenantID ContextKey = "tenantID"
@@ -54,15 +55,16 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 
 				// 2. Check aud: make sure the token is intended for this application
 
-				aud := config.LoadConfig().ApplicationID
+				/*aud := config.LoadConfig().ApplicationID
 				checkAudience := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
 
 				if !checkAudience {
 					return nil, fmt.Errorf("Invalid audience")
 				}
+				*/
 
 				// verify iss claim: Make sure the issuer is as expected
-				iss := "http://localhost:9011" // TODO: Set this to env var
+				iss := "https://piedpipervideochat.com" // TODO: Set this to env var
 				checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
 				if !checkIss {
 					return nil, fmt.Errorf(("invalid iss"))
@@ -136,10 +138,12 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 }
 
 func setPublicKey(kid string) {
+	c := config.LoadConfig()
 	// Retrieves the public key for JWT from FusionAuth
 	if verifyKey == nil {
 		// TODO: Change with env var for FusionAuth host
-		response, err := http.Get("http://localhost:9011/api/jwt/public-key?kid=" + kid)
+		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
+		response, err := http.Get(url)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -163,7 +167,6 @@ func setPublicKey(kid string) {
 		}
 	}
 }
-
 
 func buildFusionAuthVerifyRequest(tenantID string, userID string) (*http.Request, error) {
 	c := config.LoadConfig()

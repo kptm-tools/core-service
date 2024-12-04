@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -42,8 +43,9 @@ func main() {
 	// Handlers
 	authHandlers := handlers.NewAuthHandlers(authService)
 	targetHandlers := handlers.NewTargetHandlers(targetService)
-	result, err := utils.openAndReadKickstartJson(tenantService)
-	log.Fatalf("Failed to initialize APIServer");
+	result, err := utils.OpenAndReadKickstartJson(tenantService)
+	fmt.Println(result)
+
 	// Server
 	s := api.NewAPIServer(":8000", targetHandlers, authHandlers)
 
