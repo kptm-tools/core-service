@@ -16,6 +16,22 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
+type FaError struct {
+	status int
+	msg    string
+}
+
+func (m *FaError) Error() string {
+	return m.msg
+}
+
+func NewFaError(status int, msg string) *FaError {
+	return &FaError{
+		status: status,
+		msg:    msg,
+	}
+}
+
 type AuthService struct {
 }
 
@@ -47,7 +63,7 @@ func (s *AuthService) Login(email, password, applicationID string) (*http.Respon
 	return resp, nil
 }
 
-func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusionauth.Errors, error) {
+func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
 
 	fmt.Println("Attempting to register Tenant with name: ", tenantName)
 	c := config.LoadConfig()
@@ -59,7 +75,7 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 
 	baseURL, err := url.Parse(host)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	client := fusionauth.NewClient(httpClient, baseURL, c.FusionAuthAPIKey)
@@ -69,11 +85,11 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 	resp, faErr, err := client.RetrieveTenant(c.BlueprintTenantID)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if faErr != nil {
-		return nil, faErr, nil
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
 	// Use this blueprint to build a new tenant with our name
@@ -93,7 +109,7 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 	appResp, err := client.RetrieveApplication(c.BlueprintApplicationID)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// fmt.Printf("Got BlueprintAPP `%+v`\n", appResp)
 
@@ -125,12 +141,12 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 	resp, faErr, err = client.CreateTenant(tenantID, tenantReq)
 	// TODO: Handle errors
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if faErr != nil {
-		return nil, faErr, nil
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
-	fmt.Printf("%d: CreateTenant `%s`\n", resp.StatusCode, tenantID)
+	// fmt.Printf("%d: CreateTenant `%s`\n", resp.StatusCode, tenantID)
 
 	// 3. Create a mock application for this tenant
 	client.SetTenantId(tenantID)
@@ -149,10 +165,10 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 
 	// 3.1.1 Handle key generation errors
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if faErr != nil {
-		return nil, faErr, nil
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
 	// fmt.Println("POST Key Response: ", keyResp)
@@ -166,12 +182,13 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 	appResp, faErr, err = client.CreateApplication(appID, appReq)
 	// TODO: Handle errors
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if faErr != nil {
-		return nil, faErr, nil
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
-	fmt.Printf("%d: CreateApp `%s`\n", appResp.StatusCode, appID)
+
+	// fmt.Printf("%d: CreateApp `%s`\n", appResp.StatusCode, appID)
 
 	// Parse fusionauth Tenant Object into Domain Tenant Object
 
@@ -196,17 +213,17 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *fusion
 	userResp, faErr, err := client.CreateUser("", userReq)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if faErr != nil {
-		return nil, faErr, nil
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
 	fmt.Printf("%d: CreateUser `%s`\n", userResp.StatusCode, operatorUser.Email)
 
 	domainTenant := domain.NewTenant(tenantID, appID)
 
-	return domainTenant, nil, nil
+	return domainTenant, nil
 }
 
 func buildFusionAuthLoginRequest(email, password, applicationID string) (*http.Request, error) {

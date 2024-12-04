@@ -73,13 +73,10 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 		}
 	}
 
-	t, faErr, err := h.authService.RegisterTenant(registerTenantRequest.Name)
+	t, err := h.authService.RegisterTenant(registerTenantRequest.Name)
 
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-	}
-	if faErr != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: faErr.Error()})
 	}
 
 	return api.WriteJSON(w, http.StatusCreated, t)
