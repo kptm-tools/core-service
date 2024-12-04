@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -28,35 +27,29 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
 	loginRequest := new(LoginRequest)
 
-	if err := json.NewDecoder(r.Body).Decode(loginRequest); err != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Missing parameters"})
-	}
+	if err := decodeJSONBody(w, r, loginRequest); err != nil {
+		var mr *malformedRequest
 
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
 	// Write the response from the service
 	resp, err := h.authService.Login(loginRequest.LoginID, loginRequest.Password, loginRequest.ApplicationID)
-	defer resp.Body.Close()
 
 	if err != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
 	}
 
-	// Handle FusionAuth errors...
-	if resp.StatusCode != http.StatusOK {
-		return handleFusionAuthErrorResponse(w, resp)
-	}
-
-	// Read the response byes
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	// Unmarshal into a map[string]string
-	m, err := api.UnmarshalGenericJSON(responseBody)
-	if err != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-	}
-
-	return api.WriteJSON(w, resp.StatusCode, m)
+	return api.WriteJSON(w, http.StatusOK, &resp)
 
 }
 

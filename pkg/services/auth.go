@@ -1,8 +1,6 @@
 package services
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -35,18 +33,6 @@ func NewFaError(status int, msg string) *FaError {
 	}
 }
 
-type FusionAuthLoginRequest struct {
-	LoginID       string `json:"loginId"`
-	Password      string `json:"password"`
-	ApplicationID string `json:"applicationId"`
-}
-
-type FusionAuthPostTenantRequest struct {
-	Name          string `json:"name"`
-	Password      string `json:"password"`
-	ApplicationID string `json:"applicationId"`
-}
-
 type AuthService struct {
 }
 
@@ -56,26 +42,42 @@ func NewAuthService() *AuthService {
 	return &AuthService{}
 }
 
-func (s *AuthService) Login(email, password, applicationID string) (*http.Response, error) {
+func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.LoginResponse, error) {
 
-	// Make a POST request to FusionAuth including credentials as body
-	// and APIKey in headers
+	c := config.LoadConfig()
+	host := fmt.Sprintf("http://%s:%s", c.FusionAuthHost, c.FusionAuthPort)
 
-	// Build request
-	req, err := buildFusionAuthLoginRequest(email, password, applicationID)
+	httpClient := &http.Client{
+		Timeout: time.Second * 10,
+	}
 
+	baseURL, err := url.Parse(host)
 	if err != nil {
 		return nil, err
 	}
 
-	// Send request
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	client := fusionauth.NewClient(httpClient, baseURL, c.FusionAuthAPIKey)
+
+	loginReq := fusionauth.LoginRequest{
+		BaseLoginRequest: fusionauth.BaseLoginRequest{
+			ApplicationId: applicationID,
+		},
+		LoginId:  email,
+		Password: password,
+	}
+
+	// Use FusionAuth Go client to log in the user
+	loginResponse, faErr, err := client.Login(loginReq)
+
 	if err != nil {
 		return nil, err
 	}
+	if faErr != nil {
+		return nil, NewFaError(loginResponse.StatusCode, faErr.Error())
+	}
 
-	return resp, nil
+	return loginResponse, nil
+
 }
 
 func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
@@ -239,38 +241,4 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	domainTenant := domain.NewTenant(tenantID, appID)
 
 	return domainTenant, nil
-}
-
-func buildFusionAuthLoginRequest(email, password, applicationID string) (*http.Request, error) {
-	c := config.LoadConfig()
-
-	apiKey := c.FusionAuthAPIKey
-	url := fmt.Sprintf("http://%s:%s/api/login", c.FusionAuthHost, c.FusionAuthPort)
-
-	// Connect to fusionauth and return the response
-
-	body := FusionAuthLoginRequest{
-		LoginID:       email,
-		Password:      password,
-		ApplicationID: applicationID,
-	}
-
-	jsonData, err := json.Marshal(body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", apiKey)
-
-	return req, nil
-
 }
