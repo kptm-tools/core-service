@@ -104,7 +104,9 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			if err != nil {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Not able to verify with AuthProvider"})
 			}
-			log.Print(resp)
+			if resp.StatusCode != 200 {
+				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User not authorized in the given Tenant"})
+			}
 
 			var roles = token.Claims.(jwt.MapClaims)["roles"]
 			parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
@@ -117,6 +119,7 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			validRoles, err := domain.GetValidRoles(functionName)
 
 			if err != nil {
+				log.Println(err)
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Roles missing"})
 				return
 			}

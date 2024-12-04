@@ -43,11 +43,12 @@ func main() {
 	// Handlers
 	authHandlers := handlers.NewAuthHandlers(authService)
 	targetHandlers := handlers.NewTargetHandlers(targetService)
+	tenantHandlers := handlers.NewTenantHandlers(tenantService)
 	result, err := utils.OpenAndReadKickstartJson(tenantService)
 	fmt.Println(result)
 
 	// Server
-	s := api.NewAPIServer(":8000", targetHandlers, authHandlers)
+	s := api.NewAPIServer(":8000", targetHandlers, tenantHandlers, authHandlers)
 
 	if err := s.Init(); err != nil {
 		log.Fatalf("Failed to initialize APIServer: `%+v`", err)

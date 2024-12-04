@@ -7,7 +7,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-
 func (s *PostgreSQLStore) CreateTenantsTable() error {
 	query := `create table if not exists tenants (
       id SERIAL PRIMARY KEY,
@@ -22,7 +21,7 @@ func (s *PostgreSQLStore) CreateTenantsTable() error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Tenant table created")
 	return nil
 
 }
@@ -47,6 +46,32 @@ func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error)
 	return nil, fmt.Errorf("Error creating Tenant")
 }
 
+func (s *PostgreSQLStore) GetTenants() ([]*domain.Tenant, error) {
+
+	query := `
+    SELECT *
+    FROM tenants
+  `
+
+	rows, err := s.db.Query(query)
+
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching Tenants: `%+v`", err)
+	}
+
+	tenants := []*domain.Tenant{}
+
+	for rows.Next() {
+		tenant, err := scanIntoTenant(rows)
+
+		if err != nil {
+			return nil, fmt.Errorf("Error scanning into Tenant: `%+v`", err)
+		}
+		tenants = append(tenants, tenant)
+	}
+
+	return tenants, nil
+}
 
 func scanIntoTenant(rows *sql.Rows) (*domain.Tenant, error) {
 

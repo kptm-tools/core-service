@@ -34,8 +34,11 @@ func OpenAndReadKickstartJson(tenantService interfaces.ITenantService) (string, 
 	for i := 0; i < len(tenantIDs); i++ {
 
 		tenant := domain.NewTenant(tenantIDs[i], applicationIDs[i])
-		fmt.Println(tenant)
-		tenantService.CreateTenant(tenant)
+		resultDB, err := tenantService.CreateTenant(tenant)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(resultDB)
 
 	}
 	return "Good", nil

@@ -21,3 +21,14 @@ func (s *TenantService) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
 
 	return s.storage.CreateTenant(t)
 }
+
+func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
+
+	tenants, err := s.storage.GetTenants()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tenants, nil
+}
