@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -79,30 +78,4 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 	}
 
 	return api.WriteJSON(w, http.StatusCreated, t)
-}
-
-func handleFusionAuthErrorResponse(w http.ResponseWriter, resp *http.Response) error {
-
-	// If the response is a 400 error, standardize it into APIError
-	if resp.StatusCode == http.StatusBadRequest {
-		fusionAuthLoginErrorResponse := new(FusionAuthErrorResponse)
-		if err := json.NewDecoder(resp.Body).Decode(fusionAuthLoginErrorResponse); err != nil {
-			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-		}
-
-		if len(fusionAuthLoginErrorResponse.GeneralErrors) > 0 {
-			return api.WriteJSON(w, resp.StatusCode, api.APIError{Error: fusionAuthLoginErrorResponse.GeneralErrors[0].Message})
-		}
-
-		if len(fusionAuthLoginErrorResponse.FieldErrors) > 0 {
-			for _, fieldErrors := range fusionAuthLoginErrorResponse.FieldErrors {
-				if len(fieldErrors) > 0 {
-					return api.WriteJSON(w, resp.StatusCode, api.APIError{Error: fieldErrors[0].Message})
-				}
-			}
-		}
-	}
-
-	// Handle other error statuses in a generic way
-	return api.WriteJSON(w, resp.StatusCode, resp.Body)
 }
