@@ -16,8 +16,7 @@ type LoginRequest struct {
 	ApplicationID string `json:"applicationId"`
 }
 
-type FusionAuthLoginRequest struct {
-	LoginID       string `json:"loginId"`
-	Password      string `json:"password"`
-	ApplicationID string `json:"applicationId"`
+type RegisterTenantRequest struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
