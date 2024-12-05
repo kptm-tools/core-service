@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type malformedRequest struct {
@@ -75,4 +77,13 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 	}
 
 	return nil
+}
+
+func GetUUID(req *http.Request) (string, error) {
+	reqUuid := req.PathValue("id")
+
+	if err := uuid.Validate(reqUuid); err != nil {
+		return "", fmt.Errorf("Invalid UUID: `%s`", reqUuid)
+	}
+	return reqUuid, nil
 }
