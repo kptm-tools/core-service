@@ -77,7 +77,5 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	// TODO: Store Tenant in Database
-
 	return api.WriteJSON(w, http.StatusCreated, &RegisterTenantResponse{ApplicationID: t.ApplicationID, User: *u})
 }

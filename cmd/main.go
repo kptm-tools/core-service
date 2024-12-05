@@ -36,7 +36,7 @@ func main() {
 	}
 
 	// Services
-	authService := services.NewAuthService()
+	authService := services.NewAuthService(coreStore)
 	targetService := services.NewTargetService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
 

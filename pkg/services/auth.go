@@ -34,16 +34,18 @@ func NewFaError(status int, msg string) *FaError {
 }
 
 type AuthService struct {
-	client *http.Client
+	client  *http.Client
+	storage interfaces.IStorage
 }
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
 
-func NewAuthService() *AuthService {
+func NewAuthService(storage interfaces.IStorage) *AuthService {
 	return &AuthService{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		storage: storage,
 	}
 }
 
@@ -117,6 +119,12 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain
 
 	// Parse fusionauth Tenant Object into Domain Tenant Object
 	domainTenant := domain.NewTenant(tenant.Id, app.Id)
+
+	// Store the domainTenant in our Database
+	domainTenant, err = s.storage.CreateTenant(domainTenant)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	return domainTenant, domainUser, nil
 }
