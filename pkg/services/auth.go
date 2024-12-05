@@ -129,6 +129,38 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain
 	return domainTenant, domainUser, nil
 }
 
+func (s *AuthService) GetUserByID(id string) (*domain.User, error) {
+	client, err := s.NewFusionAuthClient()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, faErr, err := client.RetrieveUser(id)
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
+	}
+
+	u := &resp.User
+
+	var appID string
+	roles := []string{}
+	if len(u.Registrations) > 0 {
+		appID = u.Registrations[0].ApplicationId
+
+		for _, role := range u.Registrations[0].Roles {
+			roles = append(roles, role)
+		}
+	}
+
+	fmt.Printf("Fetched user from fusionauth: `%+v`\n", u)
+	domainUser := domain.NewUser(u.Id, u.Email, u.Password, u.TenantId, appID, roles)
+
+	return domainUser, nil
+}
+
 func fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
 	c := config.LoadConfig()
 
