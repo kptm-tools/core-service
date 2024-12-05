@@ -1,16 +1,15 @@
 {
   "variables": {
-    "coreApplicationId": "#{ENV.CORE_APPLICATION_ID}",
     "allowedOrigin": "http://localhost:5173",
     "apiKey": "#{ENV.FUSIONAUTH_API_KEY}",
     "asymmetricKeyId": "#{UUID()}",
     "asymmetricKeyId1": "#{UUID()}",
     "asymmetricKeyId2": "#{UUID()}",
     "defaultTenantId": "d7d09513-a3f5-401c-9685-34ab6c552453",
-    "tenant1Uuid": "045f999b-e94c-4c27-bf7f-f7eddc6dedc3",
-    "tenant2Uuid": "d81dd52b-8de8-4e78-9c00-04b42ffce8fc",
-    "applicationUuid1": "9f9f14a6-5196-4add-8975-597cdbe00a99",
-    "applicationUuid2": "df015c17-f32e-4f80-9ac5-71d7b3290bef",
+    "blueprintTenantUuid": "#{ENV.FUSIONAUTH_BLUEPRINT_TENANTID}",
+    "tenant1Uuid": "#{UUID()}",
+    "blueprintApplicationUuid": "#{ENV.FUSIONAUTH_BLUEPRINT_APPID}",
+    "applicationUuid1": "#{UUID()}",
     "adminEmail": "admin@example.com",
     "adminPassword": "password",
     "operatorEmail": "operator@example.com",
@@ -169,7 +168,7 @@
     },
     {
       "method": "POST",
-      "url": "/api/tenant/#{tenant2Uuid}",
+      "url": "/api/tenant/#{blueprintTenantUuid}",
       "body": {
         "tenant": {
           "emailConfiguration": {
@@ -249,7 +248,7 @@
             "refreshTokenUsagePolicy": "Reusable",
             "timeToLiveInSeconds": 3600
           },
-          "name": "Tenant 2",
+          "name": "Blueprint Tenant",
           "themeId": "75a068fd-e94b-451a-9aeb-3ddb9a3b5987"
         }
       }
@@ -376,22 +375,22 @@
     {
       "method": "POST",
       "url": "/api/key/generate/#{asymmetricKeyId2}",
-      "tenantId": "#{tenant2Uuid}",
+      "tenantId": "#{blueprintTenantUuid}",
       "body": {
         "key": {
           "algorithm": "RS256",
-          "name": "For Tenant 2 App",
+          "name": "For Blueprint Tenant App",
           "length": 2048
         }
       }
     },
     {
       "method": "POST",
-      "url": "/api/application/#{applicationUuid2}",
-      "tenantId": "#{tenant2Uuid}",
+      "url": "/api/application/#{blueprintApplicationUuid}",
+      "tenantId": "#{blueprintTenantUuid}",
       "body": {
         "application": {
-          "name": "Tenant 2 App",
+          "name": "Blueprint Tenant App",
           "oauthConfiguration": {
             "authorizedRedirectURLs": [],
             "operatorSecret": "super-secret-secret-that-should-be-regenerated-for-production",
@@ -465,7 +464,7 @@
           "password": "#{operatorPassword}"
         },
         "registration": {
-          "applicationId": "#{applicationUuid2}",
+          "applicationId": "#{blueprintApplicationUuid}",
           "roles": [
             "operator"
           ]
@@ -485,7 +484,7 @@
           "password": "#{analystPassword}"
         },
         "registration": {
-          "applicationId": "#{applicationUuid2}",
+          "applicationId": "#{blueprintApplicationUuid}",
           "roles": [
             "analyst"
           ]
