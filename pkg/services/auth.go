@@ -275,31 +275,26 @@ func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*doma
 	pass := uuid.NewString()
 	roles := []string{"operator"}
 
-	userReq := fusionauth.UserRequest{
-		ApplicationId: appID,
+	registerReq := fusionauth.RegistrationRequest{
 		User: fusionauth.User{
 			Email:          email,
 			SecureIdentity: fusionauth.SecureIdentity{Password: pass},
-
-			Registrations: []fusionauth.UserRegistration{
-				{
-					ApplicationId: appID,
-					Roles:         roles,
-				},
-			},
+		},
+		Registration: fusionauth.UserRegistration{
+			ApplicationId: appID,
+			Roles:         roles,
 		},
 	}
 
-	resp, faErr, err := client.CreateUser("", userReq)
+	regResp, faErr, err := client.Register("", registerReq)
 	if err != nil {
 		return nil, err
 	}
 	if faErr != nil {
-		return nil, NewFaError(resp.StatusCode, faErr.Error())
+		return nil, NewFaError(regResp.StatusCode, faErr.Error())
 	}
 
-	u := &resp.User
-
+	u := &regResp.User
 	return domain.NewUser(u.Id, email, pass, u.TenantId, appID, roles), nil
 }
 
