@@ -78,50 +78,118 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 
 func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
 
-	c := config.LoadConfig()
-
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
 
 	// Fetch blueprint tenant by it's ID
-	fmt.Println("Trying to fetch blueprint tenant with ID: ", c.BlueprintTenantID)
+	bpTenant, err := fetchBlueprintTenant(client)
+
+	// Use this blueprint to build a new tenant with our name
+	// and register this tenant to fusionAuth
+	tenant, err := createTenantFromBlueprint(tenantName, bpTenant, client)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch blueprint app
+	bpApp, err := fetchBlueprintApp(client)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use this blueprint to build a new App and assign it to our tenant
+	client.SetTenantId(tenant.Id)
+	// Unset key
+	defer client.SetTenantId("")
+	app, err := createAppFromBlueprint(tenant, bpApp, client)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create initial operator user
+	_, err = createInitialUser(app.Id, client)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse fusionauth Tenant Object into Domain Tenant Object
+	domainTenant := domain.NewTenant(tenant.Id, app.Id)
+
+	return domainTenant, nil
+}
+
+// TODO: Use a shared http.Client for authService
+func fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
+	c := config.LoadConfig()
+
+	// log.Println("Trying to fetch blueprint tenant with ID: ", c.BlueprintTenantID)
 	resp, faErr, err := client.RetrieveTenant(c.BlueprintTenantID)
 
 	if err != nil {
 		return nil, err
 	}
-
 	if faErr != nil {
 		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
-	// Use this blueprint to build a new tenant with our name
+	t := &resp.Tenant
+
+	return t, nil
+}
+
+func createTenantFromBlueprint(tenantName string, bpTenant *fusionauth.Tenant, client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
 	tenantID := uuid.NewString()
 	tenant := &fusionauth.Tenant{
 		Id:                              tenantID,
 		Name:                            tenantName,
-		ThemeId:                         resp.Tenant.ThemeId,
-		Issuer:                          resp.Tenant.Issuer,
-		JwtConfiguration:                resp.Tenant.JwtConfiguration,
-		ExternalIdentifierConfiguration: resp.Tenant.ExternalIdentifierConfiguration,
-		EmailConfiguration:              resp.Tenant.EmailConfiguration,
-		MultiFactorConfiguration:        resp.Tenant.MultiFactorConfiguration,
+		ThemeId:                         bpTenant.ThemeId,
+		Issuer:                          bpTenant.Issuer,
+		JwtConfiguration:                bpTenant.JwtConfiguration,
+		ExternalIdentifierConfiguration: bpTenant.ExternalIdentifierConfiguration,
+		EmailConfiguration:              bpTenant.EmailConfiguration,
+		MultiFactorConfiguration:        bpTenant.MultiFactorConfiguration,
 	}
 
-	// Fetch blueprint app
-	appResp, err := client.RetrieveApplication(c.BlueprintApplicationID)
+	if err := registerTenant(tenant, client); err != nil {
+		return nil, err
+	}
+	return tenant, nil
+}
 
+func registerTenant(t *fusionauth.Tenant, client *fusionauth.FusionAuthClient) error {
+	tenantReq := fusionauth.TenantRequest{Tenant: *t}
+	resp, faErr, err := client.CreateTenant(t.Id, tenantReq)
+
+	if err != nil {
+		return err
+	}
+	if faErr != nil {
+		return NewFaError(resp.StatusCode, faErr.Error())
+	}
+
+	return nil
+}
+
+func fetchBlueprintApp(client *fusionauth.FusionAuthClient) (*fusionauth.Application, error) {
+	c := config.LoadConfig()
+
+	resp, err := client.RetrieveApplication(c.BlueprintApplicationID)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("Got BlueprintAPP `%+v`\n", appResp)
 
-	// Use this blueprint to build a new App and assign it to our tenant
+	a := &resp.Application
+	// log.Printf("Got BlueprintAPP `%+v`\n", a)
+	return a, nil
+}
+
+func createAppFromBlueprint(tenant *fusionauth.Tenant, bpApp *fusionauth.Application, client *fusionauth.FusionAuthClient) (*fusionauth.Application, error) {
+
 	appID := uuid.NewString()
 	var roles []fusionauth.ApplicationRole
-	for _, r := range appResp.Application.Roles {
+	for _, r := range bpApp.Roles {
 		role := fusionauth.ApplicationRole{
 			Name:        r.Name,
 			Description: r.Description,
@@ -130,43 +198,58 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 		}
 		roles = append(roles, role)
 	}
-
 	app := &fusionauth.Application{
 		Id:                        appID,
-		TenantId:                  tenantID,
-		Name:                      fmt.Sprintf("%s App", tenantName),
-		OauthConfiguration:        appResp.Application.OauthConfiguration,
-		JwtConfiguration:          appResp.Application.JwtConfiguration,
-		RegistrationConfiguration: appResp.Application.RegistrationConfiguration,
+		TenantId:                  tenant.Id,
+		Name:                      fmt.Sprintf("%s App", tenant.Name),
+		OauthConfiguration:        bpApp.OauthConfiguration,
+		JwtConfiguration:          bpApp.JwtConfiguration,
+		RegistrationConfiguration: bpApp.RegistrationConfiguration,
 		Roles:                     roles,
 	}
 
-	// Register this tenant to fusionAuth
-	tenantReq := fusionauth.TenantRequest{Tenant: *tenant}
-	resp, faErr, err = client.CreateTenant(tenantID, tenantReq)
-	// TODO: Handle errors
+	// Create a new key for this new app
+	key, err := generateKey(tenant, client)
 	if err != nil {
 		return nil, err
 	}
-	if faErr != nil {
-		return nil, NewFaError(resp.StatusCode, faErr.Error())
+
+	// Add the key to this new app
+	app.JwtConfiguration.AccessTokenKeyId = key.Id
+	app.JwtConfiguration.IdTokenKeyId = key.Id
+
+	err = registerApp(app, client)
+	if err != nil {
+		return nil, err
 	}
-	// fmt.Printf("%d: CreateTenant `%s`\n", resp.StatusCode, tenantID)
 
-	// 3. Create a mock application for this tenant
-	client.SetTenantId(tenantID)
+	return app, nil
+}
 
-	// 3.1 Create an assymetric API KEY for JWT Config of the App and assign it to the New Tenant
-	keyID := uuid.New().String()
+func registerApp(a *fusionauth.Application, client *fusionauth.FusionAuthClient) error {
+	req := fusionauth.ApplicationRequest{Application: *a}
+	resp, faErr, err := client.CreateApplication(a.Id, req)
+
+	if err != nil {
+		return err
+	}
+	if faErr != nil {
+		return NewFaError(resp.StatusCode, faErr.Error())
+	}
+	return nil
+}
+
+func generateKey(tenant *fusionauth.Tenant, client *fusionauth.FusionAuthClient) (*fusionauth.Key, error) {
+	keyID := uuid.NewString()
 	key := fusionauth.Key{
 		Algorithm: fusionauth.KeyAlgorithm_RS256,
 		Length:    2048,
-		Name:      fmt.Sprintf("For %s App", tenantName),
+		Name:      fmt.Sprintf("For %s App", tenant.Name),
 		Id:        keyID,
 	}
 	keyReq := fusionauth.KeyRequest{Key: key}
 
-	_, faErr, err = client.GenerateKey(keyID, keyReq)
+	resp, faErr, err := client.GenerateKey(keyID, keyReq)
 
 	// 3.1.1 Handle key generation errors
 	if err != nil {
@@ -175,59 +258,10 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	if faErr != nil {
 		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
-
-	// fmt.Println("POST Key Response: ", keyResp)
-
-	// 3.2 Copy the BlueprintAPP
-
-	app.JwtConfiguration.AccessTokenKeyId = keyID
-	app.JwtConfiguration.IdTokenKeyId = keyID
-
-	appReq := fusionauth.ApplicationRequest{Application: *app}
-	appResp, faErr, err = client.CreateApplication(appID, appReq)
-	// TODO: Handle errors
-	if err != nil {
-		return nil, err
-	}
-	if faErr != nil {
-		return nil, NewFaError(resp.StatusCode, faErr.Error())
-	}
-
-	// Create initial operator user
-
-	_, err = CreateInitialUser(appID, client)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse fusionauth Tenant Object into Domain Tenant Object
-	domainTenant := domain.NewTenant(tenantID, appID)
-
-	return domainTenant, nil
+	return &resp.Key, nil
 }
 
-// TODO: Use a shared http.Client for authService
-func fetchBlueprintTenant() error {
-	// TODO: Implement
-	return nil
-}
-
-func fetchBlueprintApp() error {
-	// TODO: Implement
-	return nil
-}
-
-func generateKey() error {
-	// TODO: Implement
-	return nil
-}
-
-func CreateApplication() error {
-	// TODO: Implement
-	return nil
-}
-
-func CreateInitialUser(appID string, client *fusionauth.FusionAuthClient) (*fusionauth.User, error) {
+func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*fusionauth.User, error) {
 
 	email := "operator@example.com"
 	pass := uuid.NewString()
@@ -268,6 +302,5 @@ func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error
 		return nil, fmt.Errorf("Error creating FusionAuthClient: `%s`", err.Error())
 	}
 
-	fmt.Println("Created FusionAuthClient with baseURL: ", baseURL)
 	return fusionauth.NewClient(s.client, baseURL, c.FusionAuthAPIKey), nil
 }
