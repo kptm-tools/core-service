@@ -76,11 +76,11 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 
 }
 
-func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
+func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain.User, error) {
 
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Fetch blueprint tenant by it's ID
@@ -90,37 +90,37 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	// and register this tenant to fusionAuth
 	tenant, err := createTenantFromBlueprint(tenantName, bpTenant, client)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Fetch blueprint app
 	bpApp, err := fetchBlueprintApp(client)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Use this blueprint to build a new App and assign it to our tenant
 	client.SetTenantId(tenant.Id)
 	// Unset key
 	defer client.SetTenantId("")
+
 	app, err := createAppFromBlueprint(tenant, bpApp, client)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Create initial operator user
-	_, err = createInitialUser(app.Id, client)
+	domainUser, err := createInitialUser(app.Id, client)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Parse fusionauth Tenant Object into Domain Tenant Object
 	domainTenant := domain.NewTenant(tenant.Id, app.Id)
 
-	return domainTenant, nil
+	return domainTenant, domainUser, nil
 }
 
-// TODO: Use a shared http.Client for authService
 func fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
 	c := config.LoadConfig()
 
@@ -261,7 +261,7 @@ func generateKey(tenant *fusionauth.Tenant, client *fusionauth.FusionAuthClient)
 	return &resp.Key, nil
 }
 
-func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*fusionauth.User, error) {
+func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*domain.User, error) {
 
 	email := "operator@example.com"
 	pass := uuid.NewString()
@@ -290,7 +290,9 @@ func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*fusi
 		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
-	return &resp.User, nil
+	u := &resp.User
+
+	return domain.NewUser(u.Id, email, pass, u.TenantId, appID, roles), nil
 }
 
 func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error) {

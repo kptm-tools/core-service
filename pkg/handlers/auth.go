@@ -66,7 +66,7 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 		}
 	}
 
-	t, err := h.authService.RegisterTenant(registerTenantRequest.Name)
+	t, u, err := h.authService.RegisterTenant(registerTenantRequest.Name)
 
 	if err != nil {
 		var fae *services.FaError
@@ -77,5 +77,7 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	return api.WriteJSON(w, http.StatusCreated, t)
+	// TODO: Store Tenant in Database
+
+	return api.WriteJSON(w, http.StatusCreated, &RegisterTenantResponse{ApplicationID: t.ApplicationID, User: *u})
 }
