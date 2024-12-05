@@ -34,29 +34,25 @@ func NewFaError(status int, msg string) *FaError {
 }
 
 type AuthService struct {
+	client *http.Client
 }
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
 
 func NewAuthService() *AuthService {
-	return &AuthService{}
+	return &AuthService{
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
 }
 
 func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.LoginResponse, error) {
 
-	c := config.LoadConfig()
-	host := fmt.Sprintf("http://%s:%s", c.FusionAuthHost, c.FusionAuthPort)
-
-	httpClient := &http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	baseURL, err := url.Parse(host)
+	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
-
-	client := fusionauth.NewClient(httpClient, baseURL, c.FusionAuthAPIKey)
 
 	loginReq := fusionauth.LoginRequest{
 		BaseLoginRequest: fusionauth.BaseLoginRequest{
@@ -82,20 +78,12 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 
 func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) {
 
-	fmt.Println("Attempting to register Tenant with name: ", tenantName)
 	c := config.LoadConfig()
 
-	host := fmt.Sprintf("http://%s:%s", c.FusionAuthHost, c.FusionAuthPort)
-	httpClient := &http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	baseURL, err := url.Parse(host)
+	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
-
-	client := fusionauth.NewClient(httpClient, baseURL, c.FusionAuthAPIKey)
 
 	// Fetch blueprint tenant by it's ID
 	fmt.Println("Trying to fetch blueprint tenant with ID: ", c.BlueprintTenantID)
@@ -207,7 +195,8 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 
 	// Create initial operator user
 
-	if err := createInitialUser(appID, client); err != nil {
+	_, err = CreateInitialUser(appID, client)
+	if err != nil {
 		return nil, err
 	}
 
@@ -217,7 +206,28 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, error) 
 	return domainTenant, nil
 }
 
-func createInitialUser(appID string, client *fusionauth.FusionAuthClient) error {
+// TODO: Use a shared http.Client for authService
+func fetchBlueprintTenant() error {
+	// TODO: Implement
+	return nil
+}
+
+func fetchBlueprintApp() error {
+	// TODO: Implement
+	return nil
+}
+
+func generateKey() error {
+	// TODO: Implement
+	return nil
+}
+
+func CreateApplication() error {
+	// TODO: Implement
+	return nil
+}
+
+func CreateInitialUser(appID string, client *fusionauth.FusionAuthClient) (*fusionauth.User, error) {
 
 	email := "operator@example.com"
 	pass := uuid.NewString()
@@ -240,11 +250,24 @@ func createInitialUser(appID string, client *fusionauth.FusionAuthClient) error 
 
 	resp, faErr, err := client.CreateUser("", userReq)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if faErr != nil {
-		return NewFaError(resp.StatusCode, faErr.Error())
+		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
-	return nil
+	return &resp.User, nil
+}
+
+func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error) {
+
+	c := config.LoadConfig()
+	host := fmt.Sprintf("http://%s:%s", c.FusionAuthHost, c.FusionAuthPort)
+	baseURL, err := url.Parse(host)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating FusionAuthClient: `%s`", err.Error())
+	}
+
+	fmt.Println("Created FusionAuthClient with baseURL: ", baseURL)
+	return fusionauth.NewClient(s.client, baseURL, c.FusionAuthAPIKey), nil
 }
