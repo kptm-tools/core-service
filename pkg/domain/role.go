@@ -51,6 +51,7 @@ func GetValidRoles(funcName string) ([]Role, error) {
 		"handleHealthcheck-fm": {RoleAdmin},
 		"targets":              {RoleAdmin, RoleOperator, RoleAnalyst},
 		"tenants":              {RoleAdmin, RoleAnalyst},
+		"getUser":              {RoleAdmin, RoleOperator, RoleAnalyst},
 	}
 
 	v, ok := funcRoles[funcName]
