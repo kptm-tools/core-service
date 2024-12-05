@@ -56,6 +56,10 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	if err := s.CreateTargetsTable(); err != nil {
 		return err
 	}
+	// Attempt to create Tenants Table
+	if err := s.CreateTenantsTable(); err != nil {
+		return err
+	}
 
 	return nil
 }

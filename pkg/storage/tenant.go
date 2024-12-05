@@ -7,7 +7,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-
 func (s *PostgreSQLStore) CreateTenantsTable() error {
 	query := `create table if not exists tenants (
       id SERIAL PRIMARY KEY,
@@ -22,13 +21,36 @@ func (s *PostgreSQLStore) CreateTenantsTable() error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Tenant table created")
 	return nil
 
 }
 
-func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
+func (s *PostgreSQLStore) ExistsTenant(tenantID string) (bool, error) {
 
+	var exists bool
+
+	query := `
+    SELECT EXISTS (
+          SELECT FROM tenants
+          WHERE provider_id=$1
+    )
+  `
+
+	err := s.db.QueryRow(query, tenantID).Scan(&exists)
+
+	if err != nil {
+		return false, fmt.Errorf("Error checking tenant existence: `%+v`", err)
+	}
+
+	return exists, nil
+
+}
+
+func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
+	if exists, err := s.ExistsTenant(t.ProviderID); exists || err != nil {
+		return nil, fmt.Errorf("TenantID already exists: %s", t.ProviderID)
+	}
 	query := `
     INSERT INTO tenants (provider_id, application_id, created_at, updated_at)
     values ($1, $2, $3, $4)
@@ -47,6 +69,32 @@ func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error)
 	return nil, fmt.Errorf("Error creating Tenant")
 }
 
+func (s *PostgreSQLStore) GetTenants() ([]*domain.Tenant, error) {
+
+	query := `
+    SELECT *
+    FROM tenants
+  `
+
+	rows, err := s.db.Query(query)
+
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching Tenants: `%+v`", err)
+	}
+
+	tenants := []*domain.Tenant{}
+
+	for rows.Next() {
+		tenant, err := scanIntoTenant(rows)
+
+		if err != nil {
+			return nil, fmt.Errorf("Error scanning into Tenant: `%+v`", err)
+		}
+		tenants = append(tenants, tenant)
+	}
+
+	return tenants, nil
+}
 
 func scanIntoTenant(rows *sql.Rows) (*domain.Tenant, error) {
 

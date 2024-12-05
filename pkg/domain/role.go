@@ -49,6 +49,8 @@ func GetValidRoles(funcName string) ([]Role, error) {
 
 	funcRoles := map[string][]Role{
 		"handleHealthcheck-fm": {RoleAdmin},
+		"targets":              {RoleAdmin, RoleOperator, RoleAnalyst},
+		"tenants":              {RoleAdmin, RoleAnalyst},
 	}
 
 	v, ok := funcRoles[funcName]
