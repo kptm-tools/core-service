@@ -1,21 +1,25 @@
 package api
 
 import (
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"io"
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/kptm-tools/core-service/pkg/config"
-	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 var verifyKey *rsa.PublicKey
+
+type ContextKey string
+
+const ContextTenantID ContextKey = "tenantID"
 
 func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,15 +55,16 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 
 				// 2. Check aud: make sure the token is intended for this application
 
-				aud := config.LoadConfig().ApplicationID
+				/*aud := config.LoadConfig().ApplicationID
 				checkAudience := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
 
 				if !checkAudience {
 					return nil, fmt.Errorf("Invalid audience")
 				}
+				*/
 
 				// verify iss claim: Make sure the issuer is as expected
-				iss := "http://localhost:9011" // TODO: Set this to env var
+				iss := "https://app.kriptome.com" // TODO: Set this to env var
 				checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
 				if !checkIss {
 					return nil, fmt.Errorf(("invalid iss"))
@@ -78,26 +83,43 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// And then check roles
 
 			if !token.Valid {
-
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid token"})
-
+				return
 			}
-			var tenantId = token.Claims.(jwt.MapClaims)["tid"]
-			log.Print(tenantId)
-			var userId = token.Claims.(jwt.MapClaims)["sub"]
-			log.Print(userId)
-			var roles = token.Claims.(jwt.MapClaims)["roles"]
+			var tenantID = token.Claims.(jwt.MapClaims)["tid"]
+			var userID = token.Claims.(jwt.MapClaims)["sub"]
+			// Build request
+			req, err := buildFusionAuthVerifyRequest(tenantID.(string), userID.(string))
 
+			if err != nil {
+				WriteJSON(w, http.StatusInternalServerError, APIError{Error: err.Error()})
+				return
+			}
+			// Send request
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Not able to verify with AuthProvider"})
+				return
+			}
+			if resp.StatusCode != 200 {
+				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User not authorized in the given Tenant"})
+				return
+			}
+
+			var roles = token.Claims.(jwt.MapClaims)["roles"]
 			parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 
 			if err != nil {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid Role"})
+				return
 			}
 
 			// Check out what page we're calling, so we can check relevant roles
 			validRoles, err := domain.GetValidRoles(functionName)
 
 			if err != nil {
+				log.Println(err)
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Roles missing"})
 				return
 			}
@@ -111,18 +133,19 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid role"})
 				return
 			}
-
-			endpoint(w, r)
+			ctx := context.WithValue(r.Context(), ContextTenantID, tenantID)
+			endpoint(w, r.WithContext(ctx))
 
 		}
 	})
 }
 
 func setPublicKey(kid string) {
+	c := config.LoadConfig()
 	// Retrieves the public key for JWT from FusionAuth
 	if verifyKey == nil {
-		// TODO: Change with env var for FusionAuth host
-		response, err := http.Get("http://localhost:9011/api/jwt/public-key?kid=" + kid)
+		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
+		response, err := http.Get(url)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -145,4 +168,19 @@ func setPublicKey(kid string) {
 			log.Fatalln(("problem retreiving public key"))
 		}
 	}
+}
+
+func buildFusionAuthVerifyRequest(tenantID string, userID string) (*http.Request, error) {
+	c := config.LoadConfig()
+	apiKey := c.FusionAuthAPIKey
+	url := fmt.Sprintf("http://%s:%s/api/user/%s", c.FusionAuthHost, c.FusionAuthPort, userID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", apiKey)
+	req.Header.Set("X-FusionAuth-TenantId", tenantID)
+	return req, nil
 }
