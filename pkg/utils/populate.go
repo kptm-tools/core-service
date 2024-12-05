@@ -2,10 +2,8 @@ package utils
 
 import (
 	"fmt"
-	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"net/http"
 	"os"
 )
 
@@ -42,18 +40,4 @@ func OpenAndReadKickstartJson(tenantService interfaces.ITenantService) (string, 
 
 	}
 	return "Good", nil
-}
-
-func buildFusionAuthGetTenantsRequest() (*http.Request, error) {
-	c := config.LoadConfig()
-	apiKey := c.FusionAuthAPIKey
-	url := fmt.Sprintf("http://%s:%s/api/tenant", c.FusionAuthHost, c.FusionAuthPort)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", apiKey)
-	return req, nil
 }

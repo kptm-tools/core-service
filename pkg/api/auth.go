@@ -64,7 +64,7 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 				*/
 
 				// verify iss claim: Make sure the issuer is as expected
-				iss := "https://piedpipervideochat.com" // TODO: Set this to env var
+				iss := "https://app.kriptome.com" // TODO: Set this to env var
 				checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
 				if !checkIss {
 					return nil, fmt.Errorf(("invalid iss"))
@@ -83,19 +83,16 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// And then check roles
 
 			if !token.Valid {
-
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid token"})
-
+				return
 			}
 			var tenantID = token.Claims.(jwt.MapClaims)["tid"]
-			log.Print(tenantID)
 			var userID = token.Claims.(jwt.MapClaims)["sub"]
-			log.Print(userID)
 			// Build request
 			req, err := buildFusionAuthVerifyRequest(tenantID.(string), userID.(string))
 
 			if err != nil {
-				fmt.Errorf("Invalid request build")
+				WriteJSON(w, http.StatusInternalServerError, APIError{Error: err.Error()})
 				return
 			}
 			// Send request
@@ -103,9 +100,11 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			resp, err := client.Do(req)
 			if err != nil {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Not able to verify with AuthProvider"})
+				return
 			}
 			if resp.StatusCode != 200 {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User not authorized in the given Tenant"})
+				return
 			}
 
 			var roles = token.Claims.(jwt.MapClaims)["roles"]
@@ -113,6 +112,7 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 
 			if err != nil {
 				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid Role"})
+				return
 			}
 
 			// Check out what page we're calling, so we can check relevant roles
@@ -144,7 +144,6 @@ func setPublicKey(kid string) {
 	c := config.LoadConfig()
 	// Retrieves the public key for JWT from FusionAuth
 	if verifyKey == nil {
-		// TODO: Change with env var for FusionAuth host
 		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
 		response, err := http.Get(url)
 		if err != nil {
