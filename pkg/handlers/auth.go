@@ -79,3 +79,23 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 
 	return api.WriteJSON(w, http.StatusCreated, &RegisterTenantResponse{ApplicationID: t.ApplicationID, User: *u})
 }
+
+func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
+	id, err := GetUUID(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+	}
+
+	user, err := h.authService.GetUserByID(id)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}

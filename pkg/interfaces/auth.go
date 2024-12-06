@@ -10,9 +10,11 @@ import (
 type IAuthService interface {
 	Login(email, password, applicationID string) (*fusionauth.LoginResponse, error)
 	RegisterTenant(tenantName string) (*domain.Tenant, *domain.User, error)
+	GetUserByID(userID string) (*domain.User, error)
 }
 
 type IAuthHandlers interface {
 	Login(w http.ResponseWriter, req *http.Request) error
 	RegisterTenant(w http.ResponseWriter, req *http.Request) error
+	GetUser(w http.ResponseWriter, req *http.Request) error
 }
