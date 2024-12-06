@@ -155,7 +155,6 @@ func (s *AuthService) GetUserByID(id string) (*domain.User, error) {
 		}
 	}
 
-	fmt.Printf("Fetched user from fusionauth: `%+v`\n", u)
 	domainUser := domain.NewUser(u.Id, u.Email, u.Password, u.TenantId, appID, roles)
 
 	return domainUser, nil
