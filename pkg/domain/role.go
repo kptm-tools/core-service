@@ -16,9 +16,9 @@ func (r Role) String() string {
 
 func parseRole(s string) (Role, error) {
 	var stringToRole = map[string]Role{
-		"client":  RoleOperator,
-		"analyst": RoleAnalyst,
-		"admin":   RoleAdmin,
+		"operator": RoleOperator,
+		"analyst":  RoleAnalyst,
+		"admin":    RoleAdmin,
 	}
 
 	v, ok := stringToRole[s]
