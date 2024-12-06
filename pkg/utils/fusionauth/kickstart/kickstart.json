@@ -65,6 +65,30 @@
     },
     {
       "method": "POST",
+      "url": "/api/key/generate/#{asymmetricKeyId1}",
+      "tenantId": "#{tenant1Uuid}",
+      "body": {
+        "key": {
+          "algorithm": "RS256",
+          "name": "For Tenant 1 App",
+          "length": 2048
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/key/generate/#{asymmetricKeyId2}",
+      "tenantId": "#{blueprintTenantUuid}",
+      "body": {
+        "key": {
+          "algorithm": "RS256",
+          "name": "For Blueprint Tenant App",
+          "length": 2048
+        }
+      }
+    },
+    {
+      "method": "POST",
       "url": "/api/user/registration",
       "body": {
         "user": {
@@ -150,8 +174,8 @@
           },
           "issuer": "https://app.kriptome.com",
           "jwtConfiguration": {
-            "accessTokenKeyId": "#{FUSIONAUTH_DEFAULT_SIGNING_KEY_ID}",
-            "idTokenKeyId": "092dbedc-30af-4149-9c61-b578f2c72f59",
+            "accessTokenKeyId": "#{asymmetricKeyId1}",
+            "idTokenKeyId": "#{asymmetricKeyId1}",
             "refreshTokenExpirationPolicy": "Fixed",
             "refreshTokenRevocationPolicy": {
               "onLoginPrevented": true,
@@ -235,10 +259,10 @@
             "twoFactorOneTimeCodeIdTimeToLiveInSeconds": 60,
             "twoFactorTrustIdTimeToLiveInSeconds": 2592000
           },
-          "issuer": "https://piedpipervideochat.com",
+          "issuer": "https://app.kriptome.com",
           "jwtConfiguration": {
-            "accessTokenKeyId": "#{FUSIONAUTH_DEFAULT_SIGNING_KEY_ID}",
-            "idTokenKeyId": "092dbedc-30af-4149-9c61-b578f2c72f59",
+            "accessTokenKeyId": "#{asymmetricKeyId2}",
+            "idTokenKeyId": "#{asymmetricKeyId2}",
             "refreshTokenExpirationPolicy": "Fixed",
             "refreshTokenRevocationPolicy": {
               "onLoginPrevented": true,
@@ -250,18 +274,6 @@
           },
           "name": "Blueprint Tenant",
           "themeId": "75a068fd-e94b-451a-9aeb-3ddb9a3b5987"
-        }
-      }
-    },
-    {
-      "method": "POST",
-      "url": "/api/key/generate/#{asymmetricKeyId1}",
-      "tenantId": "#{tenant1Uuid}",
-      "body": {
-        "key": {
-          "algorithm": "RS256",
-          "name": "For Tenant 1 App",
-          "length": 2048
         }
       }
     },
@@ -285,8 +297,8 @@
           },
           "jwtConfiguration": {
             "enabled": true,
-            "accessTokenKeyId": "#{asymmetricKeyId1}",
-            "idTokenKeyId": "#{asymmetricKeyId1}"
+            "accessTokenKeyId": "#{asymmetricKeyId2}",
+            "idTokenKeyId": "#{asymmetricKeyId2}"
           },
           "registrationConfiguration": {
             "birthDate": {
@@ -369,18 +381,6 @@
           "roles": [
             "analyst"
           ]
-        }
-      }
-    },
-    {
-      "method": "POST",
-      "url": "/api/key/generate/#{asymmetricKeyId2}",
-      "tenantId": "#{blueprintTenantUuid}",
-      "body": {
-        "key": {
-          "algorithm": "RS256",
-          "name": "For Blueprint Tenant App",
-          "length": 2048
         }
       }
     },
