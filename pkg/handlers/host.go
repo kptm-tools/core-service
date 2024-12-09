@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -25,8 +25,14 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 
 	createHostRequest := new(CreateHostRequest)
 
-	if err := json.NewDecoder(req.Body).Decode(createHostRequest); err != nil {
-		return err
+	if err := decodeJSONBody(w, req, createHostRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
 	}
 
 	// Validate the Host Type
@@ -54,8 +60,14 @@ func (h *HostHandlers) GetHostsByTenantID(w http.ResponseWriter, req *http.Reque
 
 	getHostByTenantIDRequest := new(GetHostByTenantIDRequest)
 
-	if err := json.NewDecoder(req.Body).Decode(getHostByTenantIDRequest); err != nil {
-		return err
+	if err := decodeJSONBody(w, req, getHostByTenantIDRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
 	}
 
 	hosts, err := h.hostService.GetHostsByTenantID(getHostByTenantIDRequest.TenantID)
