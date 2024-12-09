@@ -15,7 +15,7 @@ import (
 type APIServer struct {
 	listenAddr string
 
-	targetHandlers interfaces.ITargetHandlers
+	hostHandlers   interfaces.IHostHandlers
 	authHandlers   interfaces.IAuthHandlers
 	tenantHandlers interfaces.ITenantHandlers
 }
@@ -27,14 +27,14 @@ type APIError struct {
 type APIFunc func(http.ResponseWriter, *http.Request) error
 
 func NewAPIServer(listenAddr string,
-	tHandlers interfaces.ITargetHandlers,
+	tHandlers interfaces.IHostHandlers,
 	teHandlers interfaces.ITenantHandlers,
 	aHandlers interfaces.IAuthHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
 
-		targetHandlers: tHandlers,
+		hostHandlers:   tHandlers,
 		authHandlers:   aHandlers,
 		tenantHandlers: teHandlers,
 	}
@@ -52,8 +52,8 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/tenant", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
 	router.HandleFunc("GET /api/user/{id}", WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), "getUser"))
 
-	router.HandleFunc("POST /targets", makeHTTPHandlerFunc(s.targetHandlers.CreateTarget))
-	router.HandleFunc("GET /targets", makeHTTPHandlerFunc(s.targetHandlers.GetTargetsByTenantID))
+	router.HandleFunc("POST /hosts", makeHTTPHandlerFunc(s.hostHandlers.CreateHost))
+	router.HandleFunc("GET /hosts", makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantID))
 	router.HandleFunc("GET /tenants", WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	stack := middleware.CreateStack(
