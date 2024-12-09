@@ -24,6 +24,11 @@ type ContextKey string
 
 const ContextTenantID ContextKey = "tenantID"
 
+func WriteUnauthorized(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(http.StatusText(http.StatusUnauthorized)))
+}
+
 func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqToken := ""
@@ -38,7 +43,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 					reqToken = splitToken[1]
 				}
 			} else {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: err.Error()})
+				log.Printf("Error parsing req token: `%s`", err.Error())
+				WriteUnauthorized(w)
 				return
 			}
 		} else {
@@ -47,7 +53,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 		}
 
 		if reqToken == "" {
-			WriteJSON(w, http.StatusUnauthorized, APIError{Error: "No token provided"})
+			log.Printf("No token provided\n")
+			WriteUnauthorized(w)
 			return
 		} else {
 			token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
@@ -81,7 +88,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			})
 
 			if err != nil {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: err.Error()})
+				log.Printf("Error parsing request token: `%s`\n", err.Error())
+				WriteUnauthorized(w)
 				return
 			}
 
@@ -89,7 +97,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// And then check roles
 
 			if !token.Valid {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid token"})
+				log.Printf("Error validating token: `Invalid token`\n")
+				WriteUnauthorized(w)
 				return
 			}
 			var tenantID = token.Claims.(jwt.MapClaims)["tid"]
@@ -98,7 +107,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// Verify that said user exists
 			exists, err := validateUserWithFusionAuth(userID.(string), tenantID.(string))
 			if !exists {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User is not registered"})
+				log.Printf("User is not registered\n")
+				WriteUnauthorized(w)
 				return
 			}
 
@@ -106,16 +116,16 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 
 			if err != nil {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid Role"})
+				log.Printf("Invalid Role: `%s`", err.Error())
+				WriteUnauthorized(w)
 				return
 			}
 
 			// Check out what page we're calling, so we can check relevant roles
 			validRoles, err := domain.GetValidRoles(functionName)
-
 			if err != nil {
-				log.Println(err)
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Roles missing"})
+				log.Printf("Invalid Role: `%v`, must be one of `%v`\n", parsedRoles, validRoles)
+				WriteUnauthorized(w)
 				return
 			}
 
@@ -125,7 +135,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// log.Printf("Intersection result: `%v`\n", result)
 			if len(result) == 0 {
 
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid role"})
+				log.Printf("Roles missing: Have `%v`, want one of `%v`\n", parsedRoles, validRoles)
+				WriteUnauthorized(w)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ContextTenantID, tenantID)
