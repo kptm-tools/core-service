@@ -70,7 +70,9 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 					return nil, fmt.Errorf(("invalid iss"))
 				}
 
-				setPublicKey(token.Header["kid"].(string))
+				if err := setPublicKey(token.Header["kid"].(string)); err != nil {
+					return nil, fmt.Errorf("Error setting public key")
+				}
 				return verifyKey, nil
 			})
 
@@ -140,24 +142,26 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	})
 }
 
-func setPublicKey(kid string) {
+func setPublicKey(kid string) error {
 	c := config.LoadConfig()
 	// Retrieves the public key for JWT from FusionAuth
 	if verifyKey == nil {
 		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
 		response, err := http.Get(url)
 		if err != nil {
-			log.Fatalln(err)
+			return fmt.Errorf("Problem connecting to FusionAuth: `%s`", err.Error())
 		}
 
 		responseData, err := io.ReadAll(response.Body)
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("Problem reading FusionAuth response: `%s`", err.Error())
 		}
 
 		var publicKey map[string]interface{}
 
-		json.Unmarshal(responseData, &publicKey)
+		if err = json.Unmarshal(responseData, &publicKey); err != nil {
+			return fmt.Errorf("Problem unmarshaling response: `%s`", err.Error())
+		}
 
 		var publicKeyPEM = publicKey["publicKey"].(string)
 
@@ -165,9 +169,10 @@ func setPublicKey(kid string) {
 		verifyKey, err = jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
 
 		if err != nil {
-			log.Fatalln(("problem retreiving public key"))
+			return fmt.Errorf("Problem retreiving public key: `%s`", err.Error())
 		}
 	}
+	return nil
 }
 
 func buildFusionAuthVerifyRequest(tenantID string, userID string) (*http.Request, error) {
