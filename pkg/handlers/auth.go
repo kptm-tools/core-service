@@ -86,7 +86,7 @@ func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
 	}
 
-	user, err := h.authService.GetUserByID(id)
+	user, err := h.authService.GetUserByID(id, nil)
 	if err != nil {
 		var fae *services.FaError
 

@@ -14,7 +14,7 @@ func (r Role) String() string {
 	return string(r)
 }
 
-func parseRole(s string) (Role, error) {
+func ParseRole(s string) (Role, error) {
 	var stringToRole = map[string]Role{
 		"operator": RoleOperator,
 		"analyst":  RoleAnalyst,
@@ -33,7 +33,7 @@ func parseRole(s string) (Role, error) {
 func GetRolesFromStringSlice(strSlice []string) ([]Role, error) {
 	var res []Role
 	for _, s := range strSlice {
-		v, err := parseRole(s)
+		v, err := ParseRole(s)
 
 		if err != nil {
 			return nil, err

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -129,13 +130,19 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain
 	return domainTenant, domainUser, nil
 }
 
-func (s *AuthService) GetUserByID(id string) (*domain.User, error) {
+func (s *AuthService) GetUserByID(userID string, tenantID *string) (*domain.User, error) {
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, faErr, err := client.RetrieveUser(id)
+	// Optional parameter
+	if tenantID != nil {
+		client.SetTenantId(*tenantID)
+		defer client.SetTenantId("")
+	}
+
+	resp, faErr, err := client.RetrieveUser(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,21 +150,12 @@ func (s *AuthService) GetUserByID(id string) (*domain.User, error) {
 		return nil, NewFaError(resp.StatusCode, faErr.Error())
 	}
 
-	u := &resp.User
-
-	var appID string
-	roles := []string{}
-	if len(u.Registrations) > 0 {
-		appID = u.Registrations[0].ApplicationId
-
-		for _, role := range u.Registrations[0].Roles {
-			roles = append(roles, role)
-		}
+	u, err := scanIntoDomainUser(resp.User)
+	if err != nil {
+		return nil, err
 	}
 
-	domainUser := domain.NewUser(u.Id, u.Email, u.Password, u.TenantId, appID, roles)
-
-	return domainUser, nil
+	return u, nil
 }
 
 func fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
@@ -327,6 +325,32 @@ func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*doma
 
 	u := &regResp.User
 	return domain.NewUser(u.Id, email, pass, u.TenantId, appID, roles), nil
+}
+
+func scanIntoDomainUser(faUser fusionauth.User) (*domain.User, error) {
+	// Get AppID and Roles from Registrations
+
+	var appID string
+	roles := []string{}
+
+	if len(faUser.Registrations) == 0 {
+		return nil, errors.New("fusionauth user has no registrations")
+	}
+
+	appID = faUser.Registrations[0].ApplicationId
+
+	for _, role := range faUser.Registrations[0].Roles {
+		// Validate role string
+		_, err := domain.ParseRole(role)
+		if err != nil {
+			return nil, err
+		}
+
+		roles = append(roles, role)
+	}
+
+	u := domain.NewUser(faUser.Id, faUser.Email, faUser.Password, faUser.TenantId, appID, roles)
+	return u, nil
 }
 
 func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error) {

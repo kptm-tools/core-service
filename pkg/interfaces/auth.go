@@ -10,7 +10,7 @@ import (
 type IAuthService interface {
 	Login(email, password, applicationID string) (*fusionauth.LoginResponse, error)
 	RegisterTenant(tenantName string) (*domain.Tenant, *domain.User, error)
-	GetUserByID(userID string) (*domain.User, error)
+	GetUserByID(userID string, tenantID *string) (*domain.User, error)
 }
 
 type IAuthHandlers interface {

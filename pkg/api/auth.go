@@ -6,13 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/kptm-tools/core-service/pkg/config"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/services"
+	"github.com/kptm-tools/core-service/pkg/storage"
 )
 
 var verifyKey *rsa.PublicKey
@@ -20,6 +23,11 @@ var verifyKey *rsa.PublicKey
 type ContextKey string
 
 const ContextTenantID ContextKey = "tenantID"
+
+func WriteUnauthorized(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(http.StatusText(http.StatusUnauthorized)))
+}
 
 func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +43,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 					reqToken = splitToken[1]
 				}
 			} else {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: err.Error()})
+				log.Printf("Error parsing req token: `%s`", err.Error())
+				WriteUnauthorized(w)
 				return
 			}
 		} else {
@@ -44,7 +53,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 		}
 
 		if reqToken == "" {
-			WriteJSON(w, http.StatusUnauthorized, APIError{Error: "No token provided"})
+			log.Printf("No token provided\n")
+			WriteUnauthorized(w)
 			return
 		} else {
 			token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
@@ -70,12 +80,16 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 					return nil, fmt.Errorf(("invalid iss"))
 				}
 
-				setPublicKey(token.Header["kid"].(string))
+				if err := setPublicKey(token.Header["kid"].(string)); err != nil {
+					return nil, fmt.Errorf("Error setting public key")
+				}
+
 				return verifyKey, nil
 			})
 
 			if err != nil {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: err.Error()})
+				log.Printf("Error parsing request token: `%s`\n", err.Error())
+				WriteUnauthorized(w)
 				return
 			}
 
@@ -83,27 +97,18 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// And then check roles
 
 			if !token.Valid {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid token"})
+				log.Printf("Error validating token: `Invalid token`\n")
+				WriteUnauthorized(w)
 				return
 			}
 			var tenantID = token.Claims.(jwt.MapClaims)["tid"]
 			var userID = token.Claims.(jwt.MapClaims)["sub"]
-			// Build request
-			req, err := buildFusionAuthVerifyRequest(tenantID.(string), userID.(string))
 
-			if err != nil {
-				WriteJSON(w, http.StatusInternalServerError, APIError{Error: err.Error()})
-				return
-			}
-			// Send request
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Not able to verify with AuthProvider"})
-				return
-			}
-			if resp.StatusCode != 200 {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User not authorized in the given Tenant"})
+			// Verify that said user exists
+			exists, err := validateUserWithFusionAuth(userID.(string), tenantID.(string))
+			if !exists {
+				log.Printf("User is not registered\n")
+				WriteUnauthorized(w)
 				return
 			}
 
@@ -111,16 +116,16 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 
 			if err != nil {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid Role"})
+				log.Printf("Invalid Role: `%s`", err.Error())
+				WriteUnauthorized(w)
 				return
 			}
 
 			// Check out what page we're calling, so we can check relevant roles
 			validRoles, err := domain.GetValidRoles(functionName)
-
 			if err != nil {
-				log.Println(err)
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Roles missing"})
+				log.Printf("Invalid Role: `%v`, must be one of `%v`\n", parsedRoles, validRoles)
+				WriteUnauthorized(w)
 				return
 			}
 
@@ -130,7 +135,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			// log.Printf("Intersection result: `%v`\n", result)
 			if len(result) == 0 {
 
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid role"})
+				log.Printf("Roles missing: Have `%v`, want one of `%v`\n", parsedRoles, validRoles)
+				WriteUnauthorized(w)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ContextTenantID, tenantID)
@@ -140,24 +146,26 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	})
 }
 
-func setPublicKey(kid string) {
+func setPublicKey(kid string) error {
 	c := config.LoadConfig()
 	// Retrieves the public key for JWT from FusionAuth
 	if verifyKey == nil {
 		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
 		response, err := http.Get(url)
 		if err != nil {
-			log.Fatalln(err)
+			return fmt.Errorf("Problem connecting to FusionAuth: `%s`", err.Error())
 		}
 
 		responseData, err := io.ReadAll(response.Body)
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("Problem reading FusionAuth response: `%s`", err.Error())
 		}
 
 		var publicKey map[string]interface{}
 
-		json.Unmarshal(responseData, &publicKey)
+		if err = json.Unmarshal(responseData, &publicKey); err != nil {
+			return fmt.Errorf("Problem unmarshaling response: `%s`", err.Error())
+		}
 
 		var publicKeyPEM = publicKey["publicKey"].(string)
 
@@ -165,22 +173,22 @@ func setPublicKey(kid string) {
 		verifyKey, err = jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
 
 		if err != nil {
-			log.Fatalln(("problem retreiving public key"))
+			return fmt.Errorf("Problem retreiving public key: `%s`", err.Error())
 		}
 	}
+	return nil
 }
 
-func buildFusionAuthVerifyRequest(tenantID string, userID string) (*http.Request, error) {
+func validateUserWithFusionAuth(userID, tenantID string) (bool, error) {
 	c := config.LoadConfig()
-	apiKey := c.FusionAuthAPIKey
-	url := fmt.Sprintf("http://%s:%s/api/user/%s", c.FusionAuthHost, c.FusionAuthPort, userID)
-	req, err := http.NewRequest("GET", url, nil)
+	storage, _ := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr())
+	authService := services.NewAuthService(storage)
+
+	_, err := authService.GetUserByID(userID, &tenantID)
 	if err != nil {
-		return nil, err
+		log.Printf("Error fetching user: `%s`\n", err.Error())
+		return false, err
 	}
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", apiKey)
-	req.Header.Set("X-FusionAuth-TenantId", tenantID)
-	return req, nil
+
+	return true, nil
 }
