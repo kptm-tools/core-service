@@ -6,13 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/kptm-tools/core-service/pkg/config"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/services"
+	"github.com/kptm-tools/core-service/pkg/storage"
 )
 
 var verifyKey *rsa.PublicKey
@@ -73,6 +76,7 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 				if err := setPublicKey(token.Header["kid"].(string)); err != nil {
 					return nil, fmt.Errorf("Error setting public key")
 				}
+
 				return verifyKey, nil
 			})
 
@@ -90,22 +94,11 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			}
 			var tenantID = token.Claims.(jwt.MapClaims)["tid"]
 			var userID = token.Claims.(jwt.MapClaims)["sub"]
-			// Build request
-			req, err := buildFusionAuthVerifyRequest(tenantID.(string), userID.(string))
 
-			if err != nil {
-				WriteJSON(w, http.StatusInternalServerError, APIError{Error: err.Error()})
-				return
-			}
-			// Send request
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Not able to verify with AuthProvider"})
-				return
-			}
-			if resp.StatusCode != 200 {
-				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User not authorized in the given Tenant"})
+			// Verify that said user exists
+			exists, err := validateUserWithFusionAuth(userID.(string), tenantID.(string))
+			if !exists {
+				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "User is not registered"})
 				return
 			}
 
@@ -175,17 +168,16 @@ func setPublicKey(kid string) error {
 	return nil
 }
 
-func buildFusionAuthVerifyRequest(tenantID string, userID string) (*http.Request, error) {
+func validateUserWithFusionAuth(userID, tenantID string) (bool, error) {
 	c := config.LoadConfig()
-	apiKey := c.FusionAuthAPIKey
-	url := fmt.Sprintf("http://%s:%s/api/user/%s", c.FusionAuthHost, c.FusionAuthPort, userID)
-	req, err := http.NewRequest("GET", url, nil)
+	storage, _ := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr())
+	authService := services.NewAuthService(storage)
+
+	_, err := authService.GetUserByID(userID, &tenantID)
 	if err != nil {
-		return nil, err
+		log.Printf("Error fetching user: `%s`\n", err.Error())
+		return false, err
 	}
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", apiKey)
-	req.Header.Set("X-FusionAuth-TenantId", tenantID)
-	return req, nil
+
+	return true, nil
 }
