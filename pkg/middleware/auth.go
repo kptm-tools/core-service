@@ -191,8 +191,13 @@ func getRequestToken(r *http.Request) (string, error) {
 
 func checkTokenRoles(token *jwt.Token, functionName string) error {
 	var roles = token.Claims.(jwt.MapClaims)["roles"]
-	parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
+	// Check if we have any roles in our claims
+	if len(roles.([]interface{})) == 0 {
+		msg := "Token has no roles"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
 
+	parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%s`", err.Error())
 		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
