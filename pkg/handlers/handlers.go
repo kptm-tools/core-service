@@ -57,8 +57,8 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case errors.Is(err, io.EOF):
-			msg := "Request body must not be larger than 1MB"
-			return &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}
+			msg := "Request body must not be empty"
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case err.Error() == "http: request body is too large":
 			msg := "Request body must not be larger than 1MB"

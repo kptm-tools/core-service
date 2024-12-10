@@ -37,18 +37,18 @@ func main() {
 
 	// Services
 	authService := services.NewAuthService(coreStore)
-	targetService := services.NewTargetService(coreStore)
+	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
 
 	// Handlers
 	authHandlers := handlers.NewAuthHandlers(authService)
-	targetHandlers := handlers.NewTargetHandlers(targetService)
+	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
 	result, err := utils.OpenAndReadKickstartJson(tenantService)
 	fmt.Println(result)
 
 	// Server
-	s := api.NewAPIServer(":8000", targetHandlers, tenantHandlers, authHandlers)
+	s := api.NewAPIServer(":8000", hostHandlers, tenantHandlers, authHandlers)
 
 	if err := s.Init(); err != nil {
 		log.Fatalf("Failed to initialize APIServer: `%+v`", err)

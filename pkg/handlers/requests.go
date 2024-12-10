@@ -1,12 +1,13 @@
 package handlers
 
-type CreateTargetRequest struct {
+type CreateHostRequest struct {
 	TenantID   string `json:"tenant_id"`
 	OperatorID string `json:"operator_id"`
 	Value      string `json:"value"`
+	Name       string `json:"name"`
 }
 
-type GetTargetByTenantIDRequest struct {
+type GetHostByTenantIDRequest struct {
 	TenantID string `json:"tenant_id"`
 }
 

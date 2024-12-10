@@ -8,35 +8,37 @@ import (
 	"time"
 )
 
-type TargetType string
+type HostType string
 
 const (
-	Domain TargetType = "domain"
-	IP     TargetType = "ip"
+	Domain HostType = "domain"
+	IP     HostType = "ip"
 )
 
-type Target struct {
-	ID         string     `json:"id"`
-	TenantID   string     `json:"tenant_id"`
-	OperatorID string     `json:"user_id"`
-	Value      string     `json:"target_value"`
-	Type       TargetType `json:"target_type"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+type Host struct {
+	ID         string    `json:"id"`
+	TenantID   string    `json:"tenant_id"`
+	OperatorID string    `json:"user_id"`
+	Name       string    `json:"name"`
+	Value      string    `json:"host_value"`
+	Type       HostType  `json:"host_type"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-func NewTarget(value string, targetType TargetType, tenantID string, operatorID string) *Target {
-	return &Target{
+func NewHost(value string, hostType HostType, tenantID string, operatorID string, name string) *Host {
+	return &Host{
 		TenantID:   tenantID,
 		OperatorID: operatorID,
+		Name:       name,
 		Value:      value,
-		Type:       targetType,
+		Type:       hostType,
 		CreatedAt:  time.Now().UTC(),
 		UpdatedAt:  time.Now().UTC(),
 	}
 }
 
-func IsValidTargetValue(value string) bool {
+func IsValidHostValue(value string) bool {
 
 	if IsValidURL(value) {
 		domain, err := ExtractDomainFromURL(value)
@@ -61,7 +63,7 @@ func IsValidTargetValue(value string) bool {
 }
 
 func IsValidIP(value string) bool {
-	// Try parsing the target as an IP address
+	// Try parsing the host as an IP address
 	return net.ParseIP(value) != nil
 }
 
@@ -85,7 +87,7 @@ func IsValidDomain(domain string) bool {
 	return re.MatchString(domain)
 }
 
-func ParseTargetType(value string) TargetType {
+func ParseHostType(value string) HostType {
 	if IsValidIP(value) {
 		return IP
 	} else {

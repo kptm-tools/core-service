@@ -5,8 +5,8 @@ import (
 )
 
 type IStorage interface {
-	CreateTarget(*domain.Target) (*domain.Target, error)
-	GetTargetsByTenantID(string) ([]*domain.Target, error)
+	CreateHost(*domain.Host) (*domain.Host, error)
+	GetHostsByTenantID(string) ([]*domain.Host, error)
 	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
 	GetTenants() ([]*domain.Tenant, error)
 }
