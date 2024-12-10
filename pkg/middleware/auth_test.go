@@ -11,14 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-type parseTokenTestCase struct {
-	name          string
-	tokenString   string
-	setupRequest  func(req *http.Request)
-	expectedError error
-	expectedValid bool
-}
-
 func createPrivateTestKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, 2048)
 }
@@ -89,6 +81,53 @@ func Test_getRequestToken(t *testing.T) {
 
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestCheckTokenRoles(t *testing.T) {
+	tests := []struct {
+		name         string
+		tokenClaims  jwt.MapClaims
+		functionName string
+		wantErr      error
+	}{
+		{
+			name: "Valid roles",
+			tokenClaims: jwt.MapClaims{
+				"roles": []interface{}{"admin"},
+			},
+			functionName: "tenants",
+			wantErr:      nil,
+		},
+		{
+			name: "Invalid roles",
+			tokenClaims: jwt.MapClaims{
+				"roles": []interface{}{"user"},
+			},
+			functionName: "tenants",
+			wantErr:      InvalidTokenError,
+		},
+		{
+			name: "Empty roles",
+			tokenClaims: jwt.MapClaims{
+				"roles": []interface{}{},
+			},
+			functionName: "admin_function",
+			wantErr:      InvalidTokenError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := &jwt.Token{
+				Claims: tt.tokenClaims,
+			}
+			err := checkTokenRoles(token, tt.functionName)
+
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Expected error %v, got %v", tt.wantErr, err)
 			}
 		})
 	}
