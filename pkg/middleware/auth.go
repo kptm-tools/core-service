@@ -30,17 +30,7 @@ func NewInvalidTokenError(msg string) error {
 	return &InvalidTokenError{msg}
 }
 
-type NoTokenError struct {
-	msg string
-}
-
-func (e *NoTokenError) Error() string {
-	return e.msg
-}
-
-func NewNoTokenError(msg string) error {
-	return &NoTokenError{msg}
-}
+var NoTokenError = errors.New("Token not found")
 
 type UserNotFoundError struct {
 	msg string
@@ -175,6 +165,10 @@ func parseToken(r *http.Request) (*jwt.Token, error) {
 
 		return verifyKey, nil
 	})
+	if err != nil {
+		msg := fmt.Sprintf("Error parsing token: %v", err)
+		return nil, NewInvalidTokenError(msg)
+	}
 
 	return token, nil
 }
@@ -199,7 +193,7 @@ func getRequestToken(r *http.Request) (string, error) {
 		} else {
 			// There was a cookie, but there was an error parsing it
 			msg := fmt.Sprintf("Error parsing cookie token: `%s`", err.Error())
-			return "", NewNoTokenError(msg)
+			return "", fmt.Errorf("%s: %w", msg, NoTokenError)
 		}
 	} else {
 		reqToken = tokenCookie.Value
@@ -208,7 +202,7 @@ func getRequestToken(r *http.Request) (string, error) {
 	// If token is empty
 	if reqToken == "" {
 		msg := "No token provided in cookie or header"
-		return "", NewNoTokenError(msg)
+		return "", fmt.Errorf("%s: %w", msg, NoTokenError)
 	}
 
 	return reqToken, nil
