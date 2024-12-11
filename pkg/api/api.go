@@ -15,6 +15,7 @@ import (
 type APIServer struct {
 	listenAddr string
 
+	healthHandlers interfaces.IHealthcheckHandlers
 	hostHandlers   interfaces.IHostHandlers
 	authHandlers   interfaces.IAuthHandlers
 	tenantHandlers interfaces.ITenantHandlers
@@ -26,15 +27,18 @@ type APIError struct {
 
 type APIFunc func(http.ResponseWriter, *http.Request) error
 
-func NewAPIServer(listenAddr string,
-	tHandlers interfaces.IHostHandlers,
+func NewAPIServer(
+	listenAddr string,
+	heHandlers interfaces.IHealthcheckHandlers,
+	hoHandlers interfaces.IHostHandlers,
 	teHandlers interfaces.ITenantHandlers,
 	aHandlers interfaces.IAuthHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
 
-		hostHandlers:   tHandlers,
+		healthHandlers: heHandlers,
+		hostHandlers:   hoHandlers,
 		authHandlers:   aHandlers,
 		tenantHandlers: teHandlers,
 	}
@@ -44,7 +48,7 @@ func (s *APIServer) Init() error {
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /healthcheck",
-		makeHTTPHandlerFunc(HandleHealthCheck),
+		makeHTTPHandlerFunc(s.healthHandlers.Healthcheck),
 	)
 
 	// Auth routes
@@ -71,10 +75,6 @@ func (s *APIServer) Init() error {
 
 	return server.ListenAndServe()
 
-}
-
-func HandleHealthCheck(w http.ResponseWriter, r *http.Request) error {
-	return WriteJSON(w, http.StatusOK, "Healthcheck - OK")
 }
 
 // This function wraps our APIFunc struct so we can handle errors gracefully
