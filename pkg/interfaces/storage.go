@@ -9,4 +9,5 @@ type IStorage interface {
 	GetHostsByTenantID(string) ([]*domain.Host, error)
 	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
 	GetTenants() ([]*domain.Tenant, error)
+	Ping() error
 }

@@ -81,6 +81,10 @@ func (s *PostgreSQLStore) CreateDB(dbName string) error {
 
 }
 
+func (s *PostgreSQLStore) Ping() error {
+	return s.db.Ping()
+}
+
 func (s *PostgreSQLStore) dbExists(dbName string) (bool, error) {
 
 	var exists bool
