@@ -158,6 +158,9 @@ func validateClaims(token *jwt.Token) error {
 	if err := validateIssuer(claims, "https://app.kriptome.com"); err != nil {
 		return err
 	}
+	if err := validateUserAndTenant(claims); err != nil {
+		return err
+	}
 	if err := validateKID(token); err != nil {
 		return err
 	}
@@ -166,7 +169,7 @@ func validateClaims(token *jwt.Token) error {
 
 // verify iss claim: Make sure the issuer is as expected
 func validateIssuer(claims jwt.MapClaims, issuer string) error {
-	checkIss := claims.VerifyIssuer(issuer, false)
+	checkIss := claims.VerifyIssuer(issuer, true)
 	if !checkIss {
 		msg := "Invalid iss"
 		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
@@ -179,6 +182,20 @@ func validateKID(token *jwt.Token) error {
 	kid, ok := token.Header["kid"].(string)
 	if !ok || kid == "" {
 		msg := "Missing kid header"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
+	return nil
+}
+
+func validateUserAndTenant(claims jwt.MapClaims) error {
+	userID, ok := claims["sub"]
+	if !ok || userID == "" {
+		msg := "Missing userID claim"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
+	tenantID, ok := claims["tid"]
+	if !ok || tenantID == "" {
+		msg := "Missing tenantID claim"
 		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
 	}
 	return nil

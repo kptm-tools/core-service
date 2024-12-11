@@ -160,6 +160,8 @@ func Test_validateClaims(t *testing.T) {
 			name: "Token with valid claims",
 			tokenClaims: jwt.MapClaims{
 				"iss": "https://app.kriptome.com",
+				"tid": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
 			},
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
@@ -170,6 +172,8 @@ func Test_validateClaims(t *testing.T) {
 			name: "Token with invalid issuer",
 			tokenClaims: jwt.MapClaims{
 				"iss": "https://invalid.issuer.com",
+				"tid": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
 			},
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
@@ -180,6 +184,8 @@ func Test_validateClaims(t *testing.T) {
 			name: "Token with no token headers",
 			tokenClaims: jwt.MapClaims{
 				"iss": "https://invalid.issuer.com",
+				"tid": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
 			},
 			tokenHeaders: map[string]interface{}{},
 			wantErr:      InvalidTokenError,
@@ -188,6 +194,8 @@ func Test_validateClaims(t *testing.T) {
 			name: "Token with empty kid header",
 			tokenClaims: jwt.MapClaims{
 				"iss": "https://invalid.issuer.com",
+				"tid": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
 			},
 			tokenHeaders: map[string]interface{}{
 				"kid": "",
@@ -205,6 +213,39 @@ func Test_validateClaims(t *testing.T) {
 		{
 			name:        "Token with no claims",
 			tokenClaims: nil,
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: InvalidTokenError,
+		},
+		{
+			name: "Token with no iss claim",
+			tokenClaims: jwt.MapClaims{
+				"tid": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+			},
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: InvalidTokenError,
+		},
+		{
+			name: "Token with no userID claim",
+			tokenClaims: jwt.MapClaims{
+				"iss": "https://invalid.issuer.com",
+				"tid": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+			},
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: InvalidTokenError,
+		},
+		{
+			name: "Token with no tenantID claim",
+			tokenClaims: jwt.MapClaims{
+				"iss": "https://invalid.issuer.com",
+				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
+			},
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
