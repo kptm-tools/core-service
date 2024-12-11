@@ -109,49 +109,79 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 }
 
 func parseToken(r *http.Request) (*jwt.Token, error) {
-
 	reqToken, err := getRequestToken(r)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
-		// 1. Check signing method
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			msg := "Invalid signing method"
-			return nil, fmt.Errorf("%q: %w", msg, InvalidTokenError)
-		}
-
-		// 2. Check aud: make sure the token is intended for this application
-
-		/*aud := config.LoadConfig().ApplicationID
-		checkAudience := token.Claims.(jwt.MapClaims).VerifyAudience(aud, false)
-
-		if !checkAudience {
-			return nil, fmt.Errorf("Invalid audience")
-		}
-		*/
-
-		// verify iss claim: Make sure the issuer is as expected
-		iss := "https://app.kriptome.com" // TODO: Set this to env var
-		checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
-		if !checkIss {
-			msg := "Invalid iss"
-			return nil, fmt.Errorf("%q: %w", msg, InvalidTokenError)
-		}
-
-		if err := setPublicKey(token.Header["kid"].(string)); err != nil {
-			return nil, fmt.Errorf("Error setting public key")
-		}
-
-		return verifyKey, nil
-	})
+	token, err := jwt.Parse(reqToken, verifyTokenSignature)
 	if err != nil {
-		msg := fmt.Sprintf("Error parsing token: %v", err)
-		return nil, fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return nil, err
+	}
+	return token, nil
+}
+
+func verifyTokenSignature(token *jwt.Token) (interface{}, error) {
+
+	if err := validateSigningMethod(token); err != nil {
+		return nil, err
+	}
+	if err := validateClaims(token); err != nil {
+		return nil, err
 	}
 
-	return token, nil
+	// At this point we already validated we have a KID
+	kid := token.Header["kid"].(string)
+	if err := setPublicKey(kid); err != nil {
+		return nil, fmt.Errorf("Error setting public key")
+	}
+	return nil, nil
+}
+
+func validateSigningMethod(token *jwt.Token) error {
+	// 1. Check signing method
+	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+		msg := "Invalid signing method"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
+	return nil
+}
+
+func validateClaims(token *jwt.Token) error {
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims == nil || len(claims) == 0 {
+		msg := "Invalid token claims"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
+
+	if err := validateIssuer(claims, "https://app.kriptome.com"); err != nil {
+		return err
+	}
+	if err := validateKID(token); err != nil {
+		return err
+	}
+	return nil
+}
+
+// verify iss claim: Make sure the issuer is as expected
+func validateIssuer(claims jwt.MapClaims, issuer string) error {
+	checkIss := claims.VerifyIssuer(issuer, false)
+	if !checkIss {
+		msg := "Invalid iss"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
+	return nil
+}
+
+// Checks if the token header has a "kid" value
+func validateKID(token *jwt.Token) error {
+	kid, ok := token.Header["kid"].(string)
+	if !ok || kid == "" {
+		msg := "Missing kid header"
+		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+	}
+	return nil
 }
 
 // getRequestToken gets the request's token, from either
