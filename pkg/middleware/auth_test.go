@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,28 +8,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 )
-
-func createPrivateTestKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, 2048)
-}
-
-func createValidTestTokenString() string {
-	testPrivateKey, err := createPrivateTestKey()
-	if err != nil {
-		panic(err)
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"iss": "https://app.kriptome.com",
-		"tid": "test-tenant-id",
-		"sub": "test-user-id",
-	})
-	tokenString, err := token.SignedString(testPrivateKey)
-	if err != nil {
-		panic(err)
-	}
-
-	return tokenString
-}
 
 func Test_getRequestToken(t *testing.T) {
 	tests := []struct {
@@ -86,7 +62,7 @@ func Test_getRequestToken(t *testing.T) {
 	}
 }
 
-func TestCheckTokenRoles(t *testing.T) {
+func Test_checkTokenRoles(t *testing.T) {
 	tests := []struct {
 		name         string
 		tokenClaims  jwt.MapClaims
@@ -133,58 +109,121 @@ func TestCheckTokenRoles(t *testing.T) {
 	}
 }
 
-// func Test_parseToken(t *testing.T) {
-//
-// 	validTokenString := createValidTestTokenString()
-// 	// invalidTokenString := createInvalidTokenString()
-// 	// invalidSigningMethodTokenString := createInvalidSigningMethodTokenString()
-//
-// 	// Arrange
-// 	testCases := []parseTokenTestCase{
-// 		{
-// 			name:        "Valid token in Authorization Header",
-// 			tokenString: validTokenString,
-// 			setupRequest: func(req *http.Request) {
-// 				req.Header.Set("Authorization", "Bearer "+validTokenString)
-// 			},
-// 			expectedError: nil,
-// 			expectedValid: true,
-// 		},
-// 		{
-// 			name:        "Token with invalid issuer in Authorization Header",
-// 			tokenString: validTokenString,
-// 			setupRequest: func(req *http.Request) {
-// 				req.Header.Set("Authorization", "Bearer "+validTokenString)
-// 			},
-// 			expectedError: nil,
-// 			expectedValid: false,
-// 		},
-// 	}
-//
-// 	for _, tt := range testCases {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-// 			if tt.setupRequest != nil {
-// 				tt.setupRequest(req)
-// 			}
-//
-// 			token, err := parseToken(req)
-// 			if err != nil && tt.expectedError != nil {
-// 				if err.Error() != tt.expectedError.Error() {
-// 					t.Errorf("Expected error: `%v`, got: `%v`", tt.expectedError, err)
-// 				}
-// 			} else if err == nil && tt.expectedError != nil {
-// 				t.Errorf("Expected error: `%v`, got nil", tt.expectedError)
-// 			} else if err != nil && tt.expectedError == nil {
-// 				t.Errorf("Expected no error, got: `%v`", err)
-// 			}
-//
-// 			if token != nil && !tt.expectedValid {
-// 				t.Errorf("Expected token to be invalid, but it was valid")
-// 			} else if token == nil && tt.expectedValid {
-// 				t.Errorf("Expected token to be valid, but it was nil")
-// 			}
-// 		})
-// 	}
-//
-// }
+func Test_validateTokenSignature(t *testing.T) {
+	tests := []struct {
+		name    string
+		token   *jwt.Token
+		wantErr error
+	}{
+		{
+			name:    "Valid token signature",
+			token:   jwt.New(jwt.SigningMethodRS256),
+			wantErr: nil,
+		},
+		{
+			name:    "Invalid token signature",
+			token:   jwt.New(jwt.SigningMethodEdDSA),
+			wantErr: InvalidTokenError,
+		},
+		{
+			name:    "Invalid token signature",
+			token:   jwt.New(jwt.SigningMethodES256),
+			wantErr: InvalidTokenError,
+		},
+		{
+			name:    "Valid token signature within RSA family",
+			token:   jwt.New(jwt.SigningMethodRS512),
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSigningMethod(tt.token)
+
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
+			}
+
+		})
+	}
+}
+
+func Test_validateClaims(t *testing.T) {
+	tests := []struct {
+		name         string
+		tokenClaims  jwt.MapClaims
+		tokenHeaders map[string]interface{}
+		wantErr      error
+	}{
+		{
+			name: "Token with valid claims",
+			tokenClaims: jwt.MapClaims{
+				"iss": "https://app.kriptome.com",
+			},
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: nil,
+		},
+		{
+			name: "Token with invalid issuer",
+			tokenClaims: jwt.MapClaims{
+				"iss": "https://invalid.issuer.com",
+			},
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: InvalidTokenError,
+		},
+		{
+			name: "Token with no token headers",
+			tokenClaims: jwt.MapClaims{
+				"iss": "https://invalid.issuer.com",
+			},
+			tokenHeaders: map[string]interface{}{},
+			wantErr:      InvalidTokenError,
+		},
+		{
+			name: "Token with empty kid header",
+			tokenClaims: jwt.MapClaims{
+				"iss": "https://invalid.issuer.com",
+			},
+			tokenHeaders: map[string]interface{}{
+				"kid": "",
+			},
+			wantErr: InvalidTokenError,
+		},
+		{
+			name:        "Token with empty claims",
+			tokenClaims: jwt.MapClaims{},
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: InvalidTokenError,
+		},
+		{
+			name:        "Token with no claims",
+			tokenClaims: nil,
+			tokenHeaders: map[string]interface{}{
+				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
+			},
+			wantErr: InvalidTokenError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := &jwt.Token{
+				Claims: tt.tokenClaims,
+				Header: tt.tokenHeaders,
+			}
+
+			err := validateClaims(token)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
+			}
+
+		})
+	}
+}
