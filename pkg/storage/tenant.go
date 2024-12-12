@@ -48,7 +48,12 @@ func (s *PostgreSQLStore) ExistsTenant(tenantID string) (bool, error) {
 }
 
 func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
-	if exists, err := s.ExistsTenant(t.ProviderID); exists || err != nil {
+	exists, err := s.ExistsTenant(t.ProviderID)
+	if err != nil {
+		return nil, fmt.Errorf("DB Error: %v", err)
+	}
+
+	if exists {
 		return nil, fmt.Errorf("TenantID already exists: %s", t.ProviderID)
 	}
 	query := `
