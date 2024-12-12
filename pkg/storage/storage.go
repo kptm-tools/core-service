@@ -65,11 +65,11 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 }
 
 func (s *PostgreSQLStore) ClearCoreDB() error {
-	// Attempt to create Hosts Table
+	// Attempt to clear Hosts Table
 	if err := s.ClearHostsTable(); err != nil {
 		return err
 	}
-	// Attempt to create Tenants Table
+	// Attempt to clear Tenants Table
 	if err := s.ClearTenantsTable(); err != nil {
 		return err
 	}
