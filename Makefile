@@ -1,5 +1,5 @@
 # Change these variables as necessary
-main_package_path = ./cmd
+main_package_path = ./cmd/core-server
 binary_name = core-service
 
 # ==================================================================================== #
