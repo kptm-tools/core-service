@@ -26,3 +26,12 @@ type ForgotPasswordRequest struct {
 	LoginID       string `json:"loginId"`
 	ApplicationID string `json:"applicationId"`
 }
+
+type RegisterUserRequest struct {
+	FirstName string   `json:"firstname"`
+	LastName  string   `json:"lastname"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
+
+	ApplicationID string `json:"applicationId"`
+}

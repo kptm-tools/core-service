@@ -391,18 +391,32 @@ func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.F
 	return forgotResponse, nil
 
 }
-
-func (s *AuthService) RegisterUser() (*fusionauth.RegistrationResponse, error) {
-
+func (s *AuthService) RegisterUser(firstname, lastname, email, applicationID string, roles []string) (*fusionauth.RegistrationResponse, error) {
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
+	userId := uuid.NewString()
+	registerReq := fusionauth.RegistrationRequest{
+		GenerateAuthenticationToken: true,
 
-	registerReq := fusionauth.RegistrationRequest{}
+		User: fusionauth.User{
+			Email:     email,
+			FirstName: firstname,
+			LastName:  lastname,
+			Data: map[string]interface{}{
+				"password": "",
+			},
+		},
+		Registration: fusionauth.UserRegistration{
+			ApplicationId: applicationID,
+			Roles:         roles,
+			Verified:      false,
+		},
+	}
 
 	// Use FusionAuth Go client to log in the user
-	registerResponse, faErr, err := client.Register("", registerReq)
+	registerResponse, faErr, err := client.Register(userId, registerReq)
 
 	if err != nil {
 		return nil, err

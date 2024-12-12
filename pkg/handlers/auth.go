@@ -114,7 +114,7 @@ func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) er
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	user, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
+	password, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
 	if err != nil {
 		var fae *services.FaError
 
@@ -125,15 +125,15 @@ func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) er
 		}
 	}
 
-	return api.WriteJSON(w, http.StatusOK, user)
+	return api.WriteJSON(w, http.StatusOK, password)
 }
 
 func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) error {
 
 	// Fetch parameters
-	forgotPasswordRequest := new(ForgotPasswordRequest)
+	registerUserRequest := new(RegisterUserRequest)
 
-	if err := decodeJSONBody(w, r, forgotPasswordRequest); err != nil {
+	if err := decodeJSONBody(w, r, registerUserRequest); err != nil {
 		var mr *malformedRequest
 
 		if errors.As(err, &mr) {
@@ -142,7 +142,12 @@ func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) erro
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	user, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
+	user, err := h.authService.RegisterUser(
+		registerUserRequest.FirstName,
+		registerUserRequest.LastName,
+		registerUserRequest.Email,
+		registerUserRequest.ApplicationID,
+		registerUserRequest.Roles)
 	if err != nil {
 		var fae *services.FaError
 

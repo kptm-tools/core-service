@@ -12,7 +12,7 @@ type IAuthService interface {
 	RegisterTenant(tenantName string) (*domain.Tenant, *domain.User, error)
 	GetUserByID(userID string, tenantID *string) (*domain.User, error)
 	ForgotPassword(email, applicationID string) (*fusionauth.ForgotPasswordResponse, error)
-	RegisterUser() (*fusionauth.RegistrationResponse, error)
+	RegisterUser(firstname, lastname, email, applicationID string, roles []string) (*fusionauth.RegistrationResponse, error)
 	SendEmailRegistration() (*fusionauth.SendResponse, error)
 	VerifyEmail() (*fusionauth.BaseHTTPResponse, error)
 }
