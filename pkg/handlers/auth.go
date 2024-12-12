@@ -146,6 +146,7 @@ func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) erro
 		registerUserRequest.FirstName,
 		registerUserRequest.LastName,
 		registerUserRequest.Email,
+		registerUserRequest.Password,
 		registerUserRequest.ApplicationID,
 		registerUserRequest.Roles)
 	if err != nil {
