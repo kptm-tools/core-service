@@ -21,3 +21,8 @@ type RegisterTenantRequest struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
+
+type ForgotPasswordRequest struct {
+	LoginID       string `json:"loginId"`
+	ApplicationID string `json:"applicationId"`
+}

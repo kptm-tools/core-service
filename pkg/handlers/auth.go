@@ -99,3 +99,87 @@ func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
 
 	return api.WriteJSON(w, http.StatusOK, user)
 }
+
+func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) error {
+
+	// Fetch parameters
+	forgotPasswordRequest := new(ForgotPasswordRequest)
+
+	if err := decodeJSONBody(w, r, forgotPasswordRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	user, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}
+
+func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) error {
+
+	// Fetch parameters
+	forgotPasswordRequest := new(ForgotPasswordRequest)
+
+	if err := decodeJSONBody(w, r, forgotPasswordRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	user, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}
+
+func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
+
+	// Fetch parameters
+	forgotPasswordRequest := new(ForgotPasswordRequest)
+
+	if err := decodeJSONBody(w, r, forgotPasswordRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	user, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}
