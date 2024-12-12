@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -22,7 +21,7 @@ func main() {
 	c := config.LoadConfig()
 	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr())
 	if err != nil {
-		log.Fatalf("Failed to create Core DB store: `%+v`", err)
+		panic(err)
 	}
 
 	command := os.Args[1]
@@ -31,27 +30,24 @@ func main() {
 	case "populate":
 		populateDB(coreStore)
 	case "clear":
-		clearDB(coreStore)
+		fmt.Println("Clearing DB...")
+		if err := coreStore.ClearCoreDB(); err != nil {
+			panic(err)
+		}
+		fmt.Println("DB cleared")
 	default:
 		fmt.Printf("Unknown command `%s`\n", command)
 		fmt.Println("Usage: go run main.go [populate|clear]")
 	}
-
-}
-
-func clearDB(store interfaces.IStorage) {
-	log.Println("Clearing DB...")
-	log.Println("DB cleared")
-
 }
 
 func populateDB(store interfaces.IStorage) {
-	log.Println("Populating DB with sample data...")
+	fmt.Println("Populating DB with sample data...")
 
 	if err := populateTenants(store); err != nil {
-		log.Fatalf(err.Error())
+		panic(err)
 	}
-	log.Println("Tenants populated successfully")
+	fmt.Println("Tenants populated successfully")
 
 }
 
@@ -62,7 +58,7 @@ func populateTenants(store interfaces.IStorage) error {
 	for _, tenant := range sampleTenants {
 		_, err := tenantService.CreateTenant(&tenant)
 		if err != nil {
-			return fmt.Errorf("Error populating tenant `%+v`: `%v`\n", tenant, err)
+			return fmt.Errorf("error populating tenant `%+v`: `%v`", tenant, err)
 		}
 	}
 	return nil

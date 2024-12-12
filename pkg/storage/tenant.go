@@ -26,6 +26,17 @@ func (s *PostgreSQLStore) CreateTenantsTable() error {
 
 }
 
+func (s *PostgreSQLStore) ClearTenantsTable() error {
+	query := `TRUNCATE TABLE tenants RESTART IDENTITY CASCADE`
+
+	_, err := s.db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *PostgreSQLStore) ExistsTenant(tenantID string) (bool, error) {
 
 	var exists bool

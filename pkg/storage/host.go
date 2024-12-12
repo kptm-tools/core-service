@@ -28,6 +28,17 @@ func (s *PostgreSQLStore) CreateHostsTable() error {
 
 }
 
+func (s *PostgreSQLStore) ClearHostsTable() error {
+	query := `TRUNCATE TABLE hosts RESTART IDENTITY CASCADE`
+
+	_, err := s.db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 
 	query := `
