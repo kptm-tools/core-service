@@ -426,45 +426,60 @@ func (s *AuthService) RegisterUser(firstname, lastname, email, password, applica
 	return registerResponse, nil
 
 }
-func (s *AuthService) SendEmailRegistration() (*fusionauth.SendResponse, error) {
+func (s *AuthService) ChangePassword(changePasswordID, password, email, applicationID string) (*fusionauth.ChangePasswordResponse, error) {
 
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
 
-	sendReq := fusionauth.SendRequest{}
+	changePasswordReq := fusionauth.ChangePasswordRequest{
+
+		ApplicationId:    applicationID,
+		ChangePasswordId: changePasswordID,
+		LoginId:          email,
+		Password:         password,
+	}
 
 	// Use FusionAuth Go client to log in the user
-	sendResponse, faErr, err := client.SendEmail("", sendReq)
+	changePasswordResponse, faErr, err := client.ChangePassword(changePasswordID, changePasswordReq)
 
 	if err != nil {
 		return nil, err
 	}
 	if faErr != nil {
-		return nil, NewFaError(sendResponse.StatusCode, faErr.Error())
+		return nil, NewFaError(changePasswordResponse.StatusCode, faErr.Error())
 	}
 
-	return sendResponse, nil
+	return changePasswordResponse, nil
 
 }
 
-func (s *AuthService) VerifyEmail() (*fusionauth.BaseHTTPResponse, error) {
+func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fusionauth.BaseHTTPResponse, error) {
 
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
+	client.SetTenantId(tenantID)
 
-	verifyEmailReq := fusionauth.VerifyEmailRequest{
-		BaseEventRequest: fusionauth.BaseEventRequest{},
-		OneTimeCode:      "",
-		UserId:           "",
-		VerificationId:   "",
+	userFusion, faErr, err := client.RetrieveUser(userID)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(userFusion.StatusCode, faErr.Error())
+	}
+	if userFusion.User.Verified {
+		return nil, NewFaError(200, "User already verified")
+	}
+	verifyEmailReq := fusionauth.VerifyRegistrationRequest{
+		VerificationId: verificationID,
 	}
 
 	// Use FusionAuth Go client to log in the user
-	verificationResponse, faErr, err := client.VerifyEmailAddress(verifyEmailReq)
+	verificationResponse, faErr, err := client.VerifyUserRegistration(verifyEmailReq)
 
 	if err != nil {
 		return nil, err

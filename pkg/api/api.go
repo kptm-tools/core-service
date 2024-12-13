@@ -54,6 +54,7 @@ func (s *APIServer) Init() error {
 	// Auth routes
 	router.HandleFunc("POST /api/login", makeHTTPHandlerFunc(s.authHandlers.Login))
 	router.HandleFunc("POST /api/forgot-password", makeHTTPHandlerFunc(s.authHandlers.ForgotPassword))
+	router.HandleFunc("POST /api/change-password", makeHTTPHandlerFunc(s.authHandlers.ChangePassword))
 	router.HandleFunc("POST /api/user", makeHTTPHandlerFunc(s.authHandlers.RegisterUser))
 	router.HandleFunc("POST /api/user/{id}/verify-email", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
 	router.HandleFunc("POST /api/tenant", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
