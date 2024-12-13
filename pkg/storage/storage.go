@@ -64,6 +64,19 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	return nil
 }
 
+func (s *PostgreSQLStore) ClearCoreDB() error {
+	// Attempt to clear Hosts Table
+	if err := s.ClearHostsTable(); err != nil {
+		return err
+	}
+	// Attempt to clear Tenants Table
+	if err := s.ClearTenantsTable(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *PostgreSQLStore) CreateDB(dbName string) error {
 
 	if !isValidDatabaseName(dbName) {

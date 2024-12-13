@@ -26,6 +26,17 @@ func (s *PostgreSQLStore) CreateTenantsTable() error {
 
 }
 
+func (s *PostgreSQLStore) ClearTenantsTable() error {
+	query := `TRUNCATE TABLE tenants RESTART IDENTITY CASCADE`
+
+	_, err := s.db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *PostgreSQLStore) ExistsTenant(tenantID string) (bool, error) {
 
 	var exists bool
@@ -48,7 +59,12 @@ func (s *PostgreSQLStore) ExistsTenant(tenantID string) (bool, error) {
 }
 
 func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
-	if exists, err := s.ExistsTenant(t.ProviderID); exists || err != nil {
+	exists, err := s.ExistsTenant(t.ProviderID)
+	if err != nil {
+		return nil, fmt.Errorf("DB Error: %v", err)
+	}
+
+	if exists {
 		return nil, fmt.Errorf("TenantID already exists: %s", t.ProviderID)
 	}
 	query := `

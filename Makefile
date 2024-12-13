@@ -1,5 +1,6 @@
 # Change these variables as necessary
-main_package_path = ./cmd
+main_package_path = ./cmd/core-server
+sample_package_path = ./cmd/sample-data
 binary_name = core-service
 
 # ==================================================================================== #
@@ -11,6 +12,10 @@ binary_name = core-service
 help:
 	@echo 'Usage:'
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
+
+.PHONY: confirm
+confirm:
+	@echo -n 'Are you sure? [y/N] ' && read ans && [ $${ans:-N} = y ]
 
 # ==================================================================================== #
 # DEVELOPMENT
@@ -40,6 +45,16 @@ run/live:
 		--build.exclude_dir "" \
 		--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, git, png, bmp, wbp, ico" \
 		--misc.clean_on_exit "true"
+
+## populate: populate DB with sample data
+.PHONY: populate
+populate:
+	go run ${sample_package_path} populate
+
+## clear: clear DB tables
+.PHONY: clear
+clear: confirm
+	go run ${sample_package_path} clear
 
 
 # ==================================================================================== #
