@@ -236,13 +236,16 @@ func createAppFromBlueprint(tenant *fusionauth.Tenant, bpApp *fusionauth.Applica
 		roles = append(roles, role)
 	}
 	app := &fusionauth.Application{
-		Id:                        appID,
-		TenantId:                  tenant.Id,
-		Name:                      fmt.Sprintf("%s App", tenant.Name),
-		OauthConfiguration:        bpApp.OauthConfiguration,
-		JwtConfiguration:          bpApp.JwtConfiguration,
-		RegistrationConfiguration: bpApp.RegistrationConfiguration,
-		Roles:                     roles,
+		Id:                          appID,
+		TenantId:                    tenant.Id,
+		Name:                        fmt.Sprintf("%s App", tenant.Name),
+		VerifyRegistration:          bpApp.VerifyRegistration,
+		VerificationEmailTemplateId: bpApp.VerificationEmailTemplateId,
+		RegistrationDeletePolicy:    bpApp.RegistrationDeletePolicy,
+		OauthConfiguration:          bpApp.OauthConfiguration,
+		JwtConfiguration:            bpApp.JwtConfiguration,
+		RegistrationConfiguration:   bpApp.RegistrationConfiguration,
+		Roles:                       roles,
 	}
 
 	// Create a new key for this new app
