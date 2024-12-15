@@ -14,10 +14,36 @@ type GetHostByTenantIDRequest struct {
 type LoginRequest struct {
 	LoginID       string `json:"loginId"`
 	Password      string `json:"password"`
-	ApplicationID string `json:"applicationId"`
+	ApplicationID string `json:"application_id"`
 }
 
 type RegisterTenantRequest struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
+}
+
+type ForgotPasswordRequest struct {
+	LoginID       string `json:"login_id"`
+	ApplicationID string `json:"application_id"`
+}
+
+type ChangePasswordRequest struct {
+	LoginID          string `json:"login_id"`
+	Password         string `json:"password"`
+	ChangePasswordID string `json:"change_password_id"`
+	ApplicationID    string `json:"application_id"`
+}
+
+type VerifyEmailRequest struct {
+	VerificationID string `json:"verification_id"`
+}
+
+type RegisterUserRequest struct {
+	FirstName string   `json:"firstname"`
+	LastName  string   `json:"lastname"`
+	Email     string   `json:"email"`
+	Password  string   `json:"password"`
+	Roles     []string `json:"roles"`
+
+	ApplicationID string `json:"application_id"`
 }

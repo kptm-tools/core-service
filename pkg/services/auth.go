@@ -236,13 +236,16 @@ func createAppFromBlueprint(tenant *fusionauth.Tenant, bpApp *fusionauth.Applica
 		roles = append(roles, role)
 	}
 	app := &fusionauth.Application{
-		Id:                        appID,
-		TenantId:                  tenant.Id,
-		Name:                      fmt.Sprintf("%s App", tenant.Name),
-		OauthConfiguration:        bpApp.OauthConfiguration,
-		JwtConfiguration:          bpApp.JwtConfiguration,
-		RegistrationConfiguration: bpApp.RegistrationConfiguration,
-		Roles:                     roles,
+		Id:                          appID,
+		TenantId:                    tenant.Id,
+		Name:                        fmt.Sprintf("%s App", tenant.Name),
+		VerifyRegistration:          bpApp.VerifyRegistration,
+		VerificationEmailTemplateId: bpApp.VerificationEmailTemplateId,
+		RegistrationDeletePolicy:    bpApp.RegistrationDeletePolicy,
+		OauthConfiguration:          bpApp.OauthConfiguration,
+		JwtConfiguration:            bpApp.JwtConfiguration,
+		RegistrationConfiguration:   bpApp.RegistrationConfiguration,
+		Roles:                       roles,
 	}
 
 	// Create a new key for this new app
@@ -363,4 +366,131 @@ func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error
 	}
 
 	return fusionauth.NewClient(s.client, baseURL, c.FusionAuthAPIKey), nil
+}
+
+func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.ForgotPasswordResponse, error) {
+
+	client, err := s.NewFusionAuthClient()
+	if err != nil {
+		return nil, err
+	}
+
+	forgotReq := fusionauth.ForgotPasswordRequest{
+		ApplicationId:           applicationID,
+		SendForgotPasswordEmail: true,
+		LoginId:                 email,
+	}
+
+	// Use FusionAuth Go client to log in the user
+	forgotResponse, faErr, err := client.ForgotPassword(forgotReq)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(forgotResponse.StatusCode, faErr.Error())
+	}
+
+	return forgotResponse, nil
+
+}
+func (s *AuthService) RegisterUser(firstname, lastname, email, password, applicationID string, roles []string) (*fusionauth.RegistrationResponse, error) {
+	client, err := s.NewFusionAuthClient()
+	if err != nil {
+		return nil, err
+	}
+	userId := uuid.NewString()
+	registerReq := fusionauth.RegistrationRequest{
+		GenerateAuthenticationToken: true,
+
+		User: fusionauth.User{
+			Email:          email,
+			FirstName:      firstname,
+			LastName:       lastname,
+			SecureIdentity: fusionauth.SecureIdentity{Password: password},
+		},
+		Registration: fusionauth.UserRegistration{
+			ApplicationId: applicationID,
+			Roles:         roles,
+			Verified:      false,
+		},
+	}
+
+	// Use FusionAuth Go client to log in the user
+	registerResponse, faErr, err := client.Register(userId, registerReq)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(registerResponse.StatusCode, faErr.Error())
+	}
+
+	return registerResponse, nil
+
+}
+func (s *AuthService) ChangePassword(changePasswordID, password, email, applicationID string) (*fusionauth.ChangePasswordResponse, error) {
+
+	client, err := s.NewFusionAuthClient()
+	if err != nil {
+		return nil, err
+	}
+
+	changePasswordReq := fusionauth.ChangePasswordRequest{
+
+		ApplicationId:    applicationID,
+		ChangePasswordId: changePasswordID,
+		LoginId:          email,
+		Password:         password,
+	}
+
+	// Use FusionAuth Go client to log in the user
+	changePasswordResponse, faErr, err := client.ChangePassword(changePasswordID, changePasswordReq)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(changePasswordResponse.StatusCode, faErr.Error())
+	}
+
+	return changePasswordResponse, nil
+
+}
+
+func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fusionauth.BaseHTTPResponse, error) {
+
+	client, err := s.NewFusionAuthClient()
+	if err != nil {
+		return nil, err
+	}
+	client.SetTenantId(tenantID)
+
+	userFusion, faErr, err := client.RetrieveUser(userID)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(userFusion.StatusCode, faErr.Error())
+	}
+	if userFusion.User.Verified {
+		return nil, NewFaError(200, "User already verified")
+	}
+	verifyEmailReq := fusionauth.VerifyRegistrationRequest{
+		VerificationId: verificationID,
+	}
+
+	// Use FusionAuth Go client to log in the user
+	verificationResponse, faErr, err := client.VerifyUserRegistration(verifyEmailReq)
+
+	if err != nil {
+		return nil, err
+	}
+	if faErr != nil {
+		return nil, NewFaError(verificationResponse.StatusCode, faErr.Error())
+	}
+
+	return verificationResponse, nil
+
 }

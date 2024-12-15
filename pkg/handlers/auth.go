@@ -99,3 +99,128 @@ func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
 
 	return api.WriteJSON(w, http.StatusOK, user)
 }
+
+func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) error {
+
+	// Fetch parameters
+	forgotPasswordRequest := new(ForgotPasswordRequest)
+
+	if err := decodeJSONBody(w, r, forgotPasswordRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	password, err := h.authService.ForgotPassword(forgotPasswordRequest.LoginID, forgotPasswordRequest.ApplicationID)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, password)
+}
+
+func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) error {
+
+	// Fetch parameters
+	registerUserRequest := new(RegisterUserRequest)
+
+	if err := decodeJSONBody(w, r, registerUserRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	user, err := h.authService.RegisterUser(
+		registerUserRequest.FirstName,
+		registerUserRequest.LastName,
+		registerUserRequest.Email,
+		registerUserRequest.Password,
+		registerUserRequest.ApplicationID,
+		registerUserRequest.Roles)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}
+
+func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
+	id, err := GetUUID(r)
+	tenantId, errTenant := GetTenantIdFromHeader(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+	}
+	if errTenant != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errTenant.Error()})
+	}
+
+	verifyEmailRequest := new(VerifyEmailRequest)
+
+	if err := decodeJSONBody(w, r, verifyEmailRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, id, tenantId)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}
+
+func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) error {
+
+	// Fetch parameters
+	changePasswordRequest := new(ChangePasswordRequest)
+
+	if err := decodeJSONBody(w, r, changePasswordRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	changePassword, err := h.authService.ChangePassword(changePasswordRequest.ChangePasswordID, changePasswordRequest.Password, changePasswordRequest.LoginID, changePasswordRequest.ApplicationID)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, changePassword)
+}
