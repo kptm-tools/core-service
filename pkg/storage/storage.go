@@ -80,14 +80,14 @@ func (s *PostgreSQLStore) ClearCoreDB() error {
 func (s *PostgreSQLStore) CreateDB(dbName string) error {
 
 	if !isValidDatabaseName(dbName) {
-		return fmt.Errorf("Invalid database name: `%s`", dbName)
+		return fmt.Errorf("invalid database name: `%s`", dbName)
 	}
 
 	query := fmt.Sprintf("CREATE DATABASE %s;", dbName)
 	_, err := s.db.Exec(query)
 
 	if err != nil {
-		return fmt.Errorf("Error creating Database: `%+v`", err)
+		return fmt.Errorf("error creating Database: `%+v`", err)
 	}
 
 	return nil
@@ -112,7 +112,7 @@ func (s *PostgreSQLStore) dbExists(dbName string) (bool, error) {
 	err := s.db.QueryRow(query, dbName).Scan(&exists)
 
 	if err != nil {
-		return false, fmt.Errorf("Error checking database existence: `%+v`", err)
+		return false, fmt.Errorf("error checking database existence: `%+v`", err)
 	}
 
 	return exists, nil

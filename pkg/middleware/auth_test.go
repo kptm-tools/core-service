@@ -42,7 +42,7 @@ func Test_getRequestToken(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/", nil)
 			},
 			wantToken: "",
-			wantErr:   NoTokenError,
+			wantErr:   ErrNoToken,
 		},
 	}
 
@@ -83,7 +83,7 @@ func Test_checkTokenRoles(t *testing.T) {
 				"roles": []interface{}{"user"},
 			},
 			functionName: "tenants",
-			wantErr:      InvalidTokenError,
+			wantErr:      ErrInvalidToken,
 		},
 		{
 			name: "Empty roles",
@@ -91,7 +91,7 @@ func Test_checkTokenRoles(t *testing.T) {
 				"roles": []interface{}{},
 			},
 			functionName: "admin_function",
-			wantErr:      InvalidTokenError,
+			wantErr:      ErrInvalidToken,
 		},
 	}
 
@@ -123,12 +123,12 @@ func Test_validateTokenSignature(t *testing.T) {
 		{
 			name:    "Invalid token signature",
 			token:   jwt.New(jwt.SigningMethodEdDSA),
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name:    "Invalid token signature",
 			token:   jwt.New(jwt.SigningMethodES256),
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name:    "Valid token signature within RSA family",
@@ -178,7 +178,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name: "Token with no token headers",
@@ -188,7 +188,7 @@ func Test_validateClaims(t *testing.T) {
 				"sub": "b2131c96-bc4d-4dab-86c8-e5ff3e70b3f9",
 			},
 			tokenHeaders: map[string]interface{}{},
-			wantErr:      InvalidTokenError,
+			wantErr:      ErrInvalidToken,
 		},
 		{
 			name: "Token with empty kid header",
@@ -200,7 +200,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name:        "Token with empty claims",
@@ -208,7 +208,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name:        "Token with no claims",
@@ -216,7 +216,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name: "Token with no iss claim",
@@ -227,7 +227,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name: "Token with no userID claim",
@@ -238,7 +238,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 		{
 			name: "Token with no tenantID claim",
@@ -249,7 +249,7 @@ func Test_validateClaims(t *testing.T) {
 			tokenHeaders: map[string]interface{}{
 				"kid": "b0ffa9ed-7a9f-4d1f-a09d-a81b2a8fb41b",
 			},
-			wantErr: InvalidTokenError,
+			wantErr: ErrInvalidToken,
 		},
 	}
 

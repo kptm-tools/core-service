@@ -88,6 +88,9 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain
 
 	// Fetch blueprint tenant by it's ID
 	bpTenant, err := fetchBlueprintTenant(client)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Use this blueprint to build a new tenant with our name
 	// and register this tenant to fusionAuth

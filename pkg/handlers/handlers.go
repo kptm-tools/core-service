@@ -45,7 +45,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			msg := fmt.Sprintf("Request body contains badly-formed JSON")
+			msg := "Request body contains badly-formed JSON"
 			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 		case errors.As(err, &unmarshalTypeError):
 			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
@@ -80,10 +80,10 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 }
 
 func GetUUID(req *http.Request) (string, error) {
-	reqUuid := req.PathValue("id")
+	reqUUID := req.PathValue("id")
 
-	if err := uuid.Validate(reqUuid); err != nil {
-		return "", fmt.Errorf("Invalid UUID: `%s`", reqUuid)
+	if err := uuid.Validate(reqUUID); err != nil {
+		return "", fmt.Errorf("invalid UUID: `%s`", reqUUID)
 	}
-	return reqUuid, nil
+	return reqUUID, nil
 }

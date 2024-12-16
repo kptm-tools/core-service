@@ -18,11 +18,11 @@ import (
 	"github.com/kptm-tools/core-service/pkg/storage"
 )
 
-var InvalidTokenError = errors.New("Invalid token")
+var ErrInvalidToken = errors.New("invalid token")
 
-var NoTokenError = errors.New("Token not found")
+var ErrNoToken = errors.New("token not found")
 
-var UserNotFoundError = errors.New("User not found")
+var ErrUserNotFound = errors.New("user not found")
 
 var verifyKey *rsa.PublicKey
 
@@ -44,11 +44,11 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := parseToken(r)
 		if err != nil {
-			if errors.Is(err, InvalidTokenError) {
+			if errors.Is(err, ErrInvalidToken) {
 				log.Println(err.Error())
 				WriteUnauthorized(w)
 				return
-			} else if errors.Is(err, NoTokenError) {
+			} else if errors.Is(err, ErrNoToken) {
 				log.Println(err.Error())
 				WriteUnauthorized(w)
 				return
@@ -74,7 +74,7 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 
 		exists, err := validateUserWithFusionAuth(userID.(string), tenantID.(string))
 		if err != nil {
-			if errors.Is(err, UserNotFoundError) {
+			if errors.Is(err, ErrUserNotFound) {
 				log.Println(err.Error())
 				WriteUnauthorized(w)
 				return
@@ -92,8 +92,8 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 
 		// Verify user roles
 		if err := checkTokenRoles(token, functionName); err != nil {
-			if errors.Is(err, InvalidTokenError) {
-				log.Printf(err.Error())
+			if errors.Is(err, ErrInvalidToken) {
+				log.Println(err.Error())
 				WriteUnauthorized(w)
 				return
 			}
@@ -133,7 +133,7 @@ func verifyTokenSignature(token *jwt.Token) (interface{}, error) {
 	// At this point we already validated we have a KID
 	kid := token.Header["kid"].(string)
 	if err := setPublicKey(kid); err != nil {
-		return nil, fmt.Errorf("Error setting public key")
+		return nil, fmt.Errorf("error setting public key")
 	}
 	return nil, nil
 }
@@ -142,7 +142,7 @@ func validateSigningMethod(token *jwt.Token) error {
 	// 1. Check signing method
 	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 		msg := "Invalid signing method"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 	return nil
 }
@@ -152,7 +152,7 @@ func validateClaims(token *jwt.Token) error {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || claims == nil || len(claims) == 0 {
 		msg := "Invalid token claims"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 
 	if err := validateIssuer(claims, "https://app.kriptome.com"); err != nil {
@@ -172,7 +172,7 @@ func validateIssuer(claims jwt.MapClaims, issuer string) error {
 	checkIss := claims.VerifyIssuer(issuer, true)
 	if !checkIss {
 		msg := "Invalid iss"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 	return nil
 }
@@ -182,7 +182,7 @@ func validateKID(token *jwt.Token) error {
 	kid, ok := token.Header["kid"].(string)
 	if !ok || kid == "" {
 		msg := "Missing kid header"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 	return nil
 }
@@ -191,18 +191,18 @@ func validateUserAndTenant(claims jwt.MapClaims) error {
 	userID, ok := claims["sub"]
 	if !ok || userID == "" {
 		msg := "Missing userID claim"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 	tenantID, ok := claims["tid"]
 	if !ok || tenantID == "" {
 		msg := "Missing tenantID claim"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 	return nil
 }
 
 // getRequestToken gets the request's token, from either
-// the cookie or the header. Returns a [NoTokenError] on failure
+// the cookie or the header. Returns a [ErrNoToken] on failure
 func getRequestToken(r *http.Request) (string, error) {
 	reqToken := ""
 	tokenCookie, err := r.Cookie("app.at")
@@ -221,7 +221,7 @@ func getRequestToken(r *http.Request) (string, error) {
 		} else {
 			// There was a cookie, but there was an error parsing it
 			msg := fmt.Sprintf("Error parsing cookie token: `%s`", err.Error())
-			return "", fmt.Errorf("%q: %w", msg, NoTokenError)
+			return "", fmt.Errorf("%q: %w", msg, ErrNoToken)
 		}
 	} else {
 		reqToken = tokenCookie.Value
@@ -230,7 +230,7 @@ func getRequestToken(r *http.Request) (string, error) {
 	// If token is empty
 	if reqToken == "" {
 		msg := "No token provided in cookie or header"
-		return "", fmt.Errorf("%q: %w", msg, NoTokenError)
+		return "", fmt.Errorf("%q: %w", msg, ErrNoToken)
 	}
 
 	return reqToken, nil
@@ -241,20 +241,20 @@ func checkTokenRoles(token *jwt.Token, functionName string) error {
 	// Check if we have any roles in our claims
 	if len(roles.([]interface{})) == 0 {
 		msg := "Token has no roles"
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 
 	parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%s`", err.Error())
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 
 	// Check out what page we're calling, so we can check relevant roles
 	validRoles, err := domain.GetValidRoles(functionName)
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%v`, must be one of `%v`", parsedRoles, validRoles)
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 
 	result := domain.ContainsRole(parsedRoles, validRoles)
@@ -262,7 +262,7 @@ func checkTokenRoles(token *jwt.Token, functionName string) error {
 	// log.Printf("Intersection result: `%v`\n", result)
 	if len(result) == 0 {
 		msg := fmt.Sprintf("Roles missing: Have `%v`, want one of `%v`", parsedRoles, validRoles)
-		return fmt.Errorf("%q: %w", msg, InvalidTokenError)
+		return fmt.Errorf("%q: %w", msg, ErrInvalidToken)
 	}
 
 	return nil
@@ -275,18 +275,18 @@ func setPublicKey(kid string) error {
 		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
 		response, err := http.Get(url)
 		if err != nil {
-			return fmt.Errorf("Problem connecting to FusionAuth: `%s`", err.Error())
+			return fmt.Errorf("problem connecting to FusionAuth: `%s`", err.Error())
 		}
 
 		responseData, err := io.ReadAll(response.Body)
 		if err != nil {
-			return fmt.Errorf("Problem reading FusionAuth response: `%s`", err.Error())
+			return fmt.Errorf("problem reading FusionAuth response: `%s`", err.Error())
 		}
 
 		var publicKey map[string]interface{}
 
 		if err = json.Unmarshal(responseData, &publicKey); err != nil {
-			return fmt.Errorf("Problem unmarshaling response: `%s`", err.Error())
+			return fmt.Errorf("problem unmarshaling response: `%s`", err.Error())
 		}
 
 		var publicKeyPEM = publicKey["publicKey"].(string)
@@ -295,7 +295,7 @@ func setPublicKey(kid string) error {
 		verifyKey, err = jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
 
 		if err != nil {
-			return fmt.Errorf("Problem retreiving public key: `%s`", err.Error())
+			return fmt.Errorf("problem retreiving public key: `%s`", err.Error())
 		}
 	}
 	return nil
@@ -312,7 +312,7 @@ func validateUserWithFusionAuth(userID, tenantID string) (bool, error) {
 		if errors.As(err, &faErr) {
 			msg := faErr.Error()
 			log.Printf("FusionAuth error fetching user: `%s`", msg)
-			return false, fmt.Errorf("%q: %w", msg, UserNotFoundError)
+			return false, fmt.Errorf("%q: %w", msg, ErrUserNotFound)
 
 		} else {
 			log.Printf("Error fetching user: `%s`\n", err.Error())

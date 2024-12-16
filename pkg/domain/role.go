@@ -64,7 +64,7 @@ func GetValidRoles(funcName string) ([]Role, error) {
 
 }
 
-// ContainsRole: function for finding the intersection of two arrays
+// ContainsRole finds the intersection of two arrays
 // of type Role, returns an array with the intersection
 func ContainsRole(roles []Role, rolesToCheck []Role) []Role {
 	intersection := make([]Role, 0)

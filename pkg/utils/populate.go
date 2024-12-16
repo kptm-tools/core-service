@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func OpenAndReadKickstartJson(tenantService interfaces.ITenantService) (string, error) {
+func OpenAndReadKickstartJSON(tenantService interfaces.ITenantService) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Println("Error getting current working directory:", err)
@@ -21,7 +21,7 @@ func OpenAndReadKickstartJson(tenantService interfaces.ITenantService) (string, 
 		return "Not found file", err
 	}
 	defer jsonFile.Close()
-	data, err := readFileJson(jsonFile)
+	data, err := readFileJSON(jsonFile)
 	if err != nil {
 		return "Bad read", err
 	}

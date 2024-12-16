@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 )
 
-func readFileJson(readerJsonFile io.Reader) (map[string]interface{}, error) {
+func readFileJSON(readerJSONFile io.Reader) (map[string]interface{}, error) {
 
-	byteValue, err := ioutil.ReadAll(readerJsonFile)
+	byteValue, err := io.ReadAll(readerJSONFile)
 	if err != nil {
 		return nil, err
 	}
