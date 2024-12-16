@@ -24,7 +24,7 @@ func ParseRole(s string) (Role, error) {
 	v, ok := stringToRole[s]
 
 	if !ok {
-		return "", fmt.Errorf("Invalid role: `%s`\n", s)
+		return "", fmt.Errorf("invalid role: `%s`", s)
 	}
 
 	return v, nil
@@ -64,7 +64,8 @@ func GetValidRoles(funcName string) ([]Role, error) {
 
 }
 
-// function for finding the intersection of two arrays
+// ContainsRole finds the intersection of two arrays
+// of type Role, returns an array with the intersection
 func ContainsRole(roles []Role, rolesToCheck []Role) []Role {
 	intersection := make([]Role, 0)
 

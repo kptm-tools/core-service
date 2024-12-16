@@ -49,14 +49,14 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 	rows, err := s.db.Query(query, t.TenantID, t.OperatorID, t.Value, t.Type, t.CreatedAt, t.UpdatedAt)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error creating Host: `%v`", err)
+		return nil, fmt.Errorf("error creating Host: `%v`", err)
 	}
 
 	for rows.Next() {
 		return scanIntoHost(rows)
 	}
 
-	return nil, fmt.Errorf("Error creating Host")
+	return nil, fmt.Errorf("error creating Host")
 }
 
 func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
@@ -70,7 +70,7 @@ func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, e
 	rows, err := s.db.Query(query, tenantID)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error fetching Hosts: `%+v`", err)
+		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
 	}
 
 	hosts := []*domain.Host{}
@@ -79,7 +79,7 @@ func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, e
 		host, err := scanIntoHost(rows)
 
 		if err != nil {
-			return nil, fmt.Errorf("Error scanning into Host: `%+v`", err)
+			return nil, fmt.Errorf("error scanning into Host: `%+v`", err)
 		}
 		hosts = append(hosts, host)
 	}

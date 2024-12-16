@@ -51,7 +51,7 @@ func (s *PostgreSQLStore) ExistsTenant(tenantID string) (bool, error) {
 	err := s.db.QueryRow(query, tenantID).Scan(&exists)
 
 	if err != nil {
-		return false, fmt.Errorf("Error checking tenant existence: `%+v`", err)
+		return false, fmt.Errorf("error checking tenant existence: `%+v`", err)
 	}
 
 	return exists, nil
@@ -75,14 +75,14 @@ func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error)
 	rows, err := s.db.Query(query, t.ProviderID, t.ApplicationID, t.CreatedAt, t.UpdatedAt)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error creating Tenant: `%v`", err)
+		return nil, fmt.Errorf("error creating Tenant: `%v`", err)
 	}
 
 	for rows.Next() {
 		return scanIntoTenant(rows)
 	}
 
-	return nil, fmt.Errorf("Error creating Tenant")
+	return nil, fmt.Errorf("error creating Tenant")
 }
 
 func (s *PostgreSQLStore) GetTenants() ([]*domain.Tenant, error) {
@@ -95,7 +95,7 @@ func (s *PostgreSQLStore) GetTenants() ([]*domain.Tenant, error) {
 	rows, err := s.db.Query(query)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error fetching Tenants: `%+v`", err)
+		return nil, fmt.Errorf("error fetching Tenants: `%+v`", err)
 	}
 
 	tenants := []*domain.Tenant{}
@@ -104,7 +104,7 @@ func (s *PostgreSQLStore) GetTenants() ([]*domain.Tenant, error) {
 		tenant, err := scanIntoTenant(rows)
 
 		if err != nil {
-			return nil, fmt.Errorf("Error scanning into Tenant: `%+v`", err)
+			return nil, fmt.Errorf("erNoTokenErrorror scanning into Tenant: `%+v`", err)
 		}
 		tenants = append(tenants, tenant)
 	}

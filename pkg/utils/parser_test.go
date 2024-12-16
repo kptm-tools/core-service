@@ -30,7 +30,7 @@ func Test_isValidParsing(t *testing.T) {
 			// Act
 
 			goodResult := true
-			if _, err := readFileJson(buf); err != nil {
+			if _, err := readFileJSON(buf); err != nil {
 				goodResult = false
 			}
 			// Assert
