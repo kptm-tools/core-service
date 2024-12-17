@@ -133,9 +133,9 @@ func verifyTokenSignature(token *jwt.Token) (interface{}, error) {
 	// At this point we already validated we have a KID
 	kid := token.Header["kid"].(string)
 	if err := setPublicKey(kid); err != nil {
-		return nil, fmt.Errorf("error setting public key")
+		return nil, fmt.Errorf("error setting public key: %w", err)
 	}
-	return nil, nil
+	return verifyKey, nil
 }
 
 func validateSigningMethod(token *jwt.Token) error {
