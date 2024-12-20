@@ -60,8 +60,10 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/tenant", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
 	router.HandleFunc("GET /api/user/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), "getUser"))
 
-	router.HandleFunc("POST /hosts", makeHTTPHandlerFunc(s.hostHandlers.CreateHost))
-	router.HandleFunc("GET /hosts", makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantID))
+	router.HandleFunc("POST /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.CreateHost), "newHost"))
+	router.HandleFunc("GET /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantIDAndUserID), "getHostsByTenantAndUser"))
+	router.HandleFunc("GET /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), "getHostByID"))
+	router.HandleFunc("DELETE /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
 	router.HandleFunc("GET /tenants", middleware.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	stack := middleware.CreateStack(

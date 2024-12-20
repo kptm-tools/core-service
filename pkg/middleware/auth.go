@@ -29,6 +29,7 @@ var verifyKey *rsa.PublicKey
 type ContextKey string
 
 const ContextTenantID ContextKey = "tenantID"
+const ContextUserID ContextKey = "userID"
 
 func WriteUnauthorized(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
@@ -103,6 +104,7 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 		}
 
 		ctx := context.WithValue(r.Context(), ContextTenantID, tenantID)
+		ctx = context.WithValue(ctx, ContextUserID, userID)
 		endpoint(w, r.WithContext(ctx))
 
 	})

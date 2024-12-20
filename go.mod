@@ -10,3 +10,8 @@ require (
 require github.com/FusionAuth/go-client v0.0.0-20241126020005-1254a936741f
 
 require github.com/google/uuid v1.6.0
+
+require (
+	github.com/jpillora/go-tld v1.2.1 // indirect
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
+)
