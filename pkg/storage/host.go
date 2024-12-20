@@ -121,6 +121,38 @@ func (s *PostgreSQLStore) GetHostByID(ID string) (*domain.Host, error) {
 	}
 }
 
+func (s *PostgreSQLStore) PatchHostByID(ID, domainName, ip, alias string, credential, rapporteur []byte) (*domain.Host, error) {
+
+	query := `
+    UPDATE hosts
+    SET credentials=$2, rapporteurs=$3, domain=$4, ip=$5, alias=$6
+        WHERE id=$1
+    RETURNING *
+  `
+	i, _ := strconv.Atoi(ID)
+	row := s.db.QueryRow(query, i, credential, rapporteur, domainName, ip, alias)
+	host := new(domain.Host)
+	err := row.Scan(&host.ID,
+		&host.TenantID,
+		&host.OperatorID,
+		&host.Domain,
+		&host.Ip,
+		&host.Name,
+		&host.Credentials,
+		&host.Rapporteurs,
+		&host.CreatedAt,
+		&host.UpdatedAt)
+
+	switch err {
+	case sql.ErrNoRows:
+		return nil, fmt.Errorf("No rows were returned: `%+v`", err)
+	case nil:
+		return host, nil
+	default:
+		return nil, err
+	}
+}
+
 func (s *PostgreSQLStore) DeleteHostByID(ID string) (bool, error) {
 
 	query := `

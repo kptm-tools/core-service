@@ -12,6 +12,7 @@ type IHostService interface {
 	GetHostByID(ID string) (*domain.Host, error)
 	GetHostname(string) string
 	DeleteHostByID(ID string) (bool, error)
+	PatchHostByID(ID, domainName, ip, alias string, credential, rapporteur []byte) (*domain.Host, error)
 }
 
 type IHostHandlers interface {
@@ -19,4 +20,5 @@ type IHostHandlers interface {
 	GetHostsByTenantIDAndUserID(w http.ResponseWriter, req *http.Request) error
 	GetHostByID(w http.ResponseWriter, req *http.Request) error
 	DeleteHostByID(w http.ResponseWriter, req *http.Request) error
+	PatchHostByID(w http.ResponseWriter, req *http.Request) error
 }

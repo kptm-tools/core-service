@@ -86,3 +86,13 @@ func (s *HostService) GetHostname(ip_port string) string {
 
 	return domainname
 }
+
+func (s *HostService) PatchHostByID(ID, domainName, ip, alias string, credential, rapporteur []byte) (*domain.Host, error) {
+	host, err := s.storage.PatchHostByID(ID, domainName, ip, alias, credential, rapporteur)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return host, nil
+}

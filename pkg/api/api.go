@@ -64,6 +64,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantIDAndUserID), "getHostsByTenantAndUser"))
 	router.HandleFunc("GET /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), "getHostByID"))
 	router.HandleFunc("DELETE /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
+	router.HandleFunc("PATCH /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "patchHostByID"))
 	router.HandleFunc("GET /tenants", middleware.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	stack := middleware.CreateStack(

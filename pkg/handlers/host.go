@@ -78,6 +78,33 @@ func (h *HostHandlers) GetHostByID(w http.ResponseWriter, req *http.Request) err
 	return api.WriteJSON(w, http.StatusOK, constructResponse(host))
 }
 
+func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) error {
+	id := req.PathValue("id")
+
+	createHostRequest := new(CreateHostRequest)
+
+	if err := decodeJSONBody(w, req, createHostRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+	domainVal, ipVal := getDomainIPValues(createHostRequest, h)
+	dataCred, _ := json.Marshal(createHostRequest.Credentials)
+	dataRapo, _ := json.Marshal(createHostRequest.Rapporteurs)
+	host, err := h.hostService.PatchHostByID(id, domainVal, ipVal, createHostRequest.Name, dataCred, dataRapo)
+
+	if err != nil {
+
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+
+	return api.WriteJSON(w, http.StatusCreated, constructResponse(host))
+}
+
 func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) error {
 	id := req.PathValue("id")
 	isDeleted, err := h.hostService.DeleteHostByID(id)
@@ -96,6 +123,29 @@ func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) 
 }
 
 func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) *domain.Host {
+	domainVal, ipVal := getDomainIPValues(createHostRequest, h)
+	dataCred, _ := json.Marshal(createHostRequest.Credentials)
+	dataRapo, _ := json.Marshal(createHostRequest.Rapporteurs)
+	tenantID := req.Context().Value(middleware.ContextTenantID)
+	operatorID := req.Context().Value(middleware.ContextUserID)
+
+	host := domain.NewHost(domainVal, ipVal, tenantID.(string), operatorID.(string), createHostRequest.Name, dataCred, dataRapo)
+	return host
+}
+
+func constructResponse(host *domain.Host) *domain.HostResponse {
+	hostResponse := new(domain.HostResponse)
+	hostResponse.Name = host.Name
+	hostResponse.CreatedAt = host.CreatedAt
+	hostResponse.ID = host.ID
+	hostResponse.Domain = host.Domain
+	hostResponse.Ip = host.Ip
+	json.Unmarshal(host.Credentials, &hostResponse.Credentials)
+	json.Unmarshal(host.Rapporteurs, &hostResponse.Rapporteurs)
+	return hostResponse
+}
+
+func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (string, string) {
 	domainValue := ""
 	ipValue := ""
 	if createHostRequest.ValueType == "Domain" {
@@ -111,23 +161,5 @@ func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request,
 		ipValue = createHostRequest.Value
 		domainValue = h.hostService.GetHostname(ipValue + ":443")
 	}
-	dataCred, _ := json.Marshal(createHostRequest.Credentials)
-	dataRapo, _ := json.Marshal(createHostRequest.Rapporteurs)
-	tenantID := req.Context().Value(middleware.ContextTenantID)
-	operatorID := req.Context().Value(middleware.ContextUserID)
-
-	host := domain.NewHost(domainValue, ipValue, tenantID.(string), operatorID.(string), createHostRequest.Name, dataCred, dataRapo)
-	return host
-}
-
-func constructResponse(host *domain.Host) *domain.HostResponse {
-	hostResponse := new(domain.HostResponse)
-	hostResponse.Name = host.Name
-	hostResponse.CreatedAt = host.CreatedAt
-	hostResponse.ID = host.ID
-	hostResponse.Domain = host.Domain
-	hostResponse.Ip = host.Ip
-	json.Unmarshal(host.Credentials, &hostResponse.Credentials)
-	json.Unmarshal(host.Rapporteurs, &hostResponse.Rapporteurs)
-	return hostResponse
+	return domainValue, ipValue
 }
