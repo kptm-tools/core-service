@@ -20,6 +20,10 @@ type CreateHostRequest struct {
 	Rapporteurs []domain.Rapporteur `json:"rapporteurs"`
 }
 
+type ValidateHostRequest struct {
+	Value string `json:"value"`
+}
+
 type GetHostByTenantIDRequest struct {
 	TenantID string `json:"tenant_id"`
 }

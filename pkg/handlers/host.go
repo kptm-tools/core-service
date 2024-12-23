@@ -122,6 +122,28 @@ func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) 
 	return api.WriteJSON(w, http.StatusOK, result)
 }
 
+func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) error {
+	validateHostRequest := new(ValidateHostRequest)
+
+	if err := decodeJSONBody(w, req, validateHostRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	validation, err := h.hostService.ValidateHost(validateHostRequest.Value)
+	if err != nil {
+
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+
+	return api.WriteJSON(w, http.StatusCreated, validation)
+}
+
 func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) *domain.Host {
 	domainVal, ipVal := getDomainIPValues(createHostRequest, h)
 	dataCred, _ := json.Marshal(createHostRequest.Credentials)
