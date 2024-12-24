@@ -55,17 +55,17 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/login", makeHTTPHandlerFunc(s.authHandlers.Login))
 	router.HandleFunc("POST /api/forgot-password", makeHTTPHandlerFunc(s.authHandlers.ForgotPassword))
 	router.HandleFunc("POST /api/change-password", makeHTTPHandlerFunc(s.authHandlers.ChangePassword))
-	router.HandleFunc("POST /api/user", makeHTTPHandlerFunc(s.authHandlers.RegisterUser))
-	router.HandleFunc("POST /api/user/{id}/verify-email", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
-	router.HandleFunc("POST /api/tenant", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
-	router.HandleFunc("GET /api/user/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), "getUser"))
+	router.HandleFunc("POST /api/users", makeHTTPHandlerFunc(s.authHandlers.RegisterUser))
+	router.HandleFunc("POST /api/users/{id}/verify-email", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
+	router.HandleFunc("POST /api/tenants", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
+	router.HandleFunc("GET /api/users/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), "getUser"))
 
 	router.HandleFunc("POST /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.CreateHost), "newHost"))
 	router.HandleFunc("POST /api/hosts/validate", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateHost), "validateHost"))
 	router.HandleFunc("GET /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantIDAndUserID), "getHostsByTenantAndUser"))
 	router.HandleFunc("GET /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), "getHostByID"))
 	router.HandleFunc("DELETE /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
-	router.HandleFunc("PATCH /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "patchHostByID"))
+	router.HandleFunc("PATCH /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), "patchHostByID"))
 	router.HandleFunc("GET /tenants", middleware.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	stack := middleware.CreateStack(

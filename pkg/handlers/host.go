@@ -146,12 +146,10 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 
 func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) *domain.Host {
 	domainVal, ipVal := getDomainIPValues(createHostRequest, h)
-	dataCred, _ := json.Marshal(createHostRequest.Credentials)
-	dataRapo, _ := json.Marshal(createHostRequest.Rapporteurs)
 	tenantID := req.Context().Value(middleware.ContextTenantID)
 	operatorID := req.Context().Value(middleware.ContextUserID)
 
-	host := domain.NewHost(domainVal, ipVal, tenantID.(string), operatorID.(string), createHostRequest.Name, dataCred, dataRapo)
+	host := domain.NewHost(domainVal, ipVal, tenantID.(string), operatorID.(string), createHostRequest.Name, createHostRequest.Credentials, createHostRequest.Rapporteurs)
 	return host
 }
 
@@ -161,9 +159,8 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 	hostResponse.CreatedAt = host.CreatedAt
 	hostResponse.ID = host.ID
 	hostResponse.Domain = host.Domain
-	hostResponse.Ip = host.Ip
-	json.Unmarshal(host.Credentials, &hostResponse.Credentials)
-	json.Unmarshal(host.Rapporteurs, &hostResponse.Rapporteurs)
+	hostResponse.IP = host.IP
+	host.Rapporteurs = hostResponse.Rapporteurs
 	return hostResponse
 }
 

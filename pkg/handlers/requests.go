@@ -2,16 +2,6 @@ package handlers
 
 import "github.com/kptm-tools/core-service/pkg/domain"
 
-type CredentialRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type RapporteurRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 type CreateHostRequest struct {
 	Value       string              `json:"value"`
 	Name        string              `json:"name"`

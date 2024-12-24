@@ -62,13 +62,13 @@ func (s *HostService) DeleteHostByID(ID string) (bool, error) {
 	return isDeleted, nil
 }
 
-func (s *HostService) GetHostname(ip_port string) string {
+func (s *HostService) GetHostname(ipPort string) string {
 	var timout time.Duration = 2
 	conf := &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: false,
 	}
 	var domainname string
-	conn, err := net.DialTimeout("tcp", ip_port, timout*time.Second)
+	conn, err := net.DialTimeout("tcp", ipPort, timout*time.Second)
 	if err == nil {
 		tlsconn := tls.Client(conn, conf)
 		handshake := tlsconn.Handshake()
