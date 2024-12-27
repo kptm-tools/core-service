@@ -18,7 +18,7 @@ type Rapporteur struct {
 }
 
 type Host struct {
-	ID          string       `json:"id"`
+	ID          string       `json:"id,omitempty"`
 	TenantID    string       `json:"tenant_id"`
 	OperatorID  string       `json:"user_id"`
 	Name        string       `json:"name"`

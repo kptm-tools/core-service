@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"net"
@@ -92,10 +91,9 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	domainVal, ipVal := getDomainIPValues(createHostRequest, h)
-	dataCred, _ := json.Marshal(createHostRequest.Credentials)
-	dataRapo, _ := json.Marshal(createHostRequest.Rapporteurs)
-	host, err := h.hostService.PatchHostByID(id, domainVal, ipVal, createHostRequest.Name, dataCred, dataRapo)
+	var hostToDB = constructHostForDB(createHostRequest, req, h)
+	hostToDB.ID = id
+	host, err := h.hostService.PatchHostByID(hostToDB)
 
 	if err != nil {
 

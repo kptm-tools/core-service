@@ -12,7 +12,7 @@ type IHostService interface {
 	GetHostByID(ID string) (*domain.Host, error)
 	GetHostname(string) string
 	DeleteHostByID(ID string) (bool, error)
-	PatchHostByID(ID, domainName, ip, alias string, credential, rapporteur []byte) (*domain.Host, error)
+	PatchHostByID(*domain.Host) (*domain.Host, error)
 	ValidateHost(string) (string, error)
 }
 

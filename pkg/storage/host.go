@@ -136,9 +136,12 @@ func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID st
 
 	for rows.Next() {
 		host, err := scanIntoHost(rows)
-		host.Credentials, _ = s.GetCredentials(host.ID)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning into Host: `%+v`", err)
+		}
+		host.Credentials, err = s.GetCredentials(host.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning into Credential: `%+v`", err)
 		}
 		hosts = append(hosts, host)
 	}
@@ -159,42 +162,46 @@ func (s *PostgreSQLStore) GetHostByID(ID string) (*domain.Host, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
 	}
-	row.Next()
-	host, err := scanIntoHost(row)
-	host.Credentials, _ = s.GetCredentials(host.ID)
+	host, err := s.getResultHost(row)
+	if err != nil {
+		return nil, fmt.Errorf("error procesing Host from DB: `%+v`", err)
+	}
 	return host, nil
 }
 
-func (s *PostgreSQLStore) PatchHostByID(ID, domainName, ip, alias string, credential, rapporteur []byte) (*domain.Host, error) {
+func (s *PostgreSQLStore) getResultHost(row *sql.Rows) (*domain.Host, error) {
+	row.Next()
+	host, err := scanIntoHost(row)
+	if err != nil {
+		return nil, fmt.Errorf("error scannig Host: `%+v`", err)
+	}
+	host.Credentials, err = s.GetCredentials(host.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error scannig Credentials: `%+v`", err)
+	}
+	return host, nil
+}
+
+func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 
 	query := `
     UPDATE hosts
-    SET credentials=$2, rapporteurs=$3, domain=$4, ip=$5, alias=$6
+    SET  rapporteurs=$2, domain=$3, ip=$4, alias=$5
         WHERE id=$1
     RETURNING *
   `
-	i, _ := strconv.Atoi(ID)
-	row := s.db.QueryRow(query, i, credential, rapporteur, domainName, ip, alias)
-	host := new(domain.Host)
-	err := row.Scan(&host.ID,
-		&host.TenantID,
-		&host.OperatorID,
-		&host.Domain,
-		&host.IP,
-		&host.Name,
-		&host.Credentials,
-		&host.Rapporteurs,
-		&host.CreatedAt,
-		&host.UpdatedAt)
-
-	switch err {
-	case sql.ErrNoRows:
-		return nil, fmt.Errorf("no rows were returned: `%+v`", err)
-	case nil:
-		return host, nil
-	default:
-		return nil, err
+	jsonbRapporteurs, _ := json.Marshal(h.Rapporteurs)
+	i, _ := strconv.Atoi(h.ID)
+	rows, err := s.db.Query(query, i, jsonbRapporteurs, h.Domain, h.IP, h.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
 	}
+
+	host, err := s.getResultHost(rows)
+	if err != nil {
+		return nil, fmt.Errorf("error procesing Host from DB: `%+v`", err)
+	}
+	return host, nil
 }
 
 func (s *PostgreSQLStore) DeleteHostByID(ID string) (bool, error) {
