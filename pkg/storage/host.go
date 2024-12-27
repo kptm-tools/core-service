@@ -2,10 +2,12 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (s *PostgreSQLStore) CreateHostsTable() error {
@@ -13,7 +15,7 @@ func (s *PostgreSQLStore) CreateHostsTable() error {
       id SERIAL PRIMARY KEY,
       tenant_id UUID,
       operator_id UUID,
-      domain VARCHAR(2048) UNIQUE,
+      domain VARCHAR(2048),
       ip VARCHAR(15),
       alias VARCHAR(2048) UNIQUE NOT NULL,
       rapporteurs JSONB,
@@ -42,7 +44,7 @@ func (s *PostgreSQLStore) CreateCredentialsTable() error {
       id SERIAL PRIMARY KEY,
       host_id integer REFERENCES hosts (id) ON DELETE CASCADE,
       username text  NOT NULL,
-      password text  NOT NULL,
+      password text  NOT NULL
   )`
 
 	_, err := s.db.Query(query)
@@ -70,10 +72,10 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 
 	query := `
     INSERT INTO hosts (tenant_id, operator_id, domain, ip, alias, rapporteurs,  created_at, updated_at)
-    values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    values ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING id, tenant_id, operator_id, domain, ip, alias, rapporteurs, created_at, updated_at`
-
-	rows, err := s.db.Query(query, t.TenantID, t.OperatorID, t.Domain, t.IP, t.Name, t.Rapporteurs, t.CreatedAt, t.UpdatedAt)
+	jsonbRapporteurs, _ := json.Marshal(t.Rapporteurs)
+	rows, err := s.db.Query(query, t.TenantID, t.OperatorID, t.Domain, t.IP, t.Name, jsonbRapporteurs, t.CreatedAt, t.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("error creating Host: `%v`", err)
@@ -112,7 +114,7 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 	if errCredential != nil {
 		return nil, fmt.Errorf("error creating credentials: `%v`", err)
 	}
-
+	hostObject.Credentials, _ = s.GetCredentials(hostObject.ID)
 	return hostObject, nil
 }
 
@@ -134,7 +136,7 @@ func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID st
 
 	for rows.Next() {
 		host, err := scanIntoHost(rows)
-
+		host.Credentials, _ = s.GetCredentials(host.ID)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning into Host: `%+v`", err)
 		}
@@ -152,27 +154,15 @@ func (s *PostgreSQLStore) GetHostByID(ID string) (*domain.Host, error) {
     WHERE id=$1
   `
 	i, _ := strconv.Atoi(ID)
-	row := s.db.QueryRow(query, i)
-	host := new(domain.Host)
-	err := row.Scan(&host.ID,
-		&host.TenantID,
-		&host.OperatorID,
-		&host.Domain,
-		&host.IP,
-		&host.Name,
-		&host.Credentials,
-		&host.Rapporteurs,
-		&host.CreatedAt,
-		&host.UpdatedAt)
 
-	switch err {
-	case sql.ErrNoRows:
-		return nil, fmt.Errorf("no rows were returned: `%+v`", err)
-	case nil:
-		return host, nil
-	default:
-		return nil, err
+	row, err := s.db.Query(query, i)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
 	}
+	row.Next()
+	host, err := scanIntoHost(row)
+	host.Credentials, _ = s.GetCredentials(host.ID)
+	return host, nil
 }
 
 func (s *PostgreSQLStore) PatchHostByID(ID, domainName, ip, alias string, credential, rapporteur []byte) (*domain.Host, error) {
@@ -229,25 +219,82 @@ func (s *PostgreSQLStore) DeleteHostByID(ID string) (bool, error) {
 func scanIntoHost(rows *sql.Rows) (*domain.Host, error) {
 
 	host := new(domain.Host)
+	cols, _ := rows.Columns()
+	columns := make([]interface{}, len(cols))
+	columnPointers := make([]interface{}, len(cols))
+	for i := range columns {
+		columnPointers[i] = &columns[i]
+	}
 
+	if err := rows.Scan(columnPointers...); err != nil {
+		return nil, err
+	}
+	for i, colName := range cols {
+		val := columnPointers[i].(*interface{})
+		var x = *val
+		switch colName {
+		case "id":
+			host.ID = fmt.Sprintf("%v", x)
+		case "domain":
+			host.Domain = fmt.Sprintf("%v", x)
+		case "ip":
+			host.IP = fmt.Sprintf("%v", x)
+		case "alias":
+			host.Name = fmt.Sprintf("%v", x)
+		case "rapporteurs":
+			json.Unmarshal(x.([]byte), &host.Rapporteurs)
+		case "created_at":
+			host.CreatedAt, _ = x.(time.Time)
+		case "updated_at":
+			host.UpdatedAt = x.(time.Time)
+		}
+	}
+	return host, nil
+}
+
+func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
+
+	credential := new(domain.Credential)
 	err := rows.Scan(
-		&host.ID,
-		&host.TenantID,
-		&host.OperatorID,
-		&host.Domain,
-		&host.IP,
-		&host.Name,
-		&host.Credentials,
-		&host.Rapporteurs,
-		&host.CreatedAt,
-		&host.UpdatedAt,
+		&credential.ID,
+		&credential.HostID,
+		&credential.Username,
+		&credential.Password,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return host, nil
+	return credential, nil
+}
+
+func (s *PostgreSQLStore) GetCredentials(hostId string) ([]domain.Credential, error) {
+
+	query := `
+    SELECT *
+    FROM credentials
+    WHERE host_id=$1
+  `
+
+	rows, err := s.db.Query(query, hostId)
+
+	if err != nil {
+		return nil, fmt.Errorf("error fetching Credentials: `%+v`", err)
+	}
+
+	credentials := []domain.Credential{}
+
+	for rows.Next() {
+		credential, err := scanIntoCredential(rows)
+
+		if err != nil {
+			return nil, fmt.Errorf("erNoTokenErrorror scanning into Tenant: `%+v`", err)
+		}
+		credentials = append(credentials, *credential)
+	}
+
+	return credentials, nil
 }
 
 func replaceSQL(old, searchPattern string) string {
@@ -257,3 +304,31 @@ func replaceSQL(old, searchPattern string) string {
 	}
 	return old
 }
+
+/*
+import (
+    "database/sql"
+    "database/sql/driver"
+    "encoding/json"
+    "errors"
+    "log"
+
+    _ "github.com/lib/pq"
+)
+
+func (a []*Rapporteur{}) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+// Make the Attrs struct implement the sql.Scanner interface. This method
+// simply decodes a JSON-encoded value into the struct fields.
+func (a *Attrs) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &a)
+}
+
+*/

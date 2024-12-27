@@ -157,10 +157,12 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 	hostResponse := new(domain.HostResponse)
 	hostResponse.Name = host.Name
 	hostResponse.CreatedAt = host.CreatedAt
+	hostResponse.UpdatedAt = host.UpdatedAt
 	hostResponse.ID = host.ID
 	hostResponse.Domain = host.Domain
 	hostResponse.IP = host.IP
-	host.Rapporteurs = hostResponse.Rapporteurs
+	hostResponse.Rapporteurs = host.Rapporteurs
+	hostResponse.Credentials = host.Credentials
 	return hostResponse
 }
 

@@ -5,6 +5,8 @@ import (
 )
 
 type Credential struct {
+	ID       string `json:"id,omitempty"`
+	HostID   string `json:"host_id,omitempty"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
