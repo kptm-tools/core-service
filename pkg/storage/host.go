@@ -196,12 +196,40 @@ func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
 	}
-
 	host, err := s.getResultHost(rows)
 	if err != nil {
 		return nil, fmt.Errorf("error procesing Host from DB: `%+v`", err)
 	}
+
+	status, err := s.UpdateCredentials(h.Credentials)
+	if err != nil {
+		return nil, fmt.Errorf("error updating Credentials: `%+v`", err)
+	}
+	if status {
+		host.Credentials, err = s.GetCredentials(host.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching Credentials: `%+v`", err)
+		}
+	}
+
 	return host, nil
+}
+
+func (s *PostgreSQLStore) UpdateCredentials(credentialObject []domain.Credential) (bool, error) {
+	queryInside := ""
+	for _, data := range credentialObject {
+		// Validate that ID is not empty for update otherwise does not update that record
+		if data.ID != "" {
+			queryInside += "(" + data.ID + ",'" + data.Username + "',pgp_sym_encrypt('" + data.Password + "', 'MAMA', 'compress-algo=1, cipher-algo=aes256')),"
+		}
+	}
+	queryInside = strings.TrimSuffix(queryInside, ",")
+	query := fmt.Sprintf("UPDATE credentials SET username = data.name, password=data.pass FROM (VALUES %s ) AS data(id, name, pass) WHERE credentials.id = data.id;", queryInside)
+	_, err := s.db.Query(query)
+	if err != nil {
+		return false, fmt.Errorf("error updating Credentials: `%+v`", err)
+	}
+	return true, nil
 }
 
 func (s *PostgreSQLStore) DeleteHostByID(ID string) (bool, error) {
@@ -279,7 +307,7 @@ func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 func (s *PostgreSQLStore) GetCredentials(hostId string) ([]domain.Credential, error) {
 
 	query := `
-    SELECT *
+    SELECT id, host_id, username,password
     FROM credentials
     WHERE host_id=$1
   `
