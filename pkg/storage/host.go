@@ -304,7 +304,7 @@ func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 	return credential, nil
 }
 
-func (s *PostgreSQLStore) GetCredentials(hostId string) ([]domain.Credential, error) {
+func (s *PostgreSQLStore) GetCredentials(hostID string) ([]domain.Credential, error) {
 
 	query := `
     SELECT id, host_id, username,password
@@ -312,7 +312,7 @@ func (s *PostgreSQLStore) GetCredentials(hostId string) ([]domain.Credential, er
     WHERE host_id=$1
   `
 
-	rows, err := s.db.Query(query, hostId)
+	rows, err := s.db.Query(query, hostID)
 
 	if err != nil {
 		return nil, fmt.Errorf("error fetching Credentials: `%+v`", err)
