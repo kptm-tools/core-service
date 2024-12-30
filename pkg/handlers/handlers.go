@@ -88,11 +88,11 @@ func GetUUID(req *http.Request) (string, error) {
 	return reqUUID, nil
 }
 
-func GetTenantIdFromHeader(req *http.Request) (string, error) {
-	tenantId := req.Header.Get("X-TenantId")
+func GetTenantIDFromHeader(req *http.Request) (string, error) {
+	tenantID := req.Header.Get("X-TenantId")
 
-	if err := uuid.Validate(tenantId); err != nil {
-		return "", fmt.Errorf("Invalid UUID: `%s`", tenantId)
+	if err := uuid.Validate(tenantID); err != nil {
+		return "", fmt.Errorf("invalid UUID: `%s`", tenantID)
 	}
-	return tenantId, nil
+	return tenantID, nil
 }
