@@ -402,7 +402,7 @@ func (s *AuthService) RegisterUser(firstname, lastname, email, password, applica
 	if err != nil {
 		return nil, err
 	}
-	userId := uuid.NewString()
+	userID := uuid.NewString()
 	registerReq := fusionauth.RegistrationRequest{
 		GenerateAuthenticationToken: true,
 
@@ -420,7 +420,7 @@ func (s *AuthService) RegisterUser(firstname, lastname, email, password, applica
 	}
 
 	// Use FusionAuth Go client to log in the user
-	registerResponse, faErr, err := client.Register(userId, registerReq)
+	registerResponse, faErr, err := client.Register(userID, registerReq)
 
 	if err != nil {
 		return nil, err

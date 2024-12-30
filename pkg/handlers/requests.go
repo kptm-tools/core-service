@@ -1,10 +1,17 @@
 package handlers
 
+import "github.com/kptm-tools/core-service/pkg/domain"
+
 type CreateHostRequest struct {
-	TenantID   string `json:"tenant_id"`
-	OperatorID string `json:"operator_id"`
-	Value      string `json:"value"`
-	Name       string `json:"name"`
+	Value       string              `json:"value"`
+	Name        string              `json:"name"`
+	ValueType   string              `json:"value_type"`
+	Credentials []domain.Credential `json:"credentials"`
+	Rapporteurs []domain.Rapporteur `json:"rapporteurs"`
+}
+
+type ValidateHostRequest struct {
+	Value string `json:"value"`
 }
 
 type GetHostByTenantIDRequest struct {

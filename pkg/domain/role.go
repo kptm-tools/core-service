@@ -48,10 +48,16 @@ func GetRolesFromStringSlice(strSlice []string) ([]Role, error) {
 func GetValidRoles(funcName string) ([]Role, error) {
 
 	funcRoles := map[string][]Role{
-		"handleHealthcheck-fm": {RoleAdmin},
-		"targets":              {RoleAdmin, RoleOperator, RoleAnalyst},
-		"tenants":              {RoleAdmin, RoleAnalyst},
-		"getUser":              {RoleAdmin, RoleOperator, RoleAnalyst},
+		"handleHealthcheck-fm":    {RoleAdmin},
+		"targets":                 {RoleAdmin, RoleOperator, RoleAnalyst},
+		"tenants":                 {RoleAdmin, RoleAnalyst},
+		"getUser":                 {RoleAdmin, RoleOperator, RoleAnalyst},
+		"newHost":                 {RoleOperator, RoleAnalyst},
+		"getHostsByTenantAndUser": {RoleAdmin, RoleOperator, RoleAnalyst},
+		"getHostByID":             {RoleAdmin, RoleOperator, RoleAnalyst},
+		"deleteHostByID":          {RoleAdmin, RoleOperator},
+		"patchHostByID":           {RoleAdmin, RoleOperator},
+		"validateHost":            {RoleOperator, RoleAnalyst},
 	}
 
 	v, ok := funcRoles[funcName]

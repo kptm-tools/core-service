@@ -164,7 +164,7 @@ func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) erro
 
 func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	id, err := GetUUID(r)
-	tenantId, errTenant := GetTenantIdFromHeader(r)
+	tenantID, errTenant := GetTenantIDFromHeader(r)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
 	}
@@ -183,7 +183,7 @@ func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, id, tenantId)
+	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, id, tenantID)
 	if err != nil {
 		var fae *services.FaError
 
