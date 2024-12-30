@@ -216,16 +216,17 @@ func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 }
 
 func (s *PostgreSQLStore) UpdateCredentials(credentialObject []domain.Credential) (bool, error) {
-	queryInside := ""
-	for _, data := range credentialObject {
-		// Validate that ID is not empty for update otherwise does not update that record
+	query := "UPDATE credentials SET username = data.name, password = data.pass FROM ( VALUES "
+	args := []interface{}{}
+	for i, data := range credentialObject {
 		if data.ID != "" {
-			queryInside += "(" + data.ID + ",'" + data.Username + "',pgp_sym_encrypt('" + data.Password + "', 'MAMA', 'compress-algo=1, cipher-algo=aes256')),"
+			query += fmt.Sprintf("($%d, $%d, pgp_sym_encrypt($%d, 'MAMA', 'compress-algo=1, cipher-algo=aes256')),", i*3+1, i*3+2, i*3+3)
+			args = append(args, data.ID, data.Username, data.Password)
 		}
 	}
-	queryInside = strings.TrimSuffix(queryInside, ",")
-	query := fmt.Sprintf("UPDATE credentials SET username = data.name, password=data.pass FROM (VALUES %s ) AS data(id, name, pass) WHERE credentials.id = data.id;", queryInside)
-	_, err := s.db.Query(query)
+	query = strings.TrimSuffix(query, ",") + ") AS data(id, name, pass) WHERE credentials.id =  NULLIF(data.id, '')::int;"
+	_, err := s.db.Query(query, args...)
+
 	if err != nil {
 		return false, fmt.Errorf("error updating Credentials: `%+v`", err)
 	}
@@ -339,31 +340,3 @@ func replaceSQL(old, searchPattern string) string {
 	}
 	return old
 }
-
-/*
-import (
-    "database/sql"
-    "database/sql/driver"
-    "encoding/json"
-    "errors"
-    "log"
-
-    _ "github.com/lib/pq"
-)
-
-func (a []*Rapporteur{}) Value() (driver.Value, error) {
-	return json.Marshal(a)
-}
-
-// Make the Attrs struct implement the sql.Scanner interface. This method
-// simply decodes a JSON-encoded value into the struct fields.
-func (a *Attrs) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &a)
-}
-
-*/
