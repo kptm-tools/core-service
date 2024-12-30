@@ -19,6 +19,8 @@ type Config struct {
 	DatabaseName           string
 	DatabaseHost           string
 	DatabasePort           string
+	NatsHost               string
+	NatsPort               string
 }
 
 func fetchEnv(varString string, fallbackString string) string {
@@ -45,6 +47,8 @@ func LoadConfig() *Config {
 		DatabaseName:           fetchEnv("CORE_DB_NAME", "core_service_db"),
 		DatabaseHost:           fetchEnv("DB_HOST", "localhost"),
 		DatabasePort:           fetchEnv("DB_PORT", "5432"),
+		NatsHost:               fetchEnv("NATS_HOST", "localhost"),
+		NatsPort:               fetchEnv("NATS_PORT", "4222"),
 	}
 
 	return config
@@ -67,4 +71,8 @@ func (c *Config) PostgreSQLCoreConnStr() string {
 
 func (c *Config) GetAllowedOrigins() []string {
 	return strings.Split(c.AllowedOrigins, ",")
+}
+
+func (c *Config) GetNatsConnStr() string {
+	return fmt.Sprintf("http://%s:%s", c.NatsHost, c.NatsPort)
 }
