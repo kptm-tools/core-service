@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/handlers"
@@ -31,6 +32,11 @@ func main() {
 
 	if err := coreStore.InitCoreDB(); err != nil {
 		log.Fatalf("Error initializing Core DB: `%+v`", err)
+	}
+
+	_, err = cmmn.NewNatsEventBus(c.GetNatsConnStr())
+	if err != nil {
+		log.Fatalf("Error creating Event Bus: %s", err.Error())
 	}
 
 	// Services
