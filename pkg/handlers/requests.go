@@ -54,3 +54,11 @@ type RegisterUserRequest struct {
 
 	ApplicationID string `json:"application_id"`
 }
+
+type ServiceHost struct {
+	Names []string `json:"names"`
+	Host  string   `json:"host"`
+}
+type ScanRequest struct {
+	HostIds []string `json:"host_ids"`
+}

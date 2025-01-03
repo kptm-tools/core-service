@@ -13,4 +13,5 @@ type IStorage interface {
 	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
 	GetTenants() ([]*domain.Tenant, error)
 	Ping() error
+	CreateScan(*domain.Scan) (*domain.Scan, error)
 }

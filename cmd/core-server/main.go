@@ -34,7 +34,7 @@ func main() {
 		log.Fatalf("Error initializing Core DB: `%+v`", err)
 	}
 
-	_, err = cmmn.NewNatsEventBus(c.GetNatsConnStr())
+	eventBus, err := cmmn.NewNatsEventBus(c.GetNatsConnStr())
 	if err != nil {
 		log.Fatalf("Error creating Event Bus: %s", err.Error())
 	}
@@ -44,15 +44,16 @@ func main() {
 	authService := services.NewAuthService(coreStore)
 	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
+	scanService := services.NewScanService(coreStore)
 
 	// Handlers
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
-
+	scanHandlers := handlers.NewScanHandlers(scanService, eventBus)
 	// Server
-	s := api.NewAPIServer(":8000", healthHandler, hostHandlers, tenantHandlers, authHandlers)
+	s := api.NewAPIServer(":8000", healthHandler, hostHandlers, tenantHandlers, authHandlers, scanHandlers)
 
 	if err := s.Init(); err != nil {
 		log.Fatalf("Failed to initialize APIServer: `%+v`", err)
