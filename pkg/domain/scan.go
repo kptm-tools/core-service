@@ -2,13 +2,14 @@ package domain
 
 import (
 	"github.com/google/uuid"
-	res "github.com/kptm-tools/common/common/events"
+	events "github.com/kptm-tools/common/common/events"
+	results "github.com/kptm-tools/common/common/results"
 	"time"
 )
 
 type Metadata struct {
-	Progress string `json:"progress"`
-	Service  string `json:"service"`
+	Progress string              `json:"progress"`
+	Service  results.ServiceName `json:"service"`
 }
 
 type StatusHost struct {
@@ -20,12 +21,12 @@ type ResultHost struct {
 	Host string `json:"id,omitempty"`
 }
 type Scan struct {
-	ID           string       `json:"id,omitempty"`
-	HostsStatus  []StatusHost `json:"hosts_status,omitempty"`
-	HostsResults []ResultHost `json:"hosts_results,omitempty"`
-	Targets      []res.Target `json:"targets,omitempty"`
-	CreatedAt    time.Time    `json:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at"`
+	ID           string          `json:"id,omitempty"`
+	HostsStatus  []StatusHost    `json:"hosts_status,omitempty"`
+	HostsResults []ResultHost    `json:"hosts_results,omitempty"`
+	Targets      []events.Target `json:"targets,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
 func NewScan() *Scan {

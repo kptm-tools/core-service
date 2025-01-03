@@ -38,13 +38,18 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 	}
 
 	scan, err := s.scanService.CreateScans(scanRequest.HostIds)
+	if err != nil {
+
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+
 	scanStartedPayload := &cmmn.ScanStartedEvent{
 		ScanID:    scan.ID,
 		Targets:   scan.Targets,
 		Timestamp: scan.CreatedAt.Unix(),
 	}
-	scanStartedString, err := json.Marshal(scanStartedPayload)
-	s.eventBus.Publish("ScanStarted", scanStartedString)
+	scanStartedBytes, err := json.Marshal(scanStartedPayload)
+	s.eventBus.Publish("ScanStarted", scanStartedBytes)
 
 	if err != nil {
 
