@@ -19,6 +19,7 @@ type APIServer struct {
 	hostHandlers   interfaces.IHostHandlers
 	authHandlers   interfaces.IAuthHandlers
 	tenantHandlers interfaces.ITenantHandlers
+	scanHandlers   interfaces.IScanHandlers
 }
 
 type APIError struct {
@@ -33,6 +34,7 @@ func NewAPIServer(
 	hoHandlers interfaces.IHostHandlers,
 	teHandlers interfaces.ITenantHandlers,
 	aHandlers interfaces.IAuthHandlers,
+	sHandlers interfaces.IScanHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
@@ -41,6 +43,7 @@ func NewAPIServer(
 		hostHandlers:   hoHandlers,
 		authHandlers:   aHandlers,
 		tenantHandlers: teHandlers,
+		scanHandlers:   sHandlers,
 	}
 }
 
@@ -67,6 +70,8 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("DELETE /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
 	router.HandleFunc("PATCH /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), "patchHostByID"))
 	router.HandleFunc("GET /tenants", middleware.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
+
+	router.HandleFunc("POST /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScans), "createScans"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,
