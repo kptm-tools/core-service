@@ -13,8 +13,8 @@ type Metadata struct {
 }
 
 type StatusHost struct {
-	Host     string      `json:"id,omitempty"`
-	Metadata []*Metadata `json:"metadata,omitempty"`
+	Host     string     `json:"id,omitempty"`
+	Metadata []Metadata `json:"metadata,omitempty"`
 }
 
 type ResultHost struct {
