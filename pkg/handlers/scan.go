@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"net/http"
 )
 
 type ScanHandlers struct {
@@ -37,8 +41,22 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 		}
 	}
 
-	scan, err := s.scanService.CreateScans(scanRequest.HostIds)
+	var hostIDs []int
+	for _, strID := range scanRequest.HostIds {
+		intID, err := strconv.Atoi(strID)
+		if err != nil {
+			msg := fmt.Sprintf("invalid id: %s", strID)
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: msg})
+		}
+		hostIDs = append(hostIDs, intID)
+	}
+
+	scan, err := s.scanService.CreateScans(hostIDs)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			statusCode := http.StatusNotFound
+			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+		}
 
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}

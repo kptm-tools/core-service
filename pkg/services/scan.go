@@ -21,21 +21,11 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-type resultChannel struct {
-	data domain.Host
-	err  error
-}
-
-func (s ScanService) CreateScans(hostIDs []string) (*domain.Scan, error) {
+func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
 	scanDB := domain.NewScan()
 	metadataDefault := createMetadata()
 
 	for _, hostID := range hostIDs {
-		// Validate and retrieve host data
-		if hostID == "" {
-			return nil, fmt.Errorf("hostID is empty")
-		}
-
 		host, err := s.storage.GetHostByID(hostID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get host: %w", err)
@@ -48,7 +38,7 @@ func (s ScanService) CreateScans(hostIDs []string) (*domain.Scan, error) {
 
 	dataScan, err := s.storage.CreateScan(scanDB)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create scan: %w", err)
 	}
 
 	dataScan.Targets = scanDB.Targets

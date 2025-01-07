@@ -5,7 +5,7 @@ import (
 )
 
 type Credential struct {
-	ID       string `json:"id,omitempty"`
+	ID       int    `json:"id,omitempty"`
 	HostID   string `json:"host_id,omitempty"`
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -18,7 +18,7 @@ type Rapporteur struct {
 }
 
 type Host struct {
-	ID          string       `json:"id,omitempty"`
+	ID          int          `json:"id,omitempty"`
 	TenantID    string       `json:"tenant_id"`
 	OperatorID  string       `json:"user_id"`
 	Name        string       `json:"name"`

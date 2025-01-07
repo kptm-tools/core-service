@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/middleware"
@@ -73,10 +75,17 @@ func (h *HostHandlers) GetHostsByTenantIDAndUserID(w http.ResponseWriter, req *h
 }
 
 func (h *HostHandlers) GetHostByID(w http.ResponseWriter, req *http.Request) error {
-	id := req.PathValue("id")
-	host, err := h.hostService.GetHostByID(id)
-
+	id, err := GetID(req)
 	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
+
+	host, err := h.hostService.GetHostByID(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			statusCode := http.StatusNotFound
+			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+		}
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 
@@ -84,7 +93,10 @@ func (h *HostHandlers) GetHostByID(w http.ResponseWriter, req *http.Request) err
 }
 
 func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) error {
-	id := req.PathValue("id")
+	id, err := GetID(req)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
 
 	createHostRequest := new(CreateHostRequest)
 
@@ -103,9 +115,11 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	}
 	hostToDB.ID = id
 	host, err := h.hostService.PatchHostByID(hostToDB)
-
 	if err != nil {
-
+		if errors.Is(err, sql.ErrNoRows) {
+			statusCode := http.StatusNotFound
+			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+		}
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 
@@ -113,9 +127,12 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 }
 
 func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) error {
-	id := req.PathValue("id")
-	isDeleted, err := h.hostService.DeleteHostByID(id)
+	id, err := GetID(req)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
 
+	isDeleted, err := h.hostService.DeleteHostByID(id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
@@ -168,7 +185,7 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 	hostResponse.Name = host.Name
 	hostResponse.CreatedAt = host.CreatedAt
 	hostResponse.UpdatedAt = host.UpdatedAt
-	hostResponse.ID = host.ID
+	hostResponse.ID = strconv.Itoa(host.ID)
 	hostResponse.Domain = host.Domain
 	hostResponse.IP = host.IP
 	hostResponse.Rapporteurs = host.Rapporteurs

@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 func (s *PostgreSQLStore) CreateHostsTable() error {
@@ -70,52 +70,40 @@ func (s *PostgreSQLStore) ClearHostsTable() error {
 
 func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start transaction %w", err)
+	}
+	defer tx.Rollback()
+
 	query := `
     INSERT INTO hosts (tenant_id, operator_id, domain, ip, alias, rapporteurs,  created_at, updated_at)
     values ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING id, tenant_id, operator_id, domain, ip, alias, rapporteurs, created_at, updated_at`
-	jsonbRapporteurs, _ := json.Marshal(t.Rapporteurs)
-	rows, err := s.db.Query(query, t.TenantID, t.OperatorID, t.Domain, t.IP, t.Name, jsonbRapporteurs, t.CreatedAt, t.UpdatedAt)
 
+	rapporteursJSONB, err := json.Marshal(t.Rapporteurs)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Host: `%v`", err)
+		return nil, fmt.Errorf("failed to marshal rapporteurs: %w", err)
 	}
 
-	rows.Next()
-	hostObject, errReading := scanIntoHost(rows)
+	row := tx.QueryRow(query, t.TenantID, t.OperatorID, t.Domain, t.IP, t.Name, rapporteursJSONB, t.CreatedAt, t.UpdatedAt)
+	newHost := &domain.Host{}
 
-	if errReading != nil {
-		return nil, fmt.Errorf("error creating Host: `%v`", errReading)
+	if err := scanIntoHostRow(row, newHost); err != nil {
+		return nil, fmt.Errorf("failed to insert host: %w", err)
 	}
 
-	sqlStr := "INSERT INTO credentials (host_id, username, password) VALUES "
-	vals := []interface{}{}
-
-	for _, row := range t.Credentials {
-		sqlStr += "(?, ?, pgp_sym_encrypt(?, 'MAMA', 'compress-algo=1, cipher-algo=aes256')),"
-		vals = append(vals, hostObject.ID, row.Username, row.Password)
+	if err := s.InsertCredentials(tx, newHost.ID, t.Credentials); err != nil {
+		return nil, fmt.Errorf("failed to insert credentials: %w", err)
 	}
 
-	//trim the last ,
-	sqlStr = strings.TrimSuffix(sqlStr, ",")
-
-	//Replacing ? with $n for postgres
-	sqlStr = replaceSQL(sqlStr, "?")
-
-	//prepare the statement
-	stmt, errPreparing := s.db.Prepare(sqlStr)
-
-	if errPreparing != nil {
-		return nil, fmt.Errorf("error creating credentials: `%v`", err)
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
-	//format all vals at once
-	_, errCredential := stmt.Exec(vals...)
 
-	if errCredential != nil {
-		return nil, fmt.Errorf("error creating credentials: `%v`", err)
-	}
-	hostObject.Credentials, _ = s.GetCredentials(hostObject.ID)
-	return hostObject, nil
+	// Retreive and assign credentials
+	newHost.Credentials = t.Credentials
+	return newHost, nil
 }
 
 func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error) {
@@ -123,25 +111,24 @@ func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID st
 	query := `
     SELECT *
     FROM hosts
-    WHERE tenant_id=$1 and operator_id= $2
+    WHERE tenant_id=$1 AND operator_id= $2
   `
 
 	rows, err := s.db.Query(query, tenantID, userID)
-
 	if err != nil {
-		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
+		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
 	}
+	defer rows.Close()
 
 	hosts := []*domain.Host{}
-
 	for rows.Next() {
-		host, err := scanIntoHost(rows)
-		if err != nil {
-			return nil, fmt.Errorf("error scanning into Host: `%+v`", err)
+		host := &domain.Host{}
+		if err := scanIntoHost(rows, host); err != nil {
+			return nil, fmt.Errorf("failed to scan host: %w", err)
 		}
 		host.Credentials, err = s.GetCredentials(host.ID)
 		if err != nil {
-			return nil, fmt.Errorf("error scanning into Credential: `%+v`", err)
+			return nil, fmt.Errorf("failed to fetch credentials: %w", err)
 		}
 		hosts = append(hosts, host)
 	}
@@ -149,40 +136,37 @@ func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID st
 	return hosts, nil
 }
 
-func (s *PostgreSQLStore) GetHostByID(ID string) (*domain.Host, error) {
+func (s *PostgreSQLStore) GetHostByID(ID int) (*domain.Host, error) {
 
 	query := `
     SELECT *
     FROM hosts
     WHERE id=$1
   `
-	i, _ := strconv.Atoi(ID)
 
-	row, err := s.db.Query(query, i)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
-	}
-	host, err := s.getResultHost(row)
-	if err != nil {
-		return nil, fmt.Errorf("error procesing Host from DB: `%+v`", err)
-	}
-	return host, nil
-}
+	row := s.db.QueryRow(query, ID)
+	host := &domain.Host{}
+	var err error
 
-func (s *PostgreSQLStore) getResultHost(row *sql.Rows) (*domain.Host, error) {
-	row.Next()
-	host, err := scanIntoHost(row)
-	if err != nil {
-		return nil, fmt.Errorf("error scannig Host: `%+v`", err)
+	if err = scanIntoHostRow(row, host); err != nil {
+		return nil, fmt.Errorf("failed to fetch host: %w", err)
 	}
-	host.Credentials, err = s.GetCredentials(host.ID)
+
+	credentials, err := s.GetCredentials(ID)
 	if err != nil {
-		return nil, fmt.Errorf("error scannig Credentials: `%+v`", err)
+		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
 	}
+	host.Credentials = credentials
+
 	return host, nil
 }
 
 func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	query := `
     UPDATE hosts
@@ -190,58 +174,99 @@ func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
         WHERE id=$1
     RETURNING *
   `
-	jsonbRapporteurs, _ := json.Marshal(h.Rapporteurs)
-	i, _ := strconv.Atoi(h.ID)
-	rows, err := s.db.Query(query, i, jsonbRapporteurs, h.Domain, h.IP, h.Name)
+	rapporteursJSONB, err := json.Marshal(h.Rapporteurs)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching Hosts: `%+v`", err)
-	}
-	host, err := s.getResultHost(rows)
-	if err != nil {
-		return nil, fmt.Errorf("error procesing Host from DB: `%+v`", err)
+		return nil, fmt.Errorf("failed to marshal rapporteurs: %w", err)
 	}
 
-	status, err := s.UpdateCredentials(h.Credentials)
+	row := tx.QueryRow(query, h.ID, rapporteursJSONB, h.Domain, h.IP, h.Name)
+	host := &domain.Host{}
+	if err := scanIntoHostRow(row, host); err != nil {
+		return nil, fmt.Errorf("error fetching host: %w", err)
+	}
+
+	if err = s.UpdateCredentials(tx, host.ID, h.Credentials); err != nil {
+		return nil, fmt.Errorf("failed to update credentials: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Fetch and assign updated credentials
+	credentials, err := s.GetCredentials(host.ID)
 	if err != nil {
-		return nil, fmt.Errorf("error updating Credentials: `%+v`", err)
+		return nil, fmt.Errorf("failed to fetch updated credentials: %w", err)
 	}
-	if status {
-		host.Credentials, err = s.GetCredentials(host.ID)
-		if err != nil {
-			return nil, fmt.Errorf("error fetching Credentials: `%+v`", err)
-		}
-	}
+	host.Credentials = credentials
 
 	return host, nil
 }
 
-func (s *PostgreSQLStore) UpdateCredentials(credentialObject []domain.Credential) (bool, error) {
-	query := "UPDATE credentials SET username = data.name, password = data.pass FROM ( VALUES "
-	args := []interface{}{}
-	for i, data := range credentialObject {
-		if data.ID != "" {
-			query += fmt.Sprintf("($%d, $%d, pgp_sym_encrypt($%d, 'MAMA', 'compress-algo=1, cipher-algo=aes256')),", i*3+1, i*3+2, i*3+3)
-			args = append(args, data.ID, data.Username, data.Password)
+func (s *PostgreSQLStore) InsertCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
+
+	query := "INSERT INTO credentials (host_id, username, password) VALUES ($1, $2, pgp_sym_encrypt($3, 'MAMA', 'compress-algo=1, cipher-algo=aes256'))"
+	for _, cred := range credentials {
+		if _, err := tx.Exec(query, hostID, cred.Username, cred.Password); err != nil {
+			return fmt.Errorf("failed to insert credential: %w", err)
 		}
 	}
-	query = strings.TrimSuffix(query, ",") + ") AS data(id, name, pass) WHERE credentials.id =  NULLIF(data.id, '')::int;"
-	_, err := s.db.Query(query, args...)
 
-	if err != nil {
-		return false, fmt.Errorf("error updating Credentials: `%+v`", err)
-	}
-	return true, nil
+	return nil
 }
 
-func (s *PostgreSQLStore) DeleteHostByID(ID string) (bool, error) {
+func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error) {
+
+	query := `
+    SELECT id, host_id, username,password
+    FROM credentials
+    WHERE host_id=$1
+  `
+
+	rows, err := s.db.Query(query, hostID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching Credentials: %w", err)
+	}
+	defer rows.Close()
+
+	credentials := []domain.Credential{}
+	for rows.Next() {
+		credential, err := scanIntoCredential(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan credential: %w", err)
+		}
+		credentials = append(credentials, *credential)
+	}
+	return credentials, nil
+}
+
+func (s *PostgreSQLStore) UpdateCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
+	// Step 1: Delete all credentials associated with the hostID
+	deleteQuery := `DELETE FROM credentials WHERE host_id = $1`
+	if _, err := tx.Exec(deleteQuery, hostID); err != nil {
+		return fmt.Errorf("failed to delete existing credentials for hostID %d: %w", hostID, err)
+	}
+
+	insertQuery := `INSERT INTO credentials (host_id, username, password)
+                  VALUES ($1, $2, pgp_sym_encrypt($3, 'MAMA', 'compress-algo=1, cipher-algo=aes256'))`
+
+	for _, cred := range credentials {
+		_, err := tx.Exec(insertQuery, hostID, cred.Username, cred.Password)
+		if err != nil {
+			return fmt.Errorf("failed to insert new credential for hostID %d: %w", hostID, err)
+		}
+	}
+	return nil
+}
+
+func (s *PostgreSQLStore) DeleteHostByID(ID int) (bool, error) {
 
 	query := `
     DELETE 
     FROM hosts
     WHERE id=$1
   `
-	i, _ := strconv.Atoi(ID)
-	res, err := s.db.Exec(query, i)
+	res, err := s.db.Exec(query, ID)
 
 	switch err {
 	case nil:
@@ -252,42 +277,30 @@ func (s *PostgreSQLStore) DeleteHostByID(ID string) (bool, error) {
 	}
 }
 
-func scanIntoHost(rows *sql.Rows) (*domain.Host, error) {
-
-	host := new(domain.Host)
-	cols, _ := rows.Columns()
-	columns := make([]interface{}, len(cols))
-	columnPointers := make([]interface{}, len(cols))
-	for i := range columns {
-		columnPointers[i] = &columns[i]
+func scanIntoHost(rows *sql.Rows, host *domain.Host) error {
+	var rapporteurs []byte
+	if err := rows.Scan(&host.ID, &host.TenantID, &host.OperatorID, &host.Domain, &host.IP, &host.Name, &rapporteurs, &host.CreatedAt, &host.UpdatedAt); err != nil {
+		return fmt.Errorf("error scanning rows: %w", err)
+	}
+	// Unmarshal the rapporteurs bytes
+	if err := json.Unmarshal(rapporteurs, &host.Rapporteurs); err != nil {
+		return fmt.Errorf("error unmarshalling rapporteurs: %w", err)
 	}
 
-	if err := rows.Scan(columnPointers...); err != nil {
-		return nil, err
-	}
-	for i, colName := range cols {
-		val := columnPointers[i].(*interface{})
-		var x = *val
-		switch colName {
-		case "id":
-			host.ID = fmt.Sprintf("%v", x)
-		case "domain":
-			host.Domain = fmt.Sprintf("%v", x)
-		case "ip":
-			host.IP = fmt.Sprintf("%v", x)
-		case "alias":
-			host.Name = fmt.Sprintf("%v", x)
-		case "rapporteurs":
-			json.Unmarshal(x.([]byte), &host.Rapporteurs)
-		case "created_at":
-			host.CreatedAt, _ = x.(time.Time)
-		case "updated_at":
-			host.UpdatedAt = x.(time.Time)
-		}
-	}
-	return host, nil
+	return nil
 }
 
+func scanIntoHostRow(row *sql.Row, host *domain.Host) error {
+	var rapporteurs []byte
+	if err := row.Scan(&host.ID, &host.TenantID, &host.OperatorID, &host.Domain, &host.IP, &host.Name, &rapporteurs, &host.CreatedAt, &host.UpdatedAt); err != nil {
+		return fmt.Errorf("failed to scan host: %w", err)
+	}
+	if err := json.Unmarshal(rapporteurs, &host.Rapporteurs); err != nil {
+		return fmt.Errorf("failed to unmarshal rapporteurs: %w", err)
+	}
+
+	return nil
+}
 func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 
 	credential := new(domain.Credential)
@@ -299,38 +312,10 @@ func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error scanning Credential: %w", err)
 	}
 
 	return credential, nil
-}
-
-func (s *PostgreSQLStore) GetCredentials(hostID string) ([]domain.Credential, error) {
-
-	query := `
-    SELECT id, host_id, username,password
-    FROM credentials
-    WHERE host_id=$1
-  `
-
-	rows, err := s.db.Query(query, hostID)
-
-	if err != nil {
-		return nil, fmt.Errorf("error fetching Credentials: `%+v`", err)
-	}
-
-	credentials := []domain.Credential{}
-
-	for rows.Next() {
-		credential, err := scanIntoCredential(rows)
-
-		if err != nil {
-			return nil, fmt.Errorf("erNoTokenErrorror scanning into Tenant: `%+v`", err)
-		}
-		credentials = append(credentials, *credential)
-	}
-
-	return credentials, nil
 }
 
 func replaceSQL(old, searchPattern string) string {
