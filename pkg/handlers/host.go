@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"errors"
-	"github.com/kptm-tools/core-service/pkg/middleware"
+	"fmt"
 	"net"
 	"net/http"
+
+	"github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -37,10 +40,13 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 		}
 	}
 
-	host, err := h.hostService.CreateHost(constructHostForDB(createHostRequest, req, h))
-
+	host, err := constructHostForDB(createHostRequest, req, h)
 	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
 
+	host, err = h.hostService.CreateHost(host)
+	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 
@@ -91,7 +97,10 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	var hostToDB = constructHostForDB(createHostRequest, req, h)
+	hostToDB, err := constructHostForDB(createHostRequest, req, h)
+	if err != nil {
+		return err
+	}
 	hostToDB.ID = id
 	host, err := h.hostService.PatchHostByID(hostToDB)
 
@@ -142,13 +151,16 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 	return api.WriteJSON(w, http.StatusCreated, validation)
 }
 
-func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) *domain.Host {
-	domainVal, ipVal := getDomainIPValues(createHostRequest, h)
+func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) (*domain.Host, error) {
+	domainVal, ipVal, err := getDomainIPValues(createHostRequest, h)
+	if err != nil {
+		return nil, err
+	}
 	tenantID := req.Context().Value(middleware.ContextTenantID)
 	operatorID := req.Context().Value(middleware.ContextUserID)
 
 	host := domain.NewHost(domainVal, ipVal, tenantID.(string), operatorID.(string), createHostRequest.Name, createHostRequest.Credentials, createHostRequest.Rapporteurs)
-	return host
+	return host, nil
 }
 
 func constructResponse(host *domain.Host) *domain.HostResponse {
@@ -164,10 +176,10 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 	return hostResponse
 }
 
-func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (string, string) {
+func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (string, string, error) {
 	domainValue := ""
 	ipValue := ""
-	if createHostRequest.ValueType == "Domain" {
+	if createHostRequest.ValueType == string(events.Domain) {
 		domainValue = createHostRequest.Value
 		ips, _ := net.LookupIP(domainValue)
 		for _, ip := range ips {
@@ -176,9 +188,15 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 				break
 			}
 		}
-	} else {
+		return domainValue, ipValue, nil
+	}
+
+	if createHostRequest.ValueType == string(events.IP) {
 		ipValue = createHostRequest.Value
 		domainValue = h.hostService.GetHostname(ipValue + ":443")
+		return domainValue, ipValue, nil
 	}
-	return domainValue, ipValue
+
+	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(events.Domain), string(events.IP))
+
 }
