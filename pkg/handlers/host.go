@@ -181,7 +181,10 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 	ipValue := ""
 	if createHostRequest.ValueType == string(events.Domain) {
 		domainValue = createHostRequest.Value
-		ips, _ := net.LookupIP(domainValue)
+		ips, err := net.LookupIP(domainValue)
+		if err != nil {
+			return "", "", fmt.Errorf("error looking up domain: %w", err)
+		}
 		for _, ip := range ips {
 			if ipv4 := ip.To4(); ipv4 != nil {
 				ipValue = ipv4.String()
