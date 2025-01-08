@@ -42,7 +42,7 @@ func (s *HostService) GetHostsByTenantIDAndUserID(tenantID string, userID string
 	return hosts, nil
 }
 
-func (s *HostService) GetHostByID(ID string) (*domain.Host, error) {
+func (s *HostService) GetHostByID(ID int) (*domain.Host, error) {
 	host, err := s.storage.GetHostByID(ID)
 
 	if err != nil {
@@ -52,7 +52,7 @@ func (s *HostService) GetHostByID(ID string) (*domain.Host, error) {
 	return host, nil
 }
 
-func (s *HostService) DeleteHostByID(ID string) (bool, error) {
+func (s *HostService) DeleteHostByID(ID int) (bool, error) {
 	isDeleted, err := s.storage.DeleteHostByID(ID)
 
 	if err != nil {

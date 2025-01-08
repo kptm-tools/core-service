@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -86,6 +87,17 @@ func GetUUID(req *http.Request) (string, error) {
 		return "", fmt.Errorf("invalid UUID: `%s`", reqUUID)
 	}
 	return reqUUID, nil
+}
+
+func GetID(req *http.Request) (int, error) {
+	reqID := req.PathValue("id")
+
+	intID, err := strconv.Atoi(reqID)
+	if err != nil {
+		return intID, fmt.Errorf("invalid id given: `%s`", reqID)
+	}
+
+	return intID, nil
 }
 
 func GetTenantIDFromHeader(req *http.Request) (string, error) {

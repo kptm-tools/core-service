@@ -9,9 +9,9 @@ import (
 type IHostService interface {
 	CreateHost(*domain.Host) (*domain.Host, error)
 	GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error)
-	GetHostByID(ID string) (*domain.Host, error)
+	GetHostByID(ID int) (*domain.Host, error)
 	GetHostname(string) string
-	DeleteHostByID(ID string) (bool, error)
+	DeleteHostByID(ID int) (bool, error)
 	PatchHostByID(*domain.Host) (*domain.Host, error)
 	ValidateHost(string) (string, error)
 }
