@@ -48,17 +48,18 @@ func WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 			if errors.Is(err, ErrInvalidToken) {
 				log.Println(err.Error())
 				WriteUnauthorized(w)
-				return
 			} else if errors.Is(err, ErrNoToken) {
 				log.Println(err.Error())
 				WriteUnauthorized(w)
-				return
+			} else if errors.Is(err, jwt.ErrTokenExpired) {
+				log.Println(err.Error())
+				WriteUnauthorized(w)
 			} else {
 				// General error
 				log.Println("General error: ", err.Error())
 				WriteInternalServerError(w)
-				return
 			}
+			return
 		}
 
 		// At this point we have the JWT, so we use /golang-jwt/jwt to validate it
