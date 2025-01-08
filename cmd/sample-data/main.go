@@ -49,6 +49,11 @@ func populateDB(store interfaces.IStorage) {
 	}
 	fmt.Println("Tenants populated successfully")
 
+	if err := populateHosts(store); err != nil {
+		panic(err)
+	}
+	fmt.Println("Hosts populated successfully")
+
 }
 
 func populateTenants(store interfaces.IStorage) error {
@@ -58,7 +63,21 @@ func populateTenants(store interfaces.IStorage) error {
 	for _, tenant := range sampleTenants {
 		_, err := tenantService.CreateTenant(&tenant)
 		if err != nil {
-			return fmt.Errorf("error populating tenant `%+v`: `%v`", tenant, err)
+			return fmt.Errorf("error populating tenant %s: %w", tenant.ID, err)
+		}
+	}
+	return nil
+}
+
+func populateHosts(store interfaces.IStorage) error {
+	hostService := services.NewHostService(store)
+	sampleHosts := samples.SampleHosts()
+
+	for _, host := range sampleHosts {
+
+		_, err := hostService.CreateHost(&host)
+		if err != nil {
+			return fmt.Errorf("error populating host %s: %w", host.Name, err)
 		}
 	}
 	return nil
