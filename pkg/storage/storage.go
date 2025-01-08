@@ -71,6 +71,11 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 }
 
 func (s *PostgreSQLStore) ClearCoreDB() error {
+	// Attempt to clear Scans Table
+	if err := s.ClearScansTable(); err != nil {
+		return err
+	}
+
 	// Attempt to clear Hosts Table
 	if err := s.ClearHostsTable(); err != nil {
 		return err
