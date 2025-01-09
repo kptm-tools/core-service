@@ -2,16 +2,17 @@ package services
 
 import (
 	"crypto/tls"
-	tld "github.com/jpillora/go-tld"
-	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/interfaces"
-	probing "github.com/prometheus-community/pro-bing"
 	"log"
 	"net"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	tld "github.com/jpillora/go-tld"
+	cmmn "github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
+	probing "github.com/prometheus-community/pro-bing"
 )
 
 type HostService struct {
@@ -103,10 +104,13 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 }
 
 func (s *HostService) ValidateHost(host string) (string, error) {
-	if IsValidHostValue(host) {
 
-		pinger, err := probing.NewPinger(strings.Split(host, "//")[1])
+	if IsValidHostValue(host) {
+		normalizedHost := cmmn.NormalizeURL(host)
+		addr := strings.Split(normalizedHost, "//")[1]
+		pinger, err := probing.NewPinger(addr)
 		if err != nil {
+			log.Printf("failed to probe host: %v", err)
 			return "Unable to connect host", nil
 		}
 		pinger.Count = 1
@@ -127,45 +131,32 @@ func (s *HostService) ValidateHost(host string) (string, error) {
 
 func IsValidHostValue(value string) bool {
 
-	if IsValidURL(value) {
-		domain, err := ExtractDomainFromURL(value)
-
+	normalizedValue := cmmn.NormalizeURL(value)
+	if cmmn.IsURL(normalizedValue) {
+		domain, err := cmmn.ExtractDomain(normalizedValue)
 		if err != nil {
-			log.Println("Invalid URL/Domain")
+			log.Println("Invalid URL/Domain: ", normalizedValue)
 			return false
 		}
 
+		// Domain with protocol prefix
 		if IsValidDomain(domain) {
+			return true
+		}
+
+		// IP address with protocol prefix
+		if cmmn.IsValidIPv4(strings.Split(normalizedValue, "//")[1]) {
 			return true
 		}
 	}
 
-	if IsValidIP(value) {
+	// IP address on its own
+	if cmmn.IsValidIPv4(value) {
 		return true
 	}
 
-	log.Println("Invalid IP")
+	log.Println("Invalid IP:", value)
 	return false
-
-}
-
-func IsValidIP(value string) bool {
-	// Try parsing the host as an IP address
-	return net.ParseIP(value) != nil
-}
-
-func IsValidURL(url string) bool {
-	re := regexp.MustCompile(`^(http|https)://[a-zA-Z0-9-]+\.[a-zA-Z]{2,}.*$`)
-	return re.MatchString(url)
-}
-
-func ExtractDomainFromURL(input string) (string, error) {
-	parsedURL, err := url.Parse(input)
-	if err != nil {
-		return "", err
-	}
-
-	return parsedURL.Hostname(), nil
 
 }
 
