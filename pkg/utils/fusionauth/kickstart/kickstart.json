@@ -1,0 +1,495 @@
+{
+  "variables": {
+    "allowedOrigin": "http://localhost:5173",
+    "apiKey": "#{ENV.FUSIONAUTH_API_KEY}",
+    "asymmetricKeyId": "#{UUID()}",
+    "asymmetricKeyId1": "#{UUID()}",
+    "asymmetricKeyId2": "#{UUID()}",
+    "defaultTenantId": "d7d09513-a3f5-401c-9685-34ab6c552453",
+    "blueprintTenantUuid": "#{ENV.FUSIONAUTH_BLUEPRINT_TENANTID}",
+    "tenant1Uuid": "#{UUID()}",
+    "blueprintApplicationUuid": "#{ENV.FUSIONAUTH_BLUEPRINT_APPID}",
+    "applicationUuid1": "#{UUID()}",
+    "adminEmail": "admin@example.com",
+    "adminPassword": "password",
+    "operatorEmail": "operator@example.com",
+    "operatorPassword": "password",
+    "operatorUserId1": "00000000-0000-0000-0000-111111111111",
+    "operatorUserId2": "00000000-0000-0000-0000-222222222222",
+    "analystEmail": "analyst@example.com",
+    "analystPassword": "password",
+    "analystUserId1": "00000000-0000-0000-0000-333333333333",
+    "analystUserId2": "00000000-0000-0000-0000-444444444444"
+  },
+  "apiKeys": [
+    {
+      "key": "#{apiKey}",
+      "description": "Unrestricted API key"
+    }
+  ],
+  "requests": [
+    {
+      "method": "PATCH",
+      "url": "/api/tenant/#{defaultTenantId}",
+      "body": {
+        "tenant": {
+          "issuer": "http://localhost:9011"
+        }
+      }
+    },
+    {
+      "method": "PATCH",
+      "url": "api/system-configuration",
+      "body": {
+        "systemConfiguration": {
+          "allowCredentials": true,
+          "corsConfiguration": {
+            "allowedMethods": [
+              "GET",
+              "POST",
+              "OPTIONS"
+            ],
+            "allowedOrigins": [
+              "#{allowedOrigin}"
+            ],
+            "allowedHeaders": [
+              "Content-Type",
+              "Authorization"
+            ],
+            "debug": false,
+            "enabled": true,
+            "preflightMaxAgeInSeconds": 0
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/key/generate/#{asymmetricKeyId1}",
+      "tenantId": "#{tenant1Uuid}",
+      "body": {
+        "key": {
+          "algorithm": "RS256",
+          "name": "For Tenant 1 App",
+          "length": 2048
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/key/generate/#{asymmetricKeyId2}",
+      "tenantId": "#{blueprintTenantUuid}",
+      "body": {
+        "key": {
+          "algorithm": "RS256",
+          "name": "For Blueprint Tenant App",
+          "length": 2048
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration",
+      "body": {
+        "user": {
+          "email": "#{adminEmail}",
+          "password": "#{adminPassword}"
+        },
+        "registration": {
+          "applicationId": "#{FUSIONAUTH_APPLICATION_ID}",
+          "roles": [
+            "admin"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/tenant/#{tenant1Uuid}",
+      "body": {
+        "tenant": {
+          "emailConfiguration": {
+            "defaultFromEmail": "no-reply@fusionauth.io",
+            "host": "localhost",
+            "port": 25,
+            "unverified": {
+              "allowEmailChangeWhenGated": false,
+              "behavior": "Allow"
+            },
+            "verificationStrategy": "ClickableLink",
+            "verifyEmail": false,
+            "verifyEmailWhenChanged": false
+          },
+          "externalIdentifierConfiguration": {
+            "authorizationGrantIdTimeToLiveInSeconds": 30,
+            "changePasswordIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "changePasswordIdTimeToLiveInSeconds": 600,
+            "deviceCodeTimeToLiveInSeconds": 1800,
+            "deviceUserCodeIdGenerator": {
+              "length": 6,
+              "type": "randomAlphaNumeric"
+            },
+            "emailVerificationIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "emailVerificationIdTimeToLiveInSeconds": 86400,
+            "emailVerificationOneTimeCodeGenerator": {
+              "length": 6,
+              "type": "randomAlphaNumeric"
+            },
+            "externalAuthenticationIdTimeToLiveInSeconds": 300,
+            "oneTimePasswordTimeToLiveInSeconds": 60,
+            "passwordlessLoginGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "passwordlessLoginTimeToLiveInSeconds": 180,
+            "pendingAccountLinkTimeToLiveInSeconds": 3600,
+            "registrationVerificationIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "registrationVerificationIdTimeToLiveInSeconds": 86400,
+            "registrationVerificationOneTimeCodeGenerator": {
+              "length": 6,
+              "type": "randomAlphaNumeric"
+            },
+            "samlv2AuthNRequestIdTimeToLiveInSeconds": 300,
+            "setupPasswordIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "setupPasswordIdTimeToLiveInSeconds": 86400,
+            "twoFactorIdTimeToLiveInSeconds": 300,
+            "twoFactorOneTimeCodeIdGenerator": {
+              "length": 6,
+              "type": "randomDigits"
+            },
+            "twoFactorOneTimeCodeIdTimeToLiveInSeconds": 60,
+            "twoFactorTrustIdTimeToLiveInSeconds": 2592000
+          },
+          "issuer": "https://app.kriptome.com",
+          "jwtConfiguration": {
+            "accessTokenKeyId": "#{asymmetricKeyId1}",
+            "idTokenKeyId": "#{asymmetricKeyId1}",
+            "refreshTokenExpirationPolicy": "Fixed",
+            "refreshTokenRevocationPolicy": {
+              "onLoginPrevented": true,
+              "onPasswordChanged": true
+            },
+            "refreshTokenTimeToLiveInMinutes": 43200,
+            "refreshTokenUsagePolicy": "Reusable",
+            "timeToLiveInSeconds": 3600
+          },
+          "name": "Tenant 1",
+          "themeId": "75a068fd-e94b-451a-9aeb-3ddb9a3b5987"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/tenant/#{blueprintTenantUuid}",
+      "body": {
+        "tenant": {
+          "emailConfiguration": {
+            "defaultFromEmail": "no-reply@fusionauth.io",
+            "host": "localhost",
+            "port": 25,
+            "unverified": {
+              "allowEmailChangeWhenGated": false,
+              "behavior": "Allow"
+            },
+            "verificationStrategy": "ClickableLink",
+            "verifyEmail": false,
+            "verifyEmailWhenChanged": false
+          },
+          "externalIdentifierConfiguration": {
+            "authorizationGrantIdTimeToLiveInSeconds": 30,
+            "changePasswordIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "changePasswordIdTimeToLiveInSeconds": 600,
+            "deviceCodeTimeToLiveInSeconds": 1800,
+            "deviceUserCodeIdGenerator": {
+              "length": 6,
+              "type": "randomAlphaNumeric"
+            },
+            "emailVerificationIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "emailVerificationIdTimeToLiveInSeconds": 86400,
+            "emailVerificationOneTimeCodeGenerator": {
+              "length": 6,
+              "type": "randomAlphaNumeric"
+            },
+            "externalAuthenticationIdTimeToLiveInSeconds": 300,
+            "oneTimePasswordTimeToLiveInSeconds": 60,
+            "passwordlessLoginGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "passwordlessLoginTimeToLiveInSeconds": 180,
+            "pendingAccountLinkTimeToLiveInSeconds": 3600,
+            "registrationVerificationIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "registrationVerificationIdTimeToLiveInSeconds": 86400,
+            "registrationVerificationOneTimeCodeGenerator": {
+              "length": 6,
+              "type": "randomAlphaNumeric"
+            },
+            "samlv2AuthNRequestIdTimeToLiveInSeconds": 300,
+            "setupPasswordIdGenerator": {
+              "length": 32,
+              "type": "randomBytes"
+            },
+            "setupPasswordIdTimeToLiveInSeconds": 86400,
+            "twoFactorIdTimeToLiveInSeconds": 300,
+            "twoFactorOneTimeCodeIdGenerator": {
+              "length": 6,
+              "type": "randomDigits"
+            },
+            "twoFactorOneTimeCodeIdTimeToLiveInSeconds": 60,
+            "twoFactorTrustIdTimeToLiveInSeconds": 2592000
+          },
+          "issuer": "https://app.kriptome.com",
+          "jwtConfiguration": {
+            "accessTokenKeyId": "#{asymmetricKeyId2}",
+            "idTokenKeyId": "#{asymmetricKeyId2}",
+            "refreshTokenExpirationPolicy": "Fixed",
+            "refreshTokenRevocationPolicy": {
+              "onLoginPrevented": true,
+              "onPasswordChanged": true
+            },
+            "refreshTokenTimeToLiveInMinutes": 43200,
+            "refreshTokenUsagePolicy": "Reusable",
+            "timeToLiveInSeconds": 3600
+          },
+          "name": "Blueprint Tenant",
+          "themeId": "75a068fd-e94b-451a-9aeb-3ddb9a3b5987"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/application/#{applicationUuid1}",
+      "tenantId": "#{tenant1Uuid}",
+      "body": {
+        "application": {
+          "name": "Tenant 1 App",
+          "oauthConfiguration": {
+            "authorizedRedirectURLs": [],
+            "operatorSecret": "super-secret-secret-that-should-be-regenerated-for-production",
+            "logoutURL": "http://localhost:8000/logout",
+            "enabledGrants": [
+              "authorization_code",
+              "refresh_token"
+            ],
+            "proofKeyForCodeExchangePolicy": "Required",
+            "requireRegistration": true
+          },
+          "jwtConfiguration": {
+            "enabled": true,
+            "accessTokenKeyId": "#{asymmetricKeyId2}",
+            "idTokenKeyId": "#{asymmetricKeyId2}"
+          },
+          "registrationConfiguration": {
+            "birthDate": {
+              "enabled": false,
+              "required": false
+            },
+            "confirmPassword": false,
+            "enabled": true,
+            "firstName": {
+              "enabled": false,
+              "required": false
+            },
+            "fullName": {
+              "enabled": true,
+              "required": true
+            },
+            "lastName": {
+              "enabled": false,
+              "required": false
+            },
+            "loginIdType": "email",
+            "middleName": {
+              "enabled": false,
+              "required": false
+            },
+            "mobilePhone": {
+              "enabled": false,
+              "required": false
+            },
+            "type": "basic"
+          },
+          "roles": [
+            {
+              "name": "operator"
+            },
+            {
+              "name": "analyst"
+            },
+            {
+              "name": "admin"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration/#{operatorUserId1}",
+      "body": {
+        "user": {
+          "birthDate": "1985-11-23",
+          "email": "#{operatorEmail}",
+          "firstName": "Tammy",
+          "lastName": "Operator",
+          "fullName": "Tammy Operator",
+          "password": "#{operatorPassword}"
+        },
+        "registration": {
+          "applicationId": "#{applicationUuid1}",
+          "roles": [
+            "operator"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration/#{analystUserId1}",
+      "body": {
+        "user": {
+          "birthDate": "1985-11-23",
+          "email": "#{analystEmail}",
+          "firstName": "Charlie",
+          "lastName": "Analyst",
+          "fullName": "Charlie Analyst",
+          "password": "#{analystPassword}"
+        },
+        "registration": {
+          "applicationId": "#{applicationUuid1}",
+          "roles": [
+            "analyst"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/application/#{blueprintApplicationUuid}",
+      "tenantId": "#{blueprintTenantUuid}",
+      "body": {
+        "application": {
+          "name": "Blueprint Tenant App",
+          "oauthConfiguration": {
+            "authorizedRedirectURLs": [],
+            "operatorSecret": "super-secret-secret-that-should-be-regenerated-for-production",
+            "logoutURL": "http://localhost:8000/logout",
+            "enabledGrants": [
+              "authorization_code",
+              "refresh_token"
+            ],
+            "proofKeyForCodeExchangePolicy": "Required",
+            "requireRegistration": true
+          },
+          "jwtConfiguration": {
+            "enabled": true,
+            "accessTokenKeyId": "#{asymmetricKeyId2}",
+            "idTokenKeyId": "#{asymmetricKeyId2}"
+          },
+          "registrationConfiguration": {
+            "birthDate": {
+              "enabled": false,
+              "required": false
+            },
+            "confirmPassword": false,
+            "enabled": true,
+            "firstName": {
+              "enabled": false,
+              "required": false
+            },
+            "fullName": {
+              "enabled": true,
+              "required": true
+            },
+            "lastName": {
+              "enabled": false,
+              "required": false
+            },
+            "loginIdType": "email",
+            "middleName": {
+              "enabled": false,
+              "required": false
+            },
+            "mobilePhone": {
+              "enabled": false,
+              "required": false
+            },
+            "type": "basic"
+          },
+          "roles": [
+            {
+              "name": "operator"
+            },
+            {
+              "name": "analyst"
+            },
+            {
+              "name": "admin"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration/#{operatorUserId2}",
+      "body": {
+        "user": {
+          "birthDate": "1985-11-23",
+          "email": "#{operatorEmail}",
+          "firstName": "Tammy",
+          "lastName": "Operator",
+          "fullName": "Tammy Operator",
+          "password": "#{operatorPassword}"
+        },
+        "registration": {
+          "applicationId": "#{blueprintApplicationUuid}",
+          "roles": [
+            "operator"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration/#{analystUserId2}",
+      "body": {
+        "user": {
+          "birthDate": "1985-11-23",
+          "email": "#{analystEmail}",
+          "firstName": "Charlie",
+          "lastName": "Analyst",
+          "fullName": "Charlie Analyst",
+          "password": "#{analystPassword}"
+        },
+        "registration": {
+          "applicationId": "#{blueprintApplicationUuid}",
+          "roles": [
+            "analyst"
+          ]
+        }
+      }
+    }
+  ]
+}
