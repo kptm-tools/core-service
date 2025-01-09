@@ -7,8 +7,9 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 
-	"github.com/kptm-tools/common/common/events"
+	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -196,11 +197,19 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (string, string, error) {
 	domainValue := ""
 	ipValue := ""
-	if createHostRequest.ValueType == string(events.Domain) {
-		domainValue = createHostRequest.Value
-		ips, err := net.LookupIP(domainValue)
+	if createHostRequest.ValueType == string(cmmn.Domain) {
+		url := createHostRequest.Value
+		if !cmmn.IsURL(url) {
+			return "", "", fmt.Errorf("invalid url: %s", url)
+		}
+
+		domain, err := cmmn.ExtractDomain(url)
 		if err != nil {
-			return "", "", fmt.Errorf("error looking up domain: %w", err)
+			return "", "", fmt.Errorf("failed to extract domain: %w", err)
+		}
+		ips, err := net.LookupIP(domain)
+		if err != nil {
+			return "", "", fmt.Errorf("error looking up IP of domain: %w", err)
 		}
 		for _, ip := range ips {
 			if ipv4 := ip.To4(); ipv4 != nil {
@@ -211,12 +220,14 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 		return domainValue, ipValue, nil
 	}
 
-	if createHostRequest.ValueType == string(events.IP) {
-		ipValue = createHostRequest.Value
+	if createHostRequest.ValueType == string(cmmn.IP) {
+		normalizedURL := cmmn.NormalizeURL(createHostRequest.Value)
+
+		ipValue = strings.Split(normalizedURL, "//")[1]
 		domainValue = h.hostService.GetHostname(ipValue + ":443")
 		return domainValue, ipValue, nil
 	}
 
-	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(events.Domain), string(events.IP))
+	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(cmmn.Domain), string(cmmn.IP))
 
 }

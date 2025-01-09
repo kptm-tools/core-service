@@ -12,7 +12,7 @@ require github.com/FusionAuth/go-client v0.0.0-20241126020005-1254a936741f
 require (
 	github.com/google/uuid v1.6.0
 	github.com/jpillora/go-tld v1.2.1
-	github.com/kptm-tools/common v1.2.9
+	github.com/kptm-tools/common v1.2.10
 	github.com/prometheus-community/pro-bing v0.5.0
 )
 
