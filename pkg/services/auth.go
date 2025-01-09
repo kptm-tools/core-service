@@ -154,6 +154,7 @@ func (s *AuthService) GetUserByID(userID string, tenantID *string) (*domain.User
 	}
 
 	u, err := scanIntoDomainUser(resp.User)
+
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +331,7 @@ func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*doma
 	}
 
 	u := &regResp.User
-	return domain.NewUser(u.Id, email, pass, u.TenantId, appID, roles), nil
+	return domain.NewUser(u.Id, email, pass, u.TenantId, appID, roles, u.FirstName, u.LastName), nil
 }
 
 func scanIntoDomainUser(faUser fusionauth.User) (*domain.User, error) {
@@ -355,7 +356,7 @@ func scanIntoDomainUser(faUser fusionauth.User) (*domain.User, error) {
 		roles = append(roles, role)
 	}
 
-	u := domain.NewUser(faUser.Id, faUser.Email, faUser.Password, faUser.TenantId, appID, roles)
+	u := domain.NewUser(faUser.Id, faUser.Email, faUser.Password, faUser.TenantId, appID, roles, faUser.FirstName, faUser.LastName)
 	return u, nil
 }
 
