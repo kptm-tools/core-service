@@ -102,7 +102,10 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 	}
 
 	// Retreive and assign credentials
-	newHost.Credentials = t.Credentials
+	newHost.Credentials, err = s.GetCredentials(newHost.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
+	}
 	return newHost, nil
 }
 
