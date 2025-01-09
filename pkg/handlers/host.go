@@ -217,7 +217,7 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 				break
 			}
 		}
-		return domainValue, ipValue, nil
+		return domain, ipValue, nil
 	}
 
 	if createHostRequest.ValueType == string(cmmn.IP) {
