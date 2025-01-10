@@ -2,7 +2,7 @@ package services
 
 import (
 	"crypto/tls"
-	"fmt"
+	"errors"
 	"log"
 	"net"
 	"regexp"
@@ -14,6 +14,12 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	probing "github.com/prometheus-community/pro-bing"
+)
+
+var (
+	ErrInvalidHostValue = errors.New("invalid host")
+	ErrHostUnhealthy    = errors.New("unable to connect to host")
+	ErrAliasTaken       = errors.New("alias is taken")
 )
 
 type HostService struct {
@@ -104,7 +110,7 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	return host, nil
 }
 
-func (s *HostService) ValidateHost(host string) (string, error) {
+func (s *HostService) ValidateHost(host string) error {
 
 	if IsValidHostValue(host) {
 		normalizedHost := cmmn.NormalizeURL(host)
@@ -112,21 +118,21 @@ func (s *HostService) ValidateHost(host string) (string, error) {
 		pinger, err := probing.NewPinger(addr)
 		if err != nil {
 			log.Printf("failed to probe host: %v", err)
-			return "Unable to connect host", nil
+			return ErrHostUnhealthy
 		}
 		pinger.Count = 1
 		pinger.Timeout = 5 * time.Second
 		err = pinger.Run()
 		defer pinger.Stop()
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		stats := pinger.Statistics()
 		log.Println(stats)
-		return "Verified", nil
+		return nil
 	} else {
-		return "", fmt.Errorf("invalid value")
+		return ErrInvalidHostValue
 	}
 }
 
@@ -166,13 +172,13 @@ func IsValidDomain(domain string) bool {
 	return re.MatchString(domain)
 }
 
-func (s *HostService) ValidateAlias(alias string) (string, error) {
+func (s *HostService) ValidateAlias(alias string) error {
 	exists, err := s.storage.ExistAlias(alias)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if exists {
-		return "", fmt.Errorf("alias %s already exists", alias)
+		return ErrAliasTaken
 	}
-	return "Not Exist", nil
+	return nil
 }
