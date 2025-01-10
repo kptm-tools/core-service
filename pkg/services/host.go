@@ -2,6 +2,7 @@ package services
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"regexp"
@@ -125,7 +126,7 @@ func (s *HostService) ValidateHost(host string) (string, error) {
 		log.Println(stats)
 		return "Verified", nil
 	} else {
-		return "Invalid value", nil
+		return "", fmt.Errorf("invalid value")
 	}
 }
 
@@ -171,7 +172,7 @@ func (s *HostService) ValidateAlias(alias string) (string, error) {
 		return "", err
 	}
 	if exists {
-		return "Exist", nil
+		return "", fmt.Errorf("alias %s already exists", alias)
 	}
 	return "Not Exist", nil
 }

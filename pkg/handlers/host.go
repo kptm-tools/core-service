@@ -159,20 +159,18 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	var validation string
-	var err error
-	if len(validateHostRequest.Value) > 0 {
-		validation, err = h.hostService.ValidateHost(validateHostRequest.Value)
-	} else {
-		validation, err = h.hostService.ValidateAlias(validateHostRequest.Hostname)
+
+	_, errValue := h.hostService.ValidateHost(validateHostRequest.Value)
+	if errValue != nil {
+		return api.WriteJSON(w, http.StatusInternalServerError, errValue.Error())
+	}
+	_, errHosname := h.hostService.ValidateAlias(validateHostRequest.Hostname)
+
+	if errHosname != nil {
+		return api.WriteJSON(w, http.StatusInternalServerError, errHosname.Error())
 	}
 
-	if err != nil {
-
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
-	}
-
-	return api.WriteJSON(w, http.StatusCreated, validation)
+	return api.WriteJSON(w, http.StatusOK, nil)
 }
 
 func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) (*domain.Host, error) {
