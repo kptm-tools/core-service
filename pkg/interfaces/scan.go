@@ -7,8 +7,10 @@ import (
 
 type IScanService interface {
 	CreateScans(hostIDs []int) (*domain.Scan, error)
+	GetScans() ([]*domain.Scan, error)
 }
 
 type IScanHandlers interface {
 	CreateScans(writer http.ResponseWriter, request *http.Request) error
+	GetScans(writer http.ResponseWriter, request *http.Request) error
 }

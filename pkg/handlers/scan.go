@@ -76,3 +76,12 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 	}
 	return api.WriteJSON(w, http.StatusCreated, scan)
 }
+
+func (s ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
+	scans, err := s.scanService.GetScans()
+	if err != nil {
+
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+	return api.WriteJSON(w, http.StatusCreated, scans)
+}

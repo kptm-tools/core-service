@@ -89,3 +89,33 @@ func scanIntoScan(rows *sql.Rows) (*domain.Scan, error) {
 	}
 	return scan, nil
 }
+
+func (s *PostgreSQLStore) GetScans() ([]*domain.Scan, error) {
+
+	query := `
+    SELECT *
+    FROM scans
+    WHERE tenant_id=$1 AND operator_id= $2
+  `
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
+	}
+	defer rows.Close()
+
+	hosts := []*domain.Host{}
+	for rows.Next() {
+		host := &domain.Host{}
+		if err := scanIntoHost(rows, host); err != nil {
+			return nil, fmt.Errorf("failed to scan host: %w", err)
+		}
+		host.Credentials, err = s.GetCredentials(host.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch credentials: %w", err)
+		}
+		hosts = append(hosts, host)
+	}
+
+	return hosts, nil
+}

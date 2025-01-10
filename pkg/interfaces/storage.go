@@ -15,4 +15,5 @@ type IStorage interface {
 	Ping() error
 	CreateScan(*domain.Scan) (*domain.Scan, error)
 	ExistAlias(string) (bool, error)
+	GetScans() ([]*domain.Scan, error)
 }

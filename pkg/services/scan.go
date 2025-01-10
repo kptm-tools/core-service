@@ -92,3 +92,7 @@ func createHostStatus(host domain.Host, metadata []domain.Metadata) domain.Statu
 	}
 	return hostStatus
 }
+
+func (s ScanService) GetScans() ([]*domain.Scan, error) {
+	s.storage.GetScans()
+}
