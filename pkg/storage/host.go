@@ -328,3 +328,15 @@ func replaceSQL(old, searchPattern string) string {
 	}
 	return old
 }
+
+func (s *PostgreSQLStore) ExistAlias(alias string) (bool, error) {
+	var exists bool
+	query := `SELECT 
+    EXISTS(SELECT 1 FROM hosts WHERE alias = $1)
+  `
+	err := s.db.QueryRow(query, alias).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to verify existence: %w", err)
+	}
+	return exists, nil
+}

@@ -11,6 +11,7 @@ import (
 
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/services"
 
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -160,13 +161,24 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 		}
 	}
 
-	validation, err := h.hostService.ValidateHost(validateHostRequest.Value)
-	if err != nil {
-
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	if err := h.hostService.ValidateHost(validateHostRequest.Value); err != nil {
+		if errors.Is(err, services.ErrInvalidHostValue) {
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+		} else if errors.Is(err, services.ErrHostUnhealthy) {
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	return api.WriteJSON(w, http.StatusCreated, validation)
+	if err := h.hostService.ValidateAlias(validateHostRequest.Hostname); err != nil {
+
+		if errors.Is(err, services.ErrAliasTaken) {
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+
+	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
 func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) (*domain.Host, error) {
