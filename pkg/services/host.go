@@ -164,3 +164,14 @@ func IsValidDomain(domain string) bool {
 	re := regexp.MustCompile(`^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$`)
 	return re.MatchString(domain)
 }
+
+func (s *HostService) ValidateAlias(alias string) (string, error) {
+	exists, err := s.storage.ExistAlias(alias)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		return "Exist", nil
+	}
+	return "Not Exist", nil
+}
