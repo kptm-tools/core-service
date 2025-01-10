@@ -13,7 +13,8 @@ type IHostService interface {
 	GetHostname(string) string
 	DeleteHostByID(ID int) (bool, error)
 	PatchHostByID(*domain.Host) (*domain.Host, error)
-	ValidateHost(string) (string, error)
+	ValidateHost(string) error
+	ValidateAlias(string) error
 }
 
 type IHostHandlers interface {

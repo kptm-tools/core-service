@@ -11,7 +11,8 @@ type CreateHostRequest struct {
 }
 
 type ValidateHostRequest struct {
-	Value string `json:"value"`
+	Value    string `json:"value"`
+	Hostname string `json:"hostname"`
 }
 
 type GetHostByTenantIDRequest struct {
