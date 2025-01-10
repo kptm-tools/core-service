@@ -162,12 +162,12 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 
 	_, errValue := h.hostService.ValidateHost(validateHostRequest.Value)
 	if errValue != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errValue.Error()})
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errValue.Error()})
 	}
-	_, errHosname := h.hostService.ValidateAlias(validateHostRequest.Hostname)
+	_, errHostname := h.hostService.ValidateAlias(validateHostRequest.Hostname)
 
-	if errHosname != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errHosname.Error()})
+	if errHostname != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errHostname.Error()})
 	}
 
 	return api.WriteJSON(w, http.StatusOK, nil)

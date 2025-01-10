@@ -105,14 +105,13 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 }
 
 func (s *HostService) ValidateHost(host string) (string, error) {
-
-	if IsValidHostValue(host) {
+	_, err := IsValidHostValue(host)
+	if err == nil {
 		normalizedHost := cmmn.NormalizeURL(host)
 		addr := strings.Split(normalizedHost, "//")[1]
 		pinger, err := probing.NewPinger(addr)
 		if err != nil {
-			log.Printf("failed to probe host: %v", err)
-			return "Unable to connect host", nil
+			return "", fmt.Errorf("failed to probe host: %v", err)
 		}
 		pinger.Count = 1
 		pinger.Timeout = 5 * time.Second
@@ -126,38 +125,36 @@ func (s *HostService) ValidateHost(host string) (string, error) {
 		log.Println(stats)
 		return "Verified", nil
 	} else {
-		return "", fmt.Errorf("invalid value")
+		return "", err
 	}
 }
 
-func IsValidHostValue(value string) bool {
+func IsValidHostValue(value string) (bool, error) {
 
 	normalizedValue := cmmn.NormalizeURL(value)
 	if cmmn.IsURL(normalizedValue) {
 		domain, err := cmmn.ExtractDomain(normalizedValue)
 		if err != nil {
-			log.Println("Invalid URL/Domain: ", normalizedValue)
-			return false
+			return false, fmt.Errorf("invalid URL/Domain: %v", normalizedValue)
 		}
 
 		// Domain with protocol prefix
 		if IsValidDomain(domain) {
-			return true
+			return true, nil
 		}
 
 		// IP address with protocol prefix
 		if cmmn.IsValidIPv4(strings.Split(normalizedValue, "//")[1]) {
-			return true
+			return true, nil
 		}
 	}
 
 	// IP address on its own
 	if cmmn.IsValidIPv4(value) {
-		return true
+		return true, nil
 	}
 
-	log.Println("Invalid IP:", value)
-	return false
+	return false, fmt.Errorf("invalid IP %v", value)
 
 }
 
