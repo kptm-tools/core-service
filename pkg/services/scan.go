@@ -34,7 +34,7 @@ func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) (*d
 
 		scanDB.Targets = append(scanDB.Targets, createTarget(*host))
 	}
-
+	scanDB.HostIDs = hostIDs
 	dataScan, err := s.storage.CreateScan(scanDB)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scan: %w", err)
