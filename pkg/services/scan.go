@@ -21,9 +21,10 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
+func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) (*domain.Scan, error) {
 	scanDB := domain.NewScan()
-	metadataDefault := createMetadata()
+	scanDB.TenantID = tenantID
+	scanDB.OperatorID = operatorID
 
 	for _, hostID := range hostIDs {
 		host, err := s.storage.GetHostByID(hostID)
@@ -31,8 +32,6 @@ func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
 			return nil, fmt.Errorf("failed to get host: %w", err)
 		}
 
-		// Process the host data into the scan
-		scanDB.HostsStatus = append(scanDB.HostsStatus, createHostStatus(*host, metadataDefault))
 		scanDB.Targets = append(scanDB.Targets, createTarget(*host))
 	}
 
@@ -94,5 +93,5 @@ func createHostStatus(host domain.Host, metadata []domain.Metadata) domain.Statu
 }
 
 func (s ScanService) GetScans() ([]*domain.Scan, error) {
-	s.storage.GetScans()
+	return s.storage.GetScans()
 }

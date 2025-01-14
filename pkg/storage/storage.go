@@ -63,7 +63,13 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	if err := s.CreateTenantsTable(); err != nil {
 		return err
 	}
-	if err := s.CreateScansTable(); err != nil {
+	if err := s.CreateScanTable(); err != nil {
+		return err
+	}
+	if err := s.CreateScanHostsTable(); err != nil {
+		return err
+	}
+	if err := s.CreateScanResultsTable(); err != nil {
 		return err
 	}
 
@@ -72,7 +78,7 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 
 func (s *PostgreSQLStore) ClearCoreDB() error {
 	// Attempt to clear Scans Table
-	if err := s.ClearScansTable(); err != nil {
+	if err := s.ClearScanTable(); err != nil {
 		return err
 	}
 
