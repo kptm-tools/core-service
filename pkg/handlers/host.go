@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kptm-tools/common/common/enums"
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/services"
@@ -209,7 +210,7 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (string, string, error) {
 	domainValue := ""
 	ipValue := ""
-	if createHostRequest.ValueType == string(cmmn.Domain) {
+	if createHostRequest.ValueType == string(enums.Domain) {
 		url := createHostRequest.Value
 		if !cmmn.IsURL(url) {
 			return "", "", fmt.Errorf("invalid url: %s", url)
@@ -232,7 +233,7 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 		return domain, ipValue, nil
 	}
 
-	if createHostRequest.ValueType == string(cmmn.IP) {
+	if createHostRequest.ValueType == string(enums.IP) {
 		normalizedURL := cmmn.NormalizeURL(createHostRequest.Value)
 
 		ipValue = strings.Split(normalizedURL, "//")[1]
@@ -240,6 +241,6 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 		return domainValue, ipValue, nil
 	}
 
-	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(cmmn.Domain), string(cmmn.IP))
+	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(enums.Domain), string(enums.IP))
 
 }

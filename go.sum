@@ -10,8 +10,8 @@ github.com/jpillora/go-tld v1.2.1 h1:kDKOkmXLlskqjcvNs7w5XHLep7c8WM7Xd4HQjxllVMk
 github.com/jpillora/go-tld v1.2.1/go.mod h1:plzIl7xr5UWKGy7R+giuv+L/nOjrPjsoWxy/ST9OBUk=
 github.com/klauspost/compress v1.17.9 h1:6KIumPrER1LHsvBVuDa0r5xaG0Es51mhhB9BQB2qeMA=
 github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
-github.com/kptm-tools/common v1.2.10 h1:6+zjtuY2xfDy4cTolt3vYwWgzLq9Ku1xkgvhC/4jL6I=
-github.com/kptm-tools/common v1.2.10/go.mod h1:rbiN3iX3544CBJ4N1As02OH7lkdO1LRBsUuA8+JGKXY=
+github.com/kptm-tools/common v1.2.14 h1:/Ht0gLH/2XGRIHMt4o6BB8jY6XgX9jtyyA1S85iMfPQ=
+github.com/kptm-tools/common v1.2.14/go.mod h1:rbiN3iX3544CBJ4N1As02OH7lkdO1LRBsUuA8+JGKXY=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/likexian/gokit v0.25.15 h1:QjospM1eXhdMMHwZRpMKKAHY/Wig9wgcREmLtf9NslY=

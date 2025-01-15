@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/kptm-tools/common/common/enums"
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -67,7 +68,7 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 		Timestamp: scan.CreatedAt.Unix(),
 	}
 	scanStartedBytes, err := json.Marshal(scanStartedPayload)
-	s.eventBus.Publish("ScanStarted", scanStartedBytes)
+	s.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
 	if err != nil {
 

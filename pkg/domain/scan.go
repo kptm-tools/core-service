@@ -1,15 +1,16 @@
 package domain
 
 import (
-	"github.com/google/uuid"
-	events "github.com/kptm-tools/common/common/events"
-	results "github.com/kptm-tools/common/common/results"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/enums"
+	events "github.com/kptm-tools/common/common/events"
 )
 
 type Metadata struct {
-	Progress string              `json:"progress"`
-	Service  results.ServiceName `json:"service"`
+	Progress string            `json:"progress"`
+	Service  enums.ServiceName `json:"service"`
 }
 
 type StatusHost struct {
