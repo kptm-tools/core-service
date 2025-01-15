@@ -252,7 +252,7 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
 func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) error {
 	query := `
     INSERT INTO scan_results (scan_id, host_id, tool_id,status, created_at, updated_at)
-    values ($1, $2)`
+    values ($1, $2, $3,$4, $5,$6)`
 
 	if len(sc.HostIDs) == 0 {
 		return fmt.Errorf("failed because no hostIDs were provided")
@@ -265,7 +265,7 @@ func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) erro
 	for _, toolID := range toolIDs {
 		for _, hostID := range sc.HostIDs {
 			if _, err := tx.Exec(query, sc.ID, hostID, toolID, "PENDING", time.Now(), time.Now()); err != nil {
-				return fmt.Errorf("failed to insert scan_hosts: %w", err)
+				return fmt.Errorf("failed to insert scan_results: %w", err)
 			}
 		}
 	}
