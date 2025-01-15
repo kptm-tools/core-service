@@ -3,8 +3,8 @@ package services
 import (
 	"fmt"
 
+	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/common/common/events"
-	"github.com/kptm-tools/common/common/results"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -49,31 +49,31 @@ func createMetadata() []domain.Metadata {
 	// set dataResults of host in status scan
 	metadataWhois := domain.Metadata{
 		Progress: "0%",
-		Service:  results.ServiceWhoIs,
+		Service:  enums.ServiceWhoIs,
 	}
 	metadataHarvester := domain.Metadata{
 		Progress: "0%",
-		Service:  results.ServiceHarvester,
+		Service:  enums.ServiceHarvester,
 	}
 	metadataDNSLookup := domain.Metadata{
 		Progress: "0%",
-		Service:  results.ServiceDNSLookup,
+		Service:  enums.ServiceDNSLookup,
 	}
 	metadataNmap := domain.Metadata{
 		Progress: "0%",
-		Service:  results.ServiceNmap,
+		Service:  enums.ServiceNmap,
 	}
 	return []domain.Metadata{metadataHarvester, metadataWhois, metadataDNSLookup, metadataNmap}
 }
 
 func createTarget(host domain.Host) events.Target {
 	var hostValue string
-	var hostType events.TargetType
+	var hostType enums.TargetType
 	if host.Domain == "" {
-		hostType = events.IP
+		hostType = enums.IP
 		hostValue = host.IP
 	} else {
-		hostType = events.Domain
+		hostType = enums.Domain
 		hostValue = host.Domain
 	}
 
