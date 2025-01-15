@@ -63,6 +63,9 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	if err := s.CreateTenantsTable(); err != nil {
 		return err
 	}
+	if err := s.CreateToolTable(); err != nil {
+		return err
+	}
 	if err := s.CreateScanTable(); err != nil {
 		return err
 	}

@@ -7,7 +7,7 @@ import (
 
 type IScanService interface {
 	CreateScans(hostIDs []int, tenantID, operatorID string) (*domain.Scan, error)
-	GetScans() ([]*domain.Scan, error)
+	GetScans(string) ([]*domain.ScanSummary, error)
 }
 
 type IScanHandlers interface {

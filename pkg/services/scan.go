@@ -92,6 +92,6 @@ func createHostStatus(host domain.Host, metadata []domain.Metadata) domain.Statu
 	return hostStatus
 }
 
-func (s ScanService) GetScans() ([]*domain.Scan, error) {
-	return s.storage.GetScans()
+func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+	return s.storage.GetScans(tenantID)
 }

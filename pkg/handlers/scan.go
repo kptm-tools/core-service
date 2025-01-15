@@ -80,7 +80,8 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 }
 
 func (s ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
-	scans, err := s.scanService.GetScans()
+	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	scans, err := s.scanService.GetScans(tenantID)
 	if err != nil {
 
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())

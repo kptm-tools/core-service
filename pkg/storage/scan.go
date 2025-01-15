@@ -9,10 +9,13 @@ import (
 func (s *PostgreSQLStore) CreateScanTable() error {
 	query := `create table if not exists scans (
       id SERIAL PRIMARY KEY,
-      tenant_id UUID,
-      operator_id UUID,
+      tenant_id UUID NOT NULL,
+      operator_id UUID NOT NULL,
+      status VARCHAR(50) NOT NULL, -- e.g., 'pending', 'in_progress', 'completed', 'failed'
       started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      ended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`
 
 	_, err := s.db.Query(query)
@@ -26,14 +29,10 @@ func (s *PostgreSQLStore) CreateScanTable() error {
 }
 
 func (s *PostgreSQLStore) CreateScanHostsTable() error {
-	query := `create table if not exists scans_hosts (
+	query := `create table if not exists scan_hosts (
       id SERIAL PRIMARY KEY,
-      scan_id INT REFERENCES scans(id) ON DELETE CASCADE,
-      host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
-      severity JSONB,
-      vulnerability INT,
-      ended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      status decimal(3,2)
+      scan_id INT NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+      host_id INT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
   )`
 
 	_, err := s.db.Query(query)
@@ -48,12 +47,30 @@ func (s *PostgreSQLStore) CreateScanHostsTable() error {
 func (s *PostgreSQLStore) CreateScanResultsTable() error {
 	query := `create table if not exists scans_results (
       id SERIAL PRIMARY KEY,
-      scan_id integer REFERENCES scans (id) ON DELETE CASCADE,
-      tool_name VARCHAR(255) NOT NULL,
+      scan_id INT REFERENCES scans (id) ON DELETE CASCADE,
+      host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
+      tool_id INT REFERENCES tools(id) ON DELETE CASCADE,
       status  VARCHAR(50) NOT NULL,
       result JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`
+
+	_, err := s.db.Query(query)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) CreateToolTable() error {
+	query := `create table if not exists tools (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL, -- Tool name
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`
 
 	_, err := s.db.Query(query)
@@ -84,9 +101,9 @@ func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
 	defer tx.Rollback()
 
 	query := `
-    INSERT INTO scans ( tenant_id, operator_id, started_at, ended_at)
-    values ($1, $2, $3, $4)
-    RETURNING *`
+    INSERT INTO scans ( tenant_id, operator_id,status, started_at, ended_at)
+    values ($1, $2,'', $3, $4)
+    RETURNING id, tenant_id, operator_id, started_at, ended_at`
 
 	row := tx.QueryRow(query, sc.TenantID, sc.OperatorID, sc.StartedAt, sc.EndedAt)
 	newScan := &domain.Scan{}
@@ -107,12 +124,16 @@ func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
 
 func (s *PostgreSQLStore) InsertScanHost(tx *sql.Tx, sc *domain.Scan) error {
 	query := `
-    INSERT INTO scans_hosts (scan_id, host_id,status)
+    INSERT INTO scan_hosts (scan_id, host_id,status)
     values ($1, $2, $3)`
 
-	for _, hostId := range sc.HostIDs {
-		if _, err := tx.Exec(query, sc.ID, hostId, 0); err != nil {
-			return fmt.Errorf("failed to insert credential: %w", err)
+	if len(sc.HostIDs) == 0 {
+		return fmt.Errorf("failed because no hostIDs were provided")
+	}
+
+	for _, hostID := range sc.HostIDs {
+		if _, err := tx.Exec(query, sc.ID, hostID, 0); err != nil {
+			return fmt.Errorf("failed to insert scan_hosts: %w", err)
 		}
 	}
 	return nil
@@ -120,29 +141,52 @@ func (s *PostgreSQLStore) InsertScanHost(tx *sql.Tx, sc *domain.Scan) error {
 
 func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
 	if err := row.Scan(&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.StartedAt, &scan.EndedAt); err != nil {
-		return fmt.Errorf("error scanning rows: %w", err)
+		return fmt.Errorf("error scanning row: %w", err)
 	}
 	return nil
 }
 
-func (s *PostgreSQLStore) GetScans() ([]*domain.Scan, error) {
+func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
+	scanSum := new(domain.ScanSummary)
+	err := rows.Scan(
+		&scanSum.ScanDate,
+		&scanSum.Host,
+		&scanSum.Vulnerability,
+		&scanSum.Severity,
+		&scanSum.Duration,
+		&scanSum.Status,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving Scan: %w", err)
+	}
+
+	return scanSum, nil
+}
+func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
 
 	query := `
-    SELECT *
+    SELECT started_date, alias, vulnerability,severity, 
+           EXTRACT(EPOCH FROM (started_at - ended_at)) as durations, status
     FROM scans
-    WHERE tenant_id=$1 AND operator_id= $2
+    INNER JOIN 
+        scan_hosts SH ON scan_hosts.scan_id = scans.id
+    INNER JOIN hosts H ON scan_hosts.host_id = H.id
+    WHERE tenant_id=$1
   `
 
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
 	}
 	defer rows.Close()
 
-	scans := []*domain.Scan{}
+	scans := []*domain.ScanSummary{}
 	for rows.Next() {
-		scan := &domain.Scan{}
-		scans = append(scans, scan)
+		scanSum, err := scanIntoScanSum(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan credential: %w", err)
+		}
+		scans = append(scans, scanSum)
 	}
 
 	return scans, nil
