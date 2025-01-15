@@ -32,6 +32,7 @@ type Scan struct {
 	UpdatedAt    time.Time       `json:"updated_at,omitempty"`
 	StartedAt    time.Time       `json:"started_at"`
 	EndedAt      time.Time       `json:"ended_at"`
+	Status       string          `json:"status,omitempty"`
 }
 
 type ScanSummary struct {
@@ -41,6 +42,12 @@ type ScanSummary struct {
 	Severity      []int  `json:"severity,omitempty"`
 	Duration      int    `json:"duration,omitempty"`
 	Status        int    `json:"status,omitempty"`
+}
+
+type Tool struct {
+	Name        string    `json:"name,omitempty"`
+	Description string    `json:"description,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
 }
 
 func NewScan() *Scan {
