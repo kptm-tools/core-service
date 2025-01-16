@@ -35,13 +35,20 @@ type Scan struct {
 	Status       string          `json:"status,omitempty"`
 }
 
+type SeverityCounts struct {
+	Critical int `json:"critical"`
+	High     int `json:"high"`
+	Medium   int `json:"medium"`
+	Low      int `json:"low"`
+}
+
 type ScanSummary struct {
-	ScanDate      string `json:"scan_date,omitempty"`
-	Host          string `json:"host,omitempty"`
-	Vulnerability int    `json:"vulnerability,omitempty"`
-	Severity      []int  `json:"severity,omitempty"`
-	Duration      int    `json:"duration,omitempty"`
-	Status        int    `json:"status,omitempty"`
+	ScanDate        string         `json:"scan_date,omitempty"`
+	Host            string         `json:"host,omitempty"`
+	Vulnerabilities int            `json:"vulnerability,omitempty"`
+	Severities      SeverityCounts `json:"severity,omitempty"`
+	Duration        int            `json:"duration,omitempty"`
+	Status          string         `json:"status,omitempty"`
 }
 
 type Tool struct {

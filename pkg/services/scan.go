@@ -44,27 +44,6 @@ func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) (*d
 	return dataScan, nil
 }
 
-func createMetadata() []domain.Metadata {
-	// set dataResults of host in status scan
-	metadataWhois := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceWhoIs,
-	}
-	metadataHarvester := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceHarvester,
-	}
-	metadataDNSLookup := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceDNSLookup,
-	}
-	metadataNmap := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceNmap,
-	}
-	return []domain.Metadata{metadataHarvester, metadataWhois, metadataDNSLookup, metadataNmap}
-}
-
 func createTarget(host domain.Host) events.Target {
 	var hostValue string
 	var hostType enums.TargetType
@@ -82,14 +61,6 @@ func createTarget(host domain.Host) events.Target {
 		Type:  hostType,
 	}
 	return target
-}
-
-func createHostStatus(host domain.Host, metadata []domain.Metadata) domain.StatusHost {
-	hostStatus := domain.StatusHost{
-		Host:     host.Name,
-		Metadata: metadata,
-	}
-	return hostStatus
 }
 
 func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {

@@ -208,8 +208,11 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	err := rows.Scan(
 		&scanSum.ScanDate,
 		&scanSum.Host,
-		&scanSum.Vulnerability,
-		&scanSum.Severity,
+		&scanSum.Vulnerabilities,
+		&scanSum.Severities.Critical,
+		&scanSum.Severities.Low,
+		&scanSum.Severities.High,
+		&scanSum.Severities.Medium,
 		&scanSum.Duration,
 		&scanSum.Status,
 	)
@@ -222,13 +225,13 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
 
 	query := `
-    SELECT started_date, alias, vulnerability,severity, 
-           EXTRACT(EPOCH FROM (started_at - ended_at)) as durations, status
-    FROM scans
-    INNER JOIN 
-        scan_hosts SH ON scan_hosts.scan_id = scans.id
-    INNER JOIN hosts H ON scan_hosts.host_id = H.id
-    WHERE tenant_id=$1
+     SELECT S.started_at, alias, 5 as vulnerabilities, 
+            0 as critical, 0 as low, 0 as high, 0 as medium, 99090 as duration, S.status
+    FROM scan_hosts SH
+        INNER JOIN  scan_results SR ON SR.scan_id = SH.scan_id and SR.host_id= SH.host_id
+    INNER JOIN hosts H ON SH.host_id = H.id
+  INNER JOIN  (select * from scans where tenant_id=$1) S on SH.scan_id = S.id
+ GROUP BY SH.scan_id,SH.host_id, S.started_at, alias, S.status
   `
 
 	rows, err := s.db.Query(query, tenantID)
