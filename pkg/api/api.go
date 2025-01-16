@@ -72,6 +72,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /tenants", middleware.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	router.HandleFunc("POST /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScans), "createScans"))
+	router.HandleFunc("GET /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,

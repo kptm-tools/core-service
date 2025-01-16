@@ -1,11 +1,9 @@
 package domain
 
 import (
-	"time"
-
-	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/enums"
 	events "github.com/kptm-tools/common/common/events"
+	"time"
 )
 
 type Metadata struct {
@@ -21,18 +19,47 @@ type StatusHost struct {
 type ResultHost struct {
 	Host string `json:"id,omitempty"`
 }
+
 type Scan struct {
 	ID           string          `json:"id,omitempty"`
+	TenantID     string          `json:"tenant_id,omitempty"`
+	OperatorID   string          `json:"operator_id,omitempty"`
+	HostIDs      []int           `json:"host_ids,omitempty"`
 	HostsStatus  []StatusHost    `json:"hosts_status,omitempty"`
 	HostsResults []ResultHost    `json:"hosts_results,omitempty"`
 	Targets      []events.Target `json:"targets,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	CreatedAt    time.Time       `json:"created_at,omitempty"`
+	UpdatedAt    time.Time       `json:"updated_at,omitempty"`
+	StartedAt    time.Time       `json:"started_at"`
+	EndedAt      time.Time       `json:"ended_at"`
+	Status       string          `json:"status,omitempty"`
+}
+
+type SeverityCounts struct {
+	Critical int `json:"critical"`
+	High     int `json:"high"`
+	Medium   int `json:"medium"`
+	Low      int `json:"low"`
+}
+
+type ScanSummary struct {
+	ScanDate        string         `json:"scan_date,omitempty"`
+	Host            string         `json:"host,omitempty"`
+	Vulnerabilities int            `json:"vulnerability,omitempty"`
+	Severities      SeverityCounts `json:"severity,omitempty"`
+	Duration        int            `json:"duration,omitempty"`
+	Status          string         `json:"status,omitempty"`
+}
+
+type Tool struct {
+	Name        string    `json:"name,omitempty"`
+	Description string    `json:"description,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
 }
 
 func NewScan() *Scan {
 	return &Scan{
-		ID:        uuid.NewString(),
+		StartedAt: time.Now().UTC(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

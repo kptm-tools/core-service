@@ -21,9 +21,10 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
+func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) (*domain.Scan, error) {
 	scanDB := domain.NewScan()
-	metadataDefault := createMetadata()
+	scanDB.TenantID = tenantID
+	scanDB.OperatorID = operatorID
 
 	for _, hostID := range hostIDs {
 		host, err := s.storage.GetHostByID(hostID)
@@ -31,11 +32,9 @@ func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
 			return nil, fmt.Errorf("failed to get host: %w", err)
 		}
 
-		// Process the host data into the scan
-		scanDB.HostsStatus = append(scanDB.HostsStatus, createHostStatus(*host, metadataDefault))
 		scanDB.Targets = append(scanDB.Targets, createTarget(*host))
 	}
-
+	scanDB.HostIDs = hostIDs
 	dataScan, err := s.storage.CreateScan(scanDB)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scan: %w", err)
@@ -43,27 +42,6 @@ func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
 
 	dataScan.Targets = scanDB.Targets
 	return dataScan, nil
-}
-
-func createMetadata() []domain.Metadata {
-	// set dataResults of host in status scan
-	metadataWhois := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceWhoIs,
-	}
-	metadataHarvester := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceHarvester,
-	}
-	metadataDNSLookup := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceDNSLookup,
-	}
-	metadataNmap := domain.Metadata{
-		Progress: "0%",
-		Service:  enums.ServiceNmap,
-	}
-	return []domain.Metadata{metadataHarvester, metadataWhois, metadataDNSLookup, metadataNmap}
 }
 
 func createTarget(host domain.Host) events.Target {
@@ -85,10 +63,6 @@ func createTarget(host domain.Host) events.Target {
 	return target
 }
 
-func createHostStatus(host domain.Host, metadata []domain.Metadata) domain.StatusHost {
-	hostStatus := domain.StatusHost{
-		Host:     host.Name,
-		Metadata: metadata,
-	}
-	return hostStatus
+func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+	return s.storage.GetScans(tenantID)
 }

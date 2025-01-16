@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 	"net/http"
 	"strconv"
 
@@ -29,7 +30,8 @@ func NewScanHandlers(scanService interfaces.IScanService, bus cmmn.EventBus) *Sc
 }
 
 func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) error {
-
+	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
+	userID := req.Context().Value(middleware.ContextUserID).(string)
 	scanRequest := new(ScanRequest)
 
 	if err := decodeJSONBody(w, req, scanRequest); err != nil {
@@ -52,7 +54,7 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 		hostIDs = append(hostIDs, intID)
 	}
 
-	scan, err := s.scanService.CreateScans(hostIDs)
+	scan, err := s.scanService.CreateScans(hostIDs, tenantID, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
@@ -65,7 +67,7 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 	scanStartedPayload := &cmmn.ScanStartedEvent{
 		ScanID:    scan.ID,
 		Targets:   scan.Targets,
-		Timestamp: scan.CreatedAt.Unix(),
+		Timestamp: scan.StartedAt.Unix(),
 	}
 	scanStartedBytes, err := json.Marshal(scanStartedPayload)
 	s.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
@@ -75,4 +77,14 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 	return api.WriteJSON(w, http.StatusCreated, scan)
+}
+
+func (s ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
+	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	scans, err := s.scanService.GetScans(tenantID)
+	if err != nil {
+
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+	return api.WriteJSON(w, http.StatusCreated, scans)
 }
