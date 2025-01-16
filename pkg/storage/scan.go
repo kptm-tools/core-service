@@ -3,7 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	"github.com/kptm-tools/common/common/results"
+	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"log"
 	"time"
@@ -111,22 +111,22 @@ func (s *PostgreSQLStore) InsertTools() error {
 func (s *PostgreSQLStore) getDefaultTools() []domain.Tool {
 	toolsData := []domain.Tool{
 		{
-			Name:        string(results.ServiceDNSLookup),
+			Name:        string(enums.ServiceDNSLookup),
 			Description: "This kali tool looks up the DNS server IP address",
 			CreatedAt:   time.Now(),
 		},
 		{
-			Name:        string(results.ServiceWhoIs),
+			Name:        string(enums.ServiceWhoIs),
 			Description: "This kali tool use WhoIs to obtain ownership info and IP address history",
 			CreatedAt:   time.Now(),
 		},
 		{
-			Name:        string(results.ServiceHarvester),
+			Name:        string(enums.ServiceHarvester),
 			Description: "This kali tool use harvester to obtain subdomain names, e-mail addresses, virtual hosts, open ports/ banners, and employee names from different public source",
 			CreatedAt:   time.Now(),
 		},
 		{
-			Name:        string(results.ServiceNmap),
+			Name:        string(enums.ServiceNmap),
 			Description: "This kali tool use nmap to obtain vulnerabilities",
 			CreatedAt:   time.Now(),
 		},
