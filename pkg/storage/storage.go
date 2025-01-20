@@ -66,19 +66,19 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	if err := s.CreateToolTable(); err != nil {
 		return err
 	}
-	if err := s.InsertTools(); err != nil {
-		return err
-	}
+
 	if err := s.CreateScanTable(); err != nil {
 		return err
 	}
-	if err := s.CreateScanHostsTable(); err != nil {
+	if err := s.CreateScanVulnerabilityTable(); err != nil {
 		return err
 	}
 	if err := s.CreateScanResultsTable(); err != nil {
 		return err
 	}
-
+	if err := s.InsertTools(); err != nil {
+		return err
+	}
 	return nil
 }
 

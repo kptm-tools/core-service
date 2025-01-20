@@ -48,13 +48,21 @@ type ScanSummary struct {
 	Vulnerabilities int            `json:"vulnerability,omitempty"`
 	Severities      SeverityCounts `json:"severity,omitempty"`
 	Duration        int            `json:"duration,omitempty"`
-	Status          string         `json:"status,omitempty"`
+	Status          int            `json:"status,omitempty"`
 }
 
 type Tool struct {
 	Name        string    `json:"name,omitempty"`
 	Description string    `json:"description,omitempty"`
 	CreatedAt   time.Time `json:"created_at,omitempty"`
+	Type        int       `json:"type,omitempty"`
+}
+
+type Vulnerability struct {
+	Type        string   `json:"type,omitempty"`
+	CVSS        float64  `json:"cvss,omitempty"`
+	References  []string `json:"references,omitempty"`
+	Exploitable bool     `json:"exploitable,omitempty"`
 }
 
 func NewScan() *Scan {
