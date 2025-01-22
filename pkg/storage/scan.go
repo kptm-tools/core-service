@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kptm-tools/common/common/enums"
+	cmmnRes "github.com/kptm-tools/common/common/results"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"log"
 	"time"
@@ -273,11 +274,11 @@ func (s *PostgreSQLStore) GetTotalVulnerabilities(id int, results []*domain.Scan
 	for _, result := range results {
 		if result.ScanID == id {
 			total = total + result.Result.TotalVulnerabilities()
-
-			totalSeverity.Low = totalSeverity.Low + 1
-			totalSeverity.Medium = totalSeverity.Medium + 1
-			totalSeverity.High = totalSeverity.High + 1
-			totalSeverity.Critical = totalSeverity.Critical + 1
+			dataSeverity := cmmnRes.GetSeverityCounts(result.Result.GetAllVulnerabilites())
+			totalSeverity.Low = totalSeverity.Low + dataSeverity.Low
+			totalSeverity.Medium = totalSeverity.Medium + dataSeverity.Medium
+			totalSeverity.High = totalSeverity.High + dataSeverity.High
+			totalSeverity.Critical = totalSeverity.Critical + dataSeverity.Critical
 		}
 	}
 	return total, totalSeverity
