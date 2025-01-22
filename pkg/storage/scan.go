@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"github.com/kptm-tools/common/common/enums"
 	cmmnRes "github.com/kptm-tools/common/common/results"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -93,6 +94,18 @@ func (s *PostgreSQLStore) CreateToolTable() error {
 }
 
 func (s *PostgreSQLStore) InsertTools() error {
+	// Check if the table is already populated
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM tools").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check tools count: %w", err)
+	}
+
+	if count > 0 {
+		slog.Info("Tools table already populated, skipping insertion.")
+		return nil
+	}
+
 	toolsData := s.getDefaultTools()
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -113,32 +126,33 @@ func (s *PostgreSQLStore) InsertTools() error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	slog.Info("Tools table populated successfully.")
 	return nil
 }
 
 func (s *PostgreSQLStore) getDefaultTools() []domain.Tool {
 	toolsData := []domain.Tool{
 		{
-			Name:        string(enums.DNSLookupEventSubject),
+			Name:        string(enums.ToolDNSLookup),
 			Description: "This kali tool looks up the DNS server IP address",
 			CreatedAt:   time.Now(),
 			Type:        0,
 		},
 		{
-			Name:        string(enums.WhoIsEventSubject),
-			Description: "This kali tool use WhoIs to obtain ownership info and IP address history",
+			Name:        string(enums.ToolWhoIs),
+			Description: "This kali tool uses WhoIs to obtain ownership info and IP address history",
 			CreatedAt:   time.Now(),
 			Type:        0,
 		},
 		{
-			Name:        string(enums.HarvesterEventSubject),
-			Description: "This kali tool use harvester to obtain subdomain names, e-mail addresses, virtual hosts, open ports/ banners, and employee names from different public source",
+			Name:        string(enums.ToolHarvester),
+			Description: "This kali tool uses harvester to obtain subdomain names, e-mail addresses, virtual hosts, open ports/ banners, and employee names from different public source",
 			CreatedAt:   time.Now(),
 			Type:        0,
 		},
 		{
-			Name:        string(enums.NmapEventSubject),
-			Description: "This kali tool use nmap to obtain vulnerabilities",
+			Name:        string(enums.ToolNmap),
+			Description: "This kali tool uses nmap to obtain vulnerabilities",
 			CreatedAt:   time.Now(),
 			Type:        1,
 		},
