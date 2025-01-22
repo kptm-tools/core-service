@@ -155,7 +155,7 @@ func (s *PostgreSQLStore) ClearScanTable() error {
 	return nil
 }
 
-func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []*string) ([]*domain.Scan, error) {
+func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain.Scan, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction %w", err)
@@ -168,7 +168,7 @@ func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []*string) ([]*do
 	query := `
     INSERT INTO scans (tenant_id, operator_id, host_id, status, started_at, ended_at)
     values ($1, $2, $3,'PENDING', $4, $5)
-    RETURNING id, tenant_id, operator_id, status, started_at, ended_at`
+    RETURNING id, tenant_id, operator_id, host_id, status, started_at, ended_at`
 
 	for _, hostID := range hostIDs {
 		row := tx.QueryRow(query, sc.TenantID, sc.OperatorID, hostID, sc.StartedAt, sc.EndedAt)
@@ -207,7 +207,7 @@ func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, sc *domain.Scan, h
 }
 
 func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
-	if err := row.Scan(&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.Status, &scan.StartedAt, &scan.EndedAt); err != nil {
+	if err := row.Scan(&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt, &scan.EndedAt); err != nil {
 		return fmt.Errorf("error scanning row: %w", err)
 	}
 	return nil
@@ -276,7 +276,7 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
 func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) error {
 	query := `
     INSERT INTO scan_results (scan_id, tool_id,status, created_at, updated_at)
-    values ($1, $2, $3,$4, $5,$6)`
+    values ($1, $2, $3,$4, $5)`
 
 	toolIDs, errTool := s.GetTools()
 	if errTool != nil {
