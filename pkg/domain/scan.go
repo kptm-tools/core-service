@@ -2,13 +2,13 @@ package domain
 
 import (
 	"github.com/kptm-tools/common/common/enums"
-	events "github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/common/common/results"
 	"time"
 )
 
 type Metadata struct {
-	Progress string            `json:"progress"`
-	Service  enums.ServiceName `json:"service"`
+	Progress string                 `json:"progress"`
+	Service  enums.EventSubjectName `json:"service"`
 }
 
 type StatusHost struct {
@@ -21,18 +21,18 @@ type ResultHost struct {
 }
 
 type Scan struct {
-	ID           string          `json:"id,omitempty"`
-	TenantID     string          `json:"tenant_id,omitempty"`
-	OperatorID   string          `json:"operator_id,omitempty"`
-	HostIDs      []int           `json:"host_ids,omitempty"`
-	HostsStatus  []StatusHost    `json:"hosts_status,omitempty"`
-	HostsResults []ResultHost    `json:"hosts_results,omitempty"`
-	Targets      []events.Target `json:"targets,omitempty"`
-	CreatedAt    time.Time       `json:"created_at,omitempty"`
-	UpdatedAt    time.Time       `json:"updated_at,omitempty"`
-	StartedAt    time.Time       `json:"started_at"`
-	EndedAt      time.Time       `json:"ended_at"`
-	Status       string          `json:"status,omitempty"`
+	ID           string         `json:"id,omitempty"`
+	TenantID     string         `json:"tenant_id,omitempty"`
+	OperatorID   string         `json:"operator_id,omitempty"`
+	HostID       int            `json:"host_ids,omitempty"`
+	HostsStatus  []StatusHost   `json:"hosts_status,omitempty"`
+	HostsResults []ResultHost   `json:"hosts_results,omitempty"`
+	Target       results.Target `json:"targets,omitempty"`
+	CreatedAt    time.Time      `json:"created_at,omitempty"`
+	UpdatedAt    time.Time      `json:"updated_at,omitempty"`
+	StartedAt    time.Time      `json:"started_at"`
+	EndedAt      time.Time      `json:"ended_at"`
+	Status       string         `json:"status,omitempty"`
 }
 
 type SeverityCounts struct {

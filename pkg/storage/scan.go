@@ -14,6 +14,7 @@ func (s *PostgreSQLStore) CreateScanTable() error {
       id SERIAL PRIMARY KEY,
       tenant_id UUID NOT NULL,
       operator_id UUID NOT NULL,
+      host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
       status VARCHAR(50) NOT NULL, -- e.g., 'pending', 'in_progress', 'completed', 'failed'
       started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -55,7 +56,6 @@ func (s *PostgreSQLStore) CreateScanResultsTable() error {
 	query := `create table if not exists scan_results (
       id SERIAL PRIMARY KEY,
       scan_id INT REFERENCES scans (id) ON DELETE CASCADE,
-      host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
       tool_id INT REFERENCES tools(id) ON DELETE CASCADE,
       status  VARCHAR(50) NOT NULL,
       result JSONB,
@@ -117,25 +117,25 @@ func (s *PostgreSQLStore) InsertTools() error {
 func (s *PostgreSQLStore) getDefaultTools() []domain.Tool {
 	toolsData := []domain.Tool{
 		{
-			Name:        string(enums.ServiceDNSLookup),
+			Name:        string(enums.DNSLookupEventSubject),
 			Description: "This kali tool looks up the DNS server IP address",
 			CreatedAt:   time.Now(),
 			Type:        0,
 		},
 		{
-			Name:        string(enums.ServiceWhoIs),
+			Name:        string(enums.WhoIsEventSubject),
 			Description: "This kali tool use WhoIs to obtain ownership info and IP address history",
 			CreatedAt:   time.Now(),
 			Type:        0,
 		},
 		{
-			Name:        string(enums.ServiceHarvester),
+			Name:        string(enums.HarvesterEventSubject),
 			Description: "This kali tool use harvester to obtain subdomain names, e-mail addresses, virtual hosts, open ports/ banners, and employee names from different public source",
 			CreatedAt:   time.Now(),
 			Type:        0,
 		},
 		{
-			Name:        string(enums.ServiceNmap),
+			Name:        string(enums.NmapEventSubject),
 			Description: "This kali tool use nmap to obtain vulnerabilities",
 			CreatedAt:   time.Now(),
 			Type:        1,
@@ -155,48 +155,52 @@ func (s *PostgreSQLStore) ClearScanTable() error {
 	return nil
 }
 
-func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
+func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []*string) ([]*domain.Scan, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction %w", err)
 	}
+	if len(hostIDs) == 0 {
+		return nil, fmt.Errorf("failed because no hostIDs were provided")
+	}
 	defer tx.Rollback()
-
+	scans := []*domain.Scan{}
 	query := `
-    INSERT INTO scans ( tenant_id, operator_id,status, started_at, ended_at)
-    values ($1, $2,'PENDING', $3, $4)
+    INSERT INTO scans (tenant_id, operator_id, host_id, status, started_at, ended_at)
+    values ($1, $2, $3,'PENDING', $4, $5)
     RETURNING id, tenant_id, operator_id, status, started_at, ended_at`
 
-	row := tx.QueryRow(query, sc.TenantID, sc.OperatorID, sc.StartedAt, sc.EndedAt)
-	newScan := &domain.Scan{}
-	if err := scanIntoScan(row, newScan); err != nil {
-		return nil, fmt.Errorf("failed to insert scan: %w", err)
-	}
-	sc.ID = newScan.ID
-
-	errInsertScanResultInitial := s.InsertScanHostResult(tx, sc)
-	if errInsertScanResultInitial != nil {
-		return nil, errInsertScanResultInitial
+	for _, hostID := range hostIDs {
+		row := tx.QueryRow(query, sc.TenantID, sc.OperatorID, hostID, sc.StartedAt, sc.EndedAt)
+		newScan := &domain.Scan{}
+		if err := scanIntoScan(row, newScan); err != nil {
+			return nil, fmt.Errorf("failed to insert scan: %w", err)
+		}
+		scans = append(scans, newScan)
+		errInsertScanResultInitial := s.InsertScanHostResult(tx, newScan)
+		if errInsertScanResultInitial != nil {
+			return nil, errInsertScanResultInitial
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
-	return newScan, nil
+	return scans, nil
 }
 
-func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, sc *domain.Scan) error {
+func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, sc *domain.Scan, hostIDs []*string) error {
 	query := `
     INSERT INTO vulnerability (scan_id, host_id, type, cvss, references, exploitable)
     values ($1, $2, $3,$4,$5,$6)`
 
-	if len(sc.HostIDs) == 0 {
+	if len(hostIDs) == 0 {
 		return fmt.Errorf("failed because no hostIDs were provided")
 	}
 
-	for _, hostID := range sc.HostIDs {
+	for _, hostID := range hostIDs {
 		if _, err := tx.Exec(query, sc.ID, hostID); err != nil {
-			return fmt.Errorf("failed to insert scan_hosts: %w", err)
+			return fmt.Errorf("failed to insert vulnerability: %w", err)
 		}
 	}
 	return nil
@@ -271,22 +275,16 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
 
 func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) error {
 	query := `
-    INSERT INTO scan_results (scan_id, host_id, tool_id,status, created_at, updated_at)
+    INSERT INTO scan_results (scan_id, tool_id,status, created_at, updated_at)
     values ($1, $2, $3,$4, $5,$6)`
-
-	if len(sc.HostIDs) == 0 {
-		return fmt.Errorf("failed because no hostIDs were provided")
-	}
 
 	toolIDs, errTool := s.GetTools()
 	if errTool != nil {
 		return errTool
 	}
 	for _, toolID := range toolIDs {
-		for _, hostID := range sc.HostIDs {
-			if _, err := tx.Exec(query, sc.ID, hostID, toolID, "PENDING", time.Now(), time.Now()); err != nil {
-				return fmt.Errorf("failed to insert scan_results: %w", err)
-			}
+		if _, err := tx.Exec(query, sc.ID, toolID, "PENDING", time.Now(), time.Now()); err != nil {
+			return fmt.Errorf("failed to insert scan_results: %w", err)
 		}
 	}
 	return nil

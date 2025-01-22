@@ -2,9 +2,9 @@ package services
 
 import (
 	"fmt"
+	"github.com/kptm-tools/common/common/results"
 
 	"github.com/kptm-tools/common/common/enums"
-	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -21,30 +21,27 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) (*domain.Scan, error) {
+func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error) {
 	scanDB := domain.NewScan()
 	scanDB.TenantID = tenantID
 	scanDB.OperatorID = operatorID
 
-	for _, hostID := range hostIDs {
-		host, err := s.storage.GetHostByID(hostID)
+	dataScans, err := s.storage.CreateScans(scanDB, hostIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scan: %w", err)
+	}
+	for _, dataScan := range dataScans {
+		host, err := s.storage.GetHostByID(dataScan.HostID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get host: %w", err)
 		}
 
-		scanDB.Targets = append(scanDB.Targets, createTarget(*host))
+		dataScan.Target = createTarget(*host)
 	}
-	scanDB.HostIDs = hostIDs
-	dataScan, err := s.storage.CreateScan(scanDB)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scan: %w", err)
-	}
-
-	dataScan.Targets = scanDB.Targets
-	return dataScan, nil
+	return dataScans, nil
 }
 
-func createTarget(host domain.Host) events.Target {
+func createTarget(host domain.Host) results.Target {
 	var hostValue string
 	var hostType enums.TargetType
 	if host.Domain == "" {
@@ -55,7 +52,7 @@ func createTarget(host domain.Host) events.Target {
 		hostValue = host.Domain
 	}
 
-	target := events.Target{
+	target := results.Target{
 		Alias: host.Name,
 		Value: hostValue,
 		Type:  hostType,
