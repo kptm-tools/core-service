@@ -239,6 +239,11 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 		&scanSum.Host,
 		&scanSum.Duration,
 		&scanSum.Status,
+		&scanSum.Vulnerabilities,
+		&scanSum.Severities.Low,
+		&scanSum.Severities.Medium,
+		&scanSum.Severities.High,
+		&scanSum.Severities.Critical,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Scan: %w", err)
@@ -247,20 +252,37 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	return scanSum, nil
 }
 func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
-	scanResults, errGetScansResults := s.GetListOfScanResults(tenantID)
-	if errGetScansResults != nil {
-		return nil, errGetScansResults
-	}
 
 	query := `
-           SELECT S.id,S.started_at, alias, extract(epoch from max(SR.updated_at) - S.started_at) as duration,
-           S.status
-     FROM  scan_results SR
-    INNER JOIN (SELECT * FROM tools WHERE type= 1) T ON SR.tool_id= T.id
-  	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id
-	INNER JOIN hosts H ON S.host_id = H.id
-GROUP BY S.id, S.started_at, alias, S.status
-  `
+  WITH aggregated_vulnerabilities AS (
+    SELECT
+      S.id AS scan_id,
+      COUNT(V.id) AS total_vulnerabilities,
+      SUM(CASE WHEN V.cvss < 4.0 THEN 1 ELSE 0 END) AS low,
+      SUM(CASE WHEN V.cvss >= 4.0 AND V.cvss < 7.0 THEN 1 ELSE 0 END) as medium,
+      SUM(CASE WHEN V.cvss >= 7.0 AND V.cvss < 9.0 THEN 1 ELSE 0 END) as high,
+      SUM(CASE WHEN V.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical
+    FROM scans S
+    LEFT JOIN vulnerability V ON S.id = V.scan_id
+    WHERE S.tenant_id = $1
+    GROUP BY S.id
+  )
+    SELECT
+      S.id AS scan_id,
+      S.started_at AS scan_date,
+      H.alias AS host,
+      EXTRACT(epoch from COALESCE(S.ended_at, NOW()) - S.started_at) as duration,
+      S.status,
+      COALESCE(total_vulnerabilities, 0) as total_vulnerabilities,
+      COALESCE(A.low, 0) AS low,
+      COALESCE(A.medium, 0) AS medium,
+      COALESCE(A.high, 0) AS high,
+      COALESCE(A.critical, 0) AS critical
+   FROM  scans S
+   INNER JOIN hosts H ON S.host_id = H.id
+   LEFT JOIN aggregated_vulnerabilities A ON S.id = A.scan_id
+   WHERE S.tenant_id = $1
+   ORDER BY S.started_at DESC`
 
 	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
@@ -274,9 +296,6 @@ GROUP BY S.id, S.started_at, alias, S.status
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan into summary: %w", err)
 		}
-		countVulnerability, vulnerability := s.GetTotalVulnerabilities(scanSum.ScanID, scanResults)
-		scanSum.Vulnerabilities = countVulnerability
-		scanSum.Severities = vulnerability
 		scans = append(scans, scanSum)
 	}
 

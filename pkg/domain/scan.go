@@ -48,8 +48,8 @@ type ScanSummary struct {
 	ScanID          uuid.UUID      `json:"scan_id,omitempty"`
 	ScanDate        string         `json:"scan_date,omitempty"`
 	Host            string         `json:"host,omitempty"`
-	Vulnerabilities int            `json:"vulnerability"`
-	Severities      SeverityCounts `json:"severity,omitempty"`
+	Vulnerabilities int            `json:"vulnerabilities"`
+	Severities      SeverityCounts `json:"severities,omitempty"`
 	Duration        float64        `json:"duration,omitempty"`
 	Status          string         `json:"status,omitempty"`
 }
