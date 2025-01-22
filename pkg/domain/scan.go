@@ -37,27 +37,21 @@ type Scan struct {
 	Status       string         `json:"status,omitempty"`
 }
 
-type SeverityCounts struct {
-	Critical int `json:"critical"`
-	High     int `json:"high"`
-	Medium   int `json:"medium"`
-	Low      int `json:"low"`
-}
-
 type ScanSummary struct {
-	ScanID          uuid.UUID      `json:"scan_id,omitempty"`
-	ScanDate        string         `json:"scan_date,omitempty"`
-	Host            string         `json:"host,omitempty"`
-	Vulnerabilities int            `json:"vulnerabilities"`
-	Severities      SeverityCounts `json:"severities,omitempty"`
-	Duration        float64        `json:"duration,omitempty"`
-	Status          string         `json:"status,omitempty"`
+	ScanID          uuid.UUID              `json:"scan_id,omitempty"`
+	ScanDate        string                 `json:"scan_date,omitempty"`
+	Host            string                 `json:"host,omitempty"`
+	Vulnerabilities int                    `json:"vulnerabilities"`
+	Severities      results.SeverityCounts `json:"severities,omitempty"`
+	Duration        float64                `json:"duration,omitempty"`
+	Status          string                 `json:"status,omitempty"`
 }
 
 type ScanResult struct {
-	ScanID uuid.UUID
-	ToolID int
-	Result results.NmapResult
+	ScanID    uuid.UUID
+	ToolID    int
+	Result    results.ToolResult
+	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
 type Tool struct {
@@ -67,13 +61,6 @@ type Tool struct {
 	Type        int       `json:"type,omitempty"`
 }
 
-type Vulnerability struct {
-	Type        string   `json:"type,omitempty"`
-	CVSS        float64  `json:"cvss,omitempty"`
-	References  []string `json:"references,omitempty"`
-	Exploitable bool     `json:"exploitable,omitempty"`
-}
-
 func NewScan() *Scan {
 	return &Scan{
 		ID:        uuid.New(),
@@ -81,5 +68,12 @@ func NewScan() *Scan {
 		StartedAt: time.Now().UTC(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
+	}
+}
+
+func NewScanResult(result results.ToolResult) *ScanResult {
+	return &ScanResult{
+		Result:    result,
+		CreatedAt: time.Now().UTC(),
 	}
 }

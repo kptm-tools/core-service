@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/enums"
-	cmmnRes "github.com/kptm-tools/common/common/results"
+	"github.com/kptm-tools/common/common/results"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -195,10 +195,6 @@ func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain
 			return nil, fmt.Errorf("failed to insert scan: %w", err)
 		}
 		scans = append(scans, newScan)
-		errInsertScanResultInitial := s.InsertScanHostResult(tx, newScan)
-		if errInsertScanResultInitial != nil {
-			return nil, errInsertScanResultInitial
-		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -207,19 +203,60 @@ func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain
 	return scans, nil
 }
 
-func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, sc *domain.Scan, hostIDs []*string) error {
+func (s *PostgreSQLStore) CreateVulnerabilityResult(sr *domain.ScanResult) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if sr.Result.Tool != enums.ToolNmap {
+		return fmt.Errorf("scan result tool is invalid: %s", sr.Result.Tool)
+	}
+
+	scan, err := s.GetScanByID(sr.ScanID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch scan by ID: %w", err)
+	}
+
+	// 1. Save the result to scan_results
+	if err := s.InsertScanResult(tx, sr); err != nil {
+		return fmt.Errorf("failed to insert to scan_results: %w", err)
+	}
+
+	// 2. Parse vulnerabilities and store them to vulnerabilities
+	if sr.Result.Err != nil {
+		slog.Warn("Vulnerability scan has errors, skipping vulnerability insertion")
+		return nil
+	}
+
+	nmapRes, ok := sr.Result.Result.(results.NmapResult)
+	if !ok {
+		return fmt.Errorf("scan result type is invalid")
+	}
+
+	// Get all vulnerabilities and insert each one to our DB
+	vulners := nmapRes.GetAllVulnerabilites()
+	for _, vuln := range vulners {
+		if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, sr.ToolID, vuln); err != nil {
+			return fmt.Errorf("failed to insert Vulnerability: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, scanID uuid.UUID, hostID int, toolID int, vuln results.Vulnerability) error {
 	query := `
     INSERT INTO vulnerability (scan_id, host_id, type, cvss, references, exploitable)
     values ($1, $2, $3,$4,$5,$6)`
 
-	if len(hostIDs) == 0 {
-		return fmt.Errorf("failed because no hostIDs were provided")
+	referencesBytes, err := json.Marshal(vuln.References)
+	if err != nil {
+		return fmt.Errorf("failed to marshal vulnerability references: %w", err)
 	}
-
-	for _, hostID := range hostIDs {
-		if _, err := tx.Exec(query, sc.ID, hostID); err != nil {
-			return fmt.Errorf("failed to insert vulnerability: %w", err)
-		}
+	if _, err := tx.Exec(query, scanID, hostID, toolID, vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable); err != nil {
+		return fmt.Errorf("failed to insert vulnerability: %w", err)
 	}
 	return nil
 }
@@ -302,20 +339,29 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
 	return scans, nil
 }
 
-func (s *PostgreSQLStore) GetTotalVulnerabilities(id uuid.UUID, results []*domain.ScanResult) (int, domain.SeverityCounts) {
-	var total int
-	var totalSeverity domain.SeverityCounts
-	for _, result := range results {
-		if result.ScanID == id {
-			total = total + result.Result.TotalVulnerabilities()
-			dataSeverity := cmmnRes.GetSeverityCounts(result.Result.GetAllVulnerabilites())
-			totalSeverity.Low = totalSeverity.Low + dataSeverity.Low
-			totalSeverity.Medium = totalSeverity.Medium + dataSeverity.Medium
-			totalSeverity.High = totalSeverity.High + dataSeverity.High
-			totalSeverity.Critical = totalSeverity.Critical + dataSeverity.Critical
-		}
+func (s *PostgreSQLStore) GetScanByID(UUID uuid.UUID) (*domain.Scan, error) {
+	query := `
+    SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at
+    FROM scans
+    WHERE id = $1
+  `
+
+	var scan domain.Scan
+	err := s.db.QueryRow(query, UUID).Scan(
+		&scan.ID,
+		&scan.TenantID,
+		&scan.OperatorID,
+		&scan.HostID,
+		&scan.Status,
+		&scan.StartedAt,
+		&scan.EndedAt,
+		&scan.CreatedAt,
+		&scan.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("error scanning scan: %w", err)
 	}
-	return total, totalSeverity
+
+	return &scan, nil
 }
 
 func (s *PostgreSQLStore) GetListOfScanResults(tenantID string) ([]*domain.ScanResult, error) {
@@ -351,19 +397,23 @@ func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
 	return nil
 }
 
-func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) error {
+func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) error {
 	query := `
-    INSERT INTO scan_results (scan_id, tool_id,status, created_at, updated_at)
-    values ($1, $2, $3,$4, $5)`
+    INSERT INTO scan_results (scan_id, tool_id, result, created_at)
+    values ($1, $2, $3, $4)`
 
-	toolIDs, errTool := s.GetTools()
-	if errTool != nil {
-		return errTool
+	toolID, err := s.GetToolIDByName(string(sr.Result.Tool))
+	if err != nil {
+		return fmt.Errorf("failed to fetch tool by name: %w", err)
 	}
-	for _, toolID := range toolIDs {
-		if _, err := tx.Exec(query, sc.ID, toolID, enums.StatusPending.String(), time.Now().UTC(), time.Now().UTC()); err != nil {
-			return fmt.Errorf("failed to insert scan_results: %w", err)
-		}
+
+	resultBytes, err := json.Marshal(sr.Result)
+	if err != nil {
+		return fmt.Errorf("error marshalling scan result: %w", err)
+	}
+
+	if _, err := tx.Exec(query, sr.ScanID, toolID, resultBytes, sr.CreatedAt); err != nil {
+		return fmt.Errorf("failed to insert scan_results: %w", err)
 	}
 	return nil
 }
@@ -387,4 +437,15 @@ func (s *PostgreSQLStore) GetTools() ([]string, error) {
 	}
 
 	return IDs, nil
+}
+
+func (s *PostgreSQLStore) GetToolIDByName(toolName string) (int, error) {
+	query := `
+    SELECT id
+    FROM tools
+    WHERE name = $1
+  `
+	var id int
+	err := s.db.QueryRow(query, toolName).Scan(&id)
+	return id, err
 }
