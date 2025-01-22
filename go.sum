@@ -12,6 +12,10 @@ github.com/klauspost/compress v1.17.9 h1:6KIumPrER1LHsvBVuDa0r5xaG0Es51mhhB9BQB2
 github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
 github.com/kptm-tools/common v1.2.14 h1:/Ht0gLH/2XGRIHMt4o6BB8jY6XgX9jtyyA1S85iMfPQ=
 github.com/kptm-tools/common v1.2.14/go.mod h1:rbiN3iX3544CBJ4N1As02OH7lkdO1LRBsUuA8+JGKXY=
+github.com/kptm-tools/common v1.2.15 h1:uong6XSYzaclCRcVeobsyIH661zma5W3/XWiPIFtoFk=
+github.com/kptm-tools/common v1.2.15/go.mod h1:OUg15gx1ypzOZOeYOkgf+V9dXgrwz7Xmu2Rc5gRwSB4=
+github.com/kptm-tools/common v1.4.0 h1:D62/O34OcawptikSDOVKsVQcGgJwhm1VA8LWfmRp614=
+github.com/kptm-tools/common v1.4.0/go.mod h1:b9SoElEe4n3Jm/MUmJL0clKELkEtdmGa+KfdEP9KnNY=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/likexian/gokit v0.25.15 h1:QjospM1eXhdMMHwZRpMKKAHY/Wig9wgcREmLtf9NslY=
@@ -33,6 +37,8 @@ github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 golang.org/x/crypto v0.31.0 h1:ihbySMvVjLAeSH1IbfcRTkD/iNscyz8rGzjF/E5hV6U=
 golang.org/x/crypto v0.31.0/go.mod h1:kDsLvtWBEx7MV9tJOj9bnXsPbxwJQ6csT/x4KIN4Ssk=
+golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 h1:yqrTHse8TCMW1M1ZCP+VAR/l0kKxwaAIqN/il7x4voA=
+golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8/go.mod h1:tujkw807nyEEAamNbDrEGzRav+ilXA7PCRAd6xsmwiU=
 golang.org/x/net v0.0.0-20220225172249-27dd8689420f/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
 golang.org/x/net v0.33.0 h1:74SYHlV8BIgHIFC/LrYkOGIwL19eTYXQ5wc6TBuO36I=
 golang.org/x/net v0.33.0/go.mod h1:HXLR5J+9DxmrqMwG9qjGCxZ+zKXxBru04zlTvWlWuN4=
