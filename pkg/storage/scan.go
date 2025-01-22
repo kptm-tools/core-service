@@ -4,17 +4,19 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"log/slog"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/enums"
 	cmmnRes "github.com/kptm-tools/common/common/results"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"log"
-	"time"
 )
 
 func (s *PostgreSQLStore) CreateScanTable() error {
 	query := `create table if not exists scans (
-      id SERIAL PRIMARY KEY,
+      id UUID PRIMARY KEY,
       tenant_id UUID NOT NULL,
       operator_id UUID NOT NULL,
       host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
@@ -37,7 +39,7 @@ func (s *PostgreSQLStore) CreateScanTable() error {
 func (s *PostgreSQLStore) CreateScanVulnerabilityTable() error {
 	query := `create table if not exists vulnerability (
       id SERIAL PRIMARY KEY,
-      scan_id INT NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+      scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
       host_id INT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
       tool_id INT NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
       type       VARCHAR(50),
@@ -58,7 +60,7 @@ func (s *PostgreSQLStore) CreateScanVulnerabilityTable() error {
 func (s *PostgreSQLStore) CreateScanResultsTable() error {
 	query := `create table if not exists scan_results (
       id SERIAL PRIMARY KEY,
-      scan_id INT REFERENCES scans (id) ON DELETE CASCADE,
+      scan_id UUID REFERENCES scans (id) ON DELETE CASCADE,
       tool_id INT REFERENCES tools(id) ON DELETE CASCADE,
       status  VARCHAR(50) NOT NULL,
       result JSONB,
@@ -182,12 +184,12 @@ func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain
 	defer tx.Rollback()
 	scans := []*domain.Scan{}
 	query := `
-    INSERT INTO scans (tenant_id, operator_id, host_id, status, started_at, ended_at)
-    values ($1, $2, $3,'PENDING', $4, $5)
+    INSERT INTO scans (id, tenant_id, operator_id, host_id, status, started_at, ended_at)
+                values ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id, tenant_id, operator_id, host_id, status, started_at, ended_at`
 
 	for _, hostID := range hostIDs {
-		row := tx.QueryRow(query, sc.TenantID, sc.OperatorID, hostID, sc.StartedAt, sc.EndedAt)
+		row := tx.QueryRow(query, sc.ID, sc.TenantID, sc.OperatorID, hostID, sc.Status, sc.StartedAt, sc.EndedAt)
 		newScan := &domain.Scan{}
 		if err := scanIntoScan(row, newScan); err != nil {
 			return nil, fmt.Errorf("failed to insert scan: %w", err)
@@ -275,14 +277,13 @@ GROUP BY S.id, S.started_at, alias, S.status
 		countVulnerability, vulnerability := s.GetTotalVulnerabilities(scanSum.ScanID, scanResults)
 		scanSum.Vulnerabilities = countVulnerability
 		scanSum.Severities = vulnerability
-		scanSum.ScanID = 0
 		scans = append(scans, scanSum)
 	}
 
 	return scans, nil
 }
 
-func (s *PostgreSQLStore) GetTotalVulnerabilities(id int, results []*domain.ScanResult) (int, domain.SeverityCounts) {
+func (s *PostgreSQLStore) GetTotalVulnerabilities(id uuid.UUID, results []*domain.ScanResult) (int, domain.SeverityCounts) {
 	var total int
 	var totalSeverity domain.SeverityCounts
 	for _, result := range results {
@@ -341,7 +342,7 @@ func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) erro
 		return errTool
 	}
 	for _, toolID := range toolIDs {
-		if _, err := tx.Exec(query, sc.ID, toolID, "PENDING", time.Now().UTC(), time.Now().UTC()); err != nil {
+		if _, err := tx.Exec(query, sc.ID, toolID, enums.StatusPending.String(), time.Now().UTC(), time.Now().UTC()); err != nil {
 			return fmt.Errorf("failed to insert scan_results: %w", err)
 		}
 	}

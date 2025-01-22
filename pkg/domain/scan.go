@@ -1,9 +1,11 @@
 package domain
 
 import (
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/common/common/results"
-	"time"
 )
 
 type Metadata struct {
@@ -21,7 +23,7 @@ type ResultHost struct {
 }
 
 type Scan struct {
-	ID           string         `json:"id,omitempty"`
+	ID           uuid.UUID      `json:"id,omitempty" db:"id"`
 	TenantID     string         `json:"tenant_id,omitempty"`
 	OperatorID   string         `json:"operator_id,omitempty"`
 	HostID       int            `json:"host_ids,omitempty"`
@@ -43,7 +45,7 @@ type SeverityCounts struct {
 }
 
 type ScanSummary struct {
-	ScanID          int            `json:"scan_id,omitempty"`
+	ScanID          uuid.UUID      `json:"scan_id,omitempty"`
 	ScanDate        string         `json:"scan_date,omitempty"`
 	Host            string         `json:"host,omitempty"`
 	Vulnerabilities int            `json:"vulnerability"`
@@ -53,7 +55,7 @@ type ScanSummary struct {
 }
 
 type ScanResult struct {
-	ScanID int
+	ScanID uuid.UUID
 	ToolID int
 	Result results.NmapResult
 }
@@ -74,6 +76,8 @@ type Vulnerability struct {
 
 func NewScan() *Scan {
 	return &Scan{
+		ID:        uuid.New(),
+		Status:    enums.StatusPending.String(),
 		StartedAt: time.Now().UTC(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
