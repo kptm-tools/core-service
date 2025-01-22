@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -216,6 +217,7 @@ func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
 func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	scanSum := new(domain.ScanSummary)
 	err := rows.Scan(
+		&scanSum.ScanID,
 		&scanSum.ScanDate,
 		&scanSum.Host,
 		&scanSum.Duration,
@@ -228,9 +230,13 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	return scanSum, nil
 }
 func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+	scanResults, errGetScansResults := s.GetListOfScanResults(tenantID)
+	if errGetScansResults != nil {
+		return nil, errGetScansResults
+	}
 
 	query := `
-           SELECT S.started_at, alias, extract(epoch from max(SR.updated_at) - S.started_at) as duration,
+           SELECT S.id,S.started_at, alias, extract(epoch from max(SR.updated_at) - S.started_at) as duration,
            S.status
      FROM  scan_results SR
     INNER JOIN (SELECT * FROM tools WHERE type= 1) T ON SR.tool_id= T.id
@@ -251,12 +257,63 @@ GROUP BY S.id, S.started_at, alias, S.status
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan into summary: %w", err)
 		}
+		countVulnerability, vulnerability := s.GetTotalVulnerabilities(scanSum.ScanID, scanResults)
+		scanSum.Vulnerabilities = countVulnerability
+		scanSum.Severities = vulnerability
+		scanSum.ScanID = 0
 		scans = append(scans, scanSum)
 	}
 
-	// complement with results analysis
-
 	return scans, nil
+}
+
+func (s *PostgreSQLStore) GetTotalVulnerabilities(id int, results []*domain.ScanResult) (int, domain.SeverityCounts) {
+	var total int
+	var totalSeverity domain.SeverityCounts
+	for _, result := range results {
+		if result.ScanID == id {
+			total = total + result.Result.TotalVulnerabilities()
+
+			totalSeverity.Low = totalSeverity.Low + 1
+			totalSeverity.Medium = totalSeverity.Medium + 1
+			totalSeverity.High = totalSeverity.High + 1
+			totalSeverity.Critical = totalSeverity.Critical + 1
+		}
+	}
+	return total, totalSeverity
+}
+
+func (s *PostgreSQLStore) GetListOfScanResults(tenantID string) ([]*domain.ScanResult, error) {
+	query := `SELECT S.id, SR.tool_id, result from scan_results SR
+	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id
+	    INNER JOIN (SELECT * FROM tools WHERE type= 1) T ON SR.tool_id= T.id`
+	rows, err := s.db.Query(query, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch scans: %w", err)
+	}
+	defer rows.Close()
+	scansResults := []*domain.ScanResult{}
+	for rows.Next() {
+		scanRes := &domain.ScanResult{}
+		err := scanIntoScanResult(rows, scanRes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan result: %w", err)
+		}
+		scansResults = append(scansResults, scanRes)
+	}
+	return scansResults, nil
+}
+
+func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
+	var result []byte
+	if err := rows.Scan(&scanRes.ScanID, &scanRes.ToolID, &result); err != nil {
+		return fmt.Errorf("failed to scan host: %w", err)
+	}
+	if err := json.Unmarshal(result, &scanRes.Result); err != nil {
+		log.Println("no results yet")
+		//return fmt.Errorf("failed to unmarshal result of scan_results: %w", err)
+	}
+	return nil
 }
 
 func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) error {

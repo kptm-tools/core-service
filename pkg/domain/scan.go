@@ -43,12 +43,19 @@ type SeverityCounts struct {
 }
 
 type ScanSummary struct {
+	ScanID          int            `json:"scan_id,omitempty"`
 	ScanDate        string         `json:"scan_date,omitempty"`
 	Host            string         `json:"host,omitempty"`
-	Vulnerabilities int            `json:"vulnerability,omitempty"`
+	Vulnerabilities int            `json:"vulnerability"`
 	Severities      SeverityCounts `json:"severity,omitempty"`
 	Duration        float64        `json:"duration,omitempty"`
 	Status          string         `json:"status,omitempty"`
+}
+
+type ScanResult struct {
+	ScanID int
+	ToolID int
+	Result results.NmapResult
 }
 
 type Tool struct {
