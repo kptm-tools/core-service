@@ -234,7 +234,7 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
            S.status
      FROM  scan_results SR
     INNER JOIN (SELECT * FROM tools WHERE type= 1) T ON SR.tool_id= T.id
-  	INNER JOIN  (select * from scans where tenant_id='79c9acd6-a590-4394-8f2c-fadb07b79113') S on SR.scan_id = S.id
+  	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id
 	INNER JOIN hosts H ON S.host_id = H.id
 GROUP BY S.id, S.started_at, alias, S.status
   `

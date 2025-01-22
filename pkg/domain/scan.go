@@ -47,7 +47,7 @@ type ScanSummary struct {
 	Host            string         `json:"host,omitempty"`
 	Vulnerabilities int            `json:"vulnerability,omitempty"`
 	Severities      SeverityCounts `json:"severity,omitempty"`
-	Duration        int            `json:"duration,omitempty"`
+	Duration        float64        `json:"duration,omitempty"`
 	Status          string         `json:"status,omitempty"`
 }
 
