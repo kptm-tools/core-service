@@ -48,7 +48,7 @@ type ScanSummary struct {
 	Vulnerabilities int            `json:"vulnerability,omitempty"`
 	Severities      SeverityCounts `json:"severity,omitempty"`
 	Duration        int            `json:"duration,omitempty"`
-	Status          int            `json:"status,omitempty"`
+	Status          string         `json:"status,omitempty"`
 }
 
 type Tool struct {

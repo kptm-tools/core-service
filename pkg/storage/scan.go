@@ -220,11 +220,6 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 		&scanSum.Host,
 		&scanSum.Duration,
 		&scanSum.Status,
-		&scanSum.Vulnerabilities,
-		&scanSum.Severities.Low,
-		&scanSum.Severities.Medium,
-		&scanSum.Severities.High,
-		&scanSum.Severities.Critical,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Scan: %w", err)
@@ -236,23 +231,12 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
 
 	query := `
            SELECT S.started_at, alias, extract(epoch from max(SR.updated_at) - S.started_at) as duration,
-            COUNT(CASE WHEN SR.STATUS = 'PENDING' THEN 1
-                WHEN SR.STATUS = 'INPROGRESS' THEN 2
-                WHEN SR.STATUS = 'COMPLETED' THEN 3
-                WHEN SR.STATUS = 'FAILED' THEN -1
-                ELSE 0
-                END) as statusNumber,
-            COUNT(V.CVSS) as vulnerablities,
-     COUNT(CASE WHEN V.CVSS < 4 THEN 1 END) AS Low,
-          COUNT(CASE WHEN V.CVSS < 7 THEN 1 END) AS Medium,
-               COUNT(CASE WHEN V.CVSS < 9 THEN 1 END) AS High,
-                    COUNT(CASE WHEN V.CVSS >= 9 THEN 1 END) AS Critical
+           S.status
      FROM  scan_results SR
-    INNER JOIN hosts H ON SR.host_id = H.id
     INNER JOIN (SELECT * FROM tools WHERE type= 1) T ON SR.tool_id= T.id
-  	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id
-              LEFT JOIN vulnerability V ON  SR.host_id = V.host_id and SR.scan_id=V.host_id and SR.tool_id =V.tool_id
-     group by SR.scan_id, SR.host_id,S.started_at, alias
+  	INNER JOIN  (select * from scans where tenant_id='79c9acd6-a590-4394-8f2c-fadb07b79113') S on SR.scan_id = S.id
+	INNER JOIN hosts H ON S.host_id = H.id
+GROUP BY S.id, S.started_at, alias, S.status
   `
 
 	rows, err := s.db.Query(query, tenantID)
@@ -270,6 +254,8 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
 		scans = append(scans, scanSum)
 	}
 
+	// complement with results analysis
+
 	return scans, nil
 }
 
@@ -283,7 +269,7 @@ func (s *PostgreSQLStore) InsertScanHostResult(tx *sql.Tx, sc *domain.Scan) erro
 		return errTool
 	}
 	for _, toolID := range toolIDs {
-		if _, err := tx.Exec(query, sc.ID, toolID, "PENDING", time.Now(), time.Now()); err != nil {
+		if _, err := tx.Exec(query, sc.ID, toolID, "PENDING", time.Now().UTC(), time.Now().UTC()); err != nil {
 			return fmt.Errorf("failed to insert scan_results: %w", err)
 		}
 	}
