@@ -12,18 +12,17 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type DNSLookupHandler struct {
+type WhoIsHandler struct {
 	scanService interfaces.IScanService
 }
 
-func NewDNSLookupHandler(scanService interfaces.IScanService) *DNSLookupHandler {
-	return &DNSLookupHandler{scanService: scanService}
+func NewWhoIsHandler(scanService interfaces.IScanService) *WhoIsHandler {
+	return &WhoIsHandler{scanService: scanService}
 }
 
-func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
-
+func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
-		slog.Info("Received DNSLookupEvent")
+		slog.Info("Received WhoIsEvent")
 
 		// 1. Parse payload
 		var evt events.ToolResultEvent
@@ -33,8 +32,10 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2. Validate contents
-		if evt.ToolResult.Tool != enums.ToolDNSLookup {
-			slog.Error("Invalid toolName for DNSLookupEvent", slog.String("tool_name", string(evt.ToolResult.Tool)))
+		if evt.ToolResult.Tool != enums.ToolWhoIs {
+			slog.Error("Invalid toolName for WhoIsEvent",
+				slog.String("scan_id", evt.ScanID),
+				slog.String("tool_name", string(evt.ToolResult.Tool)))
 			return
 		}
 
@@ -43,7 +44,8 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			slog.Warn("ToolResult contains an error",
 				slog.String("scan_id", evt.ScanID),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", evt.ToolResult.Err))
+				slog.Any("error", evt.ToolResult.Err),
+			)
 		}
 
 		// 3. Save ToolResult to DB
@@ -51,21 +53,18 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		if err != nil {
 			slog.Error("ScanID is invalid UUID",
 				slog.String("scan_id", evt.ScanID),
-				slog.Any("error", err),
-			)
+				slog.Any("error", err))
 		}
-		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
 
+		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
 		if err := h.scanService.InsertScanResult(scanResult); err != nil {
 			slog.Error("Error inserting ScanResult to DB",
 				slog.String("scan_id", evt.ScanID),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", err),
-			)
+				slog.Any("error", err))
 		}
 
-		slog.Debug("DNSLookupEvent saved successfully")
+		slog.Debug("WhoIsEvent saved successfully")
 
 	}(msg)
-
 }
