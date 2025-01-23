@@ -66,7 +66,7 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
-		slog.Debug("WhoIsEvent saved successfully")
+		slog.Debug("WhoIsEvent handled successfully")
 
 	}(msg)
 }

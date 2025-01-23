@@ -37,15 +37,17 @@ func (s *PostgreSQLStore) CreateScanTable() error {
 }
 
 func (s *PostgreSQLStore) CreateScanVulnerabilityTable() error {
-	query := `create table if not exists vulnerability (
+	query := `create table if not exists scan_vulnerabilities (
       id SERIAL PRIMARY KEY,
       scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
       host_id INT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
       tool_id INT NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
-      type       VARCHAR(50),
-	  cvss       DECIMAL(3,2),
-	  reference  JSONB,
-	  exploitable BOOLEAN
+      type       VARCHAR(50) NOT NULL,
+      cvss       DECIMAL(4,2),
+      vuln_references  JSONB,
+      exploitable BOOLEAN,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`
 
 	_, err := s.db.Query(query)
@@ -203,7 +205,7 @@ func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain
 	return scans, nil
 }
 
-func (s *PostgreSQLStore) CreateVulnerabilityResult(sr *domain.ScanResult) error {
+func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
@@ -230,17 +232,32 @@ func (s *PostgreSQLStore) CreateVulnerabilityResult(sr *domain.ScanResult) error
 		return nil
 	}
 
-	nmapRes, ok := sr.Result.Result.(results.NmapResult)
-	if !ok {
-		return fmt.Errorf("scan result type is invalid")
+	var nr results.NmapResult
+	resultBytes, err := json.Marshal(sr.Result.Result)
+	if err != nil {
+		return fmt.Errorf("failed to marshal nmap result: %w", err)
+	}
+	err = json.Unmarshal(resultBytes, &nr)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal nmap result: %w", err)
+	}
+
+	// Get the toolID
+	toolID, err := s.GetToolIDByName(string(sr.Result.Tool))
+	if err != nil {
+		return fmt.Errorf("failed to fetch tool by name: %w", err)
 	}
 
 	// Get all vulnerabilities and insert each one to our DB
-	vulners := nmapRes.GetAllVulnerabilites()
+	vulners := nr.GetAllVulnerabilites()
 	for _, vuln := range vulners {
-		if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, sr.ToolID, vuln); err != nil {
-			return fmt.Errorf("failed to insert Vulnerability: %w", err)
+		if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, toolID, vuln); err != nil {
+			return err
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -248,8 +265,8 @@ func (s *PostgreSQLStore) CreateVulnerabilityResult(sr *domain.ScanResult) error
 
 func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, scanID uuid.UUID, hostID int, toolID int, vuln results.Vulnerability) error {
 	query := `
-    INSERT INTO vulnerability (scan_id, host_id, type, cvss, references, exploitable)
-    values ($1, $2, $3,$4,$5,$6)`
+    INSERT INTO scan_vulnerabilities (scan_id, host_id, tool_id, type, cvss, vuln_references, exploitable)
+    values ($1, $2, $3, $4, $5, $6, $7)`
 
 	referencesBytes, err := json.Marshal(vuln.References)
 	if err != nil {
@@ -452,7 +469,13 @@ func (s *PostgreSQLStore) GetToolIDByName(toolName string) (int, error) {
     FROM tools
     WHERE name = $1
   `
-	var id int
-	err := s.db.QueryRow(query, toolName).Scan(&id)
-	return id, err
+	var toolID int
+	err := s.db.QueryRow(query, toolName).Scan(&toolID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("tool not found: %s", toolName)
+		}
+		return 0, fmt.Errorf("error querying tool ID: %w", err)
+	}
+	return toolID, nil
 }

@@ -67,3 +67,7 @@ func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
 func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
 	return s.storage.InsertScanResult(nil, scanResult)
 }
+
+func (s *ScanService) InsertVulnerabilityResult(scanResult *domain.ScanResult) error {
+	return s.storage.InsertVulnerabilityResult(scanResult)
+}

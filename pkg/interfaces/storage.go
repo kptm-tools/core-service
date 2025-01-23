@@ -19,4 +19,5 @@ type IStorage interface {
 	ExistAlias(string) (bool, error)
 	GetScans(tenantID string) ([]*domain.ScanSummary, error)
 	InsertScanResult(*sql.Tx, *domain.ScanResult) error
+	InsertVulnerabilityResult(*domain.ScanResult) error
 }

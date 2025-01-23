@@ -66,7 +66,7 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
-		slog.Debug("DNSLookupEvent saved successfully")
+		slog.Debug("DNSLookupEvent handled successfully")
 
 	}(msg)
 
