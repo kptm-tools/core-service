@@ -12,30 +12,30 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type DNSLookupHandler struct {
+type HarvesterHandler struct {
 	scanService interfaces.IScanService
 }
 
-func NewDNSLookupHandler(scanService interfaces.IScanService) *DNSLookupHandler {
-	return &DNSLookupHandler{scanService: scanService}
+func NewHarvesterHandler(scanService interfaces.IScanService) *HarvesterHandler {
+	return &HarvesterHandler{scanService: scanService}
 }
 
-func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
-
+func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
-		slog.Info("Received DNSLookupEvent")
+		slog.Info("Received HarvesterEvent")
 
 		// 1. Parse payload
 		var evt events.ToolResultEvent
 		if err := json.Unmarshal(msg.Data, &evt); err != nil {
-			slog.Error("Failed to unmarshal ToolResultEvent", slog.Any("error", err))
+			slog.Error("Failed to unmarshal ToolResultEvent",
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("error", err))
 			return
 		}
 
 		// 2. Validate contents
-		if evt.ToolResult.Tool != enums.ToolDNSLookup {
-			slog.Error("Invalid toolName for DNSLookupEvent", slog.String("tool_name", string(evt.ToolResult.Tool)))
-			return
+		if evt.ToolResult.Tool != enums.ToolHarvester {
+			slog.Error("Invalid toolName for HarvesterEvent", slog.String("tool_name", string(evt.ToolResult.Tool)))
 		}
 
 		// 2.1 Check for errors in the result
@@ -51,23 +51,19 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		if err != nil {
 			slog.Error("ScanID is invalid UUID",
 				slog.String("scan_id", evt.ScanID),
-				slog.Any("error", err),
-			)
+				slog.Any("error", err))
 			return
 		}
-		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
 
+		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
 		if err := h.scanService.InsertScanResult(scanResult); err != nil {
-			slog.Error("Error inserting ScanResult to DB",
+			slog.Error("Error inserting Scanresult to DB",
 				slog.String("scan_id", evt.ScanID),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", err),
-			)
+				slog.Any("error", err))
 			return
 		}
 
-		slog.Debug("DNSLookupEvent saved successfully")
-
+		slog.Debug("HarvesterEvent saved successfully")
 	}(msg)
-
 }

@@ -12,6 +12,7 @@ func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) 
 
 	whoIsEventHandler := consumers.NewWhoIsHandler(scanService)
 	dnsLookupHandler := consumers.NewDNSLookupHandler(scanService)
+	harvesterHandler := consumers.NewHarvesterHandler(scanService)
 
 	err := eventBus.Subscribe(string(enums.DNSLookupEventSubject), dnsLookupHandler.HandleMessage)
 	if err != nil {
@@ -19,6 +20,10 @@ func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) 
 	}
 
 	if err := eventBus.Subscribe(string(enums.WhoIsEventSubject), whoIsEventHandler.HandleMessage); err != nil {
+		return err
+	}
+
+	if err := eventBus.Subscribe(string(enums.HarvesterEventSubject), harvesterHandler.HandleMessage); err != nil {
 		return err
 	}
 

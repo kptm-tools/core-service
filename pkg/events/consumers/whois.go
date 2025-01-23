@@ -54,6 +54,7 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 			slog.Error("ScanID is invalid UUID",
 				slog.String("scan_id", evt.ScanID),
 				slog.Any("error", err))
+			return
 		}
 
 		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
@@ -62,6 +63,7 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("scan_id", evt.ScanID),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", err))
+			return
 		}
 
 		slog.Debug("WhoIsEvent saved successfully")
