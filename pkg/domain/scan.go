@@ -50,6 +50,7 @@ type ScanSummary struct {
 type ScanResult struct {
 	ScanID    uuid.UUID
 	ToolID    int
+	Success   bool
 	Result    results.ToolResult
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
@@ -71,8 +72,12 @@ func NewScan() *Scan {
 	}
 }
 
-func NewScanResult(result results.ToolResult) *ScanResult {
+func NewScanResult(scanID uuid.UUID, result results.ToolResult) *ScanResult {
+	success := result.Err == nil
+
 	return &ScanResult{
+		ScanID:    scanID,
+		Success:   success,
 		Result:    result,
 		CreatedAt: time.Now().UTC(),
 	}

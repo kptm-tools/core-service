@@ -1,6 +1,8 @@
 package interfaces
 
 import (
+	"database/sql"
+
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -16,4 +18,5 @@ type IStorage interface {
 	CreateScans(*domain.Scan, []int) ([]*domain.Scan, error)
 	ExistAlias(string) (bool, error)
 	GetScans(tenantID string) ([]*domain.ScanSummary, error)
+	InsertScanResult(*sql.Tx, *domain.ScanResult) error
 }

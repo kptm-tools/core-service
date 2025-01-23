@@ -62,7 +62,7 @@ func (s *PostgreSQLStore) CreateScanResultsTable() error {
       id SERIAL PRIMARY KEY,
       scan_id UUID REFERENCES scans (id) ON DELETE CASCADE,
       tool_id INT REFERENCES tools(id) ON DELETE CASCADE,
-      status  VARCHAR(50) NOT NULL,
+      success  BOOLEAN NOT NULL,
       result JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -399,8 +399,8 @@ func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
 
 func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) error {
 	query := `
-    INSERT INTO scan_results (scan_id, tool_id, result, created_at)
-    values ($1, $2, $3, $4)`
+    INSERT INTO scan_results (scan_id, tool_id, success, result, created_at)
+    values ($1, $2, $3, $4, $5)`
 
 	toolID, err := s.GetToolIDByName(string(sr.Result.Tool))
 	if err != nil {
@@ -412,9 +412,16 @@ func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) er
 		return fmt.Errorf("error marshalling scan result: %w", err)
 	}
 
-	if _, err := tx.Exec(query, sr.ScanID, toolID, resultBytes, sr.CreatedAt); err != nil {
+	if tx != nil {
+		_, err = tx.Exec(query, sr.ScanID, toolID, sr.Success, resultBytes, sr.CreatedAt)
+	} else {
+		_, err = s.db.Exec(query, sr.ScanID, toolID, sr.Success, resultBytes, sr.CreatedAt)
+	}
+
+	if err != nil {
 		return fmt.Errorf("failed to insert scan_results: %w", err)
 	}
+
 	return nil
 }
 
