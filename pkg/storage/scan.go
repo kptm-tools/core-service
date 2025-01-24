@@ -317,7 +317,7 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
       SUM(CASE WHEN V.cvss >= 7.0 AND V.cvss < 9.0 THEN 1 ELSE 0 END) as high,
       SUM(CASE WHEN V.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical
     FROM scans S
-    LEFT JOIN vulnerability V ON S.id = V.scan_id
+    LEFT JOIN scan_vulnerabilities V ON S.id = V.scan_id
     WHERE S.tenant_id = $1
     GROUP BY S.id
   )
