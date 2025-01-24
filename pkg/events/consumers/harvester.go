@@ -20,6 +20,8 @@ func NewHarvesterHandler(scanService interfaces.IScanService) *HarvesterHandler 
 	return &HarvesterHandler{scanService: scanService}
 }
 
+var _ interfaces.EventConsumer = (*HarvesterHandler)(nil)
+
 func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
 		slog.Info("Received HarvesterEvent")

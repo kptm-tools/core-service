@@ -20,6 +20,8 @@ func NewNmapHandler(scanService interfaces.IScanService) *NmapHandler {
 	return &NmapHandler{scanService: scanService}
 }
 
+var _ interfaces.EventConsumer = (*NmapHandler)(nil)
+
 func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
 		slog.Info("Received NmapEvent")

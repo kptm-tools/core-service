@@ -20,6 +20,8 @@ func NewWhoIsHandler(scanService interfaces.IScanService) *WhoIsHandler {
 	return &WhoIsHandler{scanService: scanService}
 }
 
+var _ interfaces.EventConsumer = (*WhoIsHandler)(nil)
+
 func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
 		slog.Info("Received WhoIsEvent")

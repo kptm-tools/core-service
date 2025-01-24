@@ -20,6 +20,8 @@ func NewDNSLookupHandler(scanService interfaces.IScanService) *DNSLookupHandler 
 	return &DNSLookupHandler{scanService: scanService}
 }
 
+var _ interfaces.EventConsumer = (*DNSLookupHandler)(nil)
+
 func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 
 	go func(msg *nats.Msg) {
