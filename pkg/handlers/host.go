@@ -237,9 +237,9 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 }
 
 func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) error {
-	validateHostRequest := new(ValidateHostRequest)
+	validateAliasRequest := new(ValidateAliasRequest)
 
-	if err := decodeJSONBody(w, req, validateHostRequest); err != nil {
+	if err := decodeJSONBody(w, req, validateAliasRequest); err != nil {
 		var mr *malformedRequest
 
 		if errors.As(err, &mr) {
@@ -249,7 +249,7 @@ func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) e
 		}
 	}
 
-	if err := h.hostService.ValidateAlias(validateHostRequest.Hostname); err != nil {
+	if err := h.hostService.ValidateAlias(validateAliasRequest.Hostname); err != nil {
 
 		if errors.Is(err, services.ErrAliasTaken) {
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})

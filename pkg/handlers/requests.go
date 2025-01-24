@@ -11,7 +11,10 @@ type CreateHostRequest struct {
 }
 
 type ValidateHostRequest struct {
-	Value    string `json:"value"`
+	Value string `json:"value"`
+}
+
+type ValidateAliasRequest struct {
 	Hostname string `json:"hostname"`
 }
 
