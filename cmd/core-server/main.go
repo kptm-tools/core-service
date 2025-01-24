@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	"log/slog"
+	"os"
+	"time"
 
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -10,10 +13,17 @@ import (
 	"github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"github.com/lmittmann/tint"
 )
 
 func main() {
 	c := config.LoadConfig()
+
+	// Configure logging
+	slog.SetDefault(slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      slog.LevelDebug,
+		TimeFormat: time.Stamp,
+	})))
 
 	rootStore, err := storage.NewPostgreSQLStore(c.PostgreSQLRootConnStr())
 
