@@ -63,3 +63,11 @@ func createTarget(host domain.Host) results.Target {
 func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
 	return s.storage.GetScans(tenantID)
 }
+
+func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
+	return s.storage.InsertScanResult(nil, scanResult)
+}
+
+func (s *ScanService) InsertVulnerabilityResult(scanResult *domain.ScanResult) error {
+	return s.storage.InsertVulnerabilityResult(scanResult)
+}

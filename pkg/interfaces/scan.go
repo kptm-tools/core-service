@@ -8,6 +8,8 @@ import (
 type IScanService interface {
 	CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error)
 	GetScans(string) ([]*domain.ScanSummary, error)
+	InsertScanResult(*domain.ScanResult) error
+	InsertVulnerabilityResult(*domain.ScanResult) error
 }
 
 type IScanHandlers interface {
