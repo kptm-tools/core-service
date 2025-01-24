@@ -39,6 +39,7 @@ func (s *PostgreSQLStore) CreateScanTable() error {
 func (s *PostgreSQLStore) CreateScanVulnerabilityTable() error {
 	query := `create table if not exists scan_vulnerabilities (
       id SERIAL PRIMARY KEY,
+      vulnerability_id VARCHAR(100) NOT NULL,
       scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
       host_id INT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
       tool_id INT NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
@@ -265,14 +266,14 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 
 func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, scanID uuid.UUID, hostID int, toolID int, vuln results.Vulnerability) error {
 	query := `
-    INSERT INTO scan_vulnerabilities (scan_id, host_id, tool_id, type, cvss, vuln_references, exploitable)
-    values ($1, $2, $3, $4, $5, $6, $7)`
+    INSERT INTO scan_vulnerabilities (vulnerability_id, scan_id, host_id, tool_id, type, cvss, vuln_references, exploitable)
+    values ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	referencesBytes, err := json.Marshal(vuln.References)
 	if err != nil {
 		return fmt.Errorf("failed to marshal vulnerability references: %w", err)
 	}
-	if _, err := tx.Exec(query, scanID, hostID, toolID, vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable); err != nil {
+	if _, err := tx.Exec(query, vuln.ID, scanID, hostID, toolID, vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable); err != nil {
 		return fmt.Errorf("failed to insert vulnerability: %w", err)
 	}
 	return nil
