@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -40,27 +39,19 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
-		scanID, err := uuid.Parse(evt.ScanID)
-		if err != nil {
-			slog.Error("ScanID is invalid UUID",
-				slog.String("scan_id", evt.ScanID),
-				slog.Any("error", err),
-			)
-			return
-		}
-		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
+		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 
 		// 2.1 Check for errors in the result
 		if evt.ToolResult.Err != nil {
 			slog.Warn("ToolResult contains an error, only storing ToolResult",
-				slog.String("scan_id", evt.ScanID),
+				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err))
 
 			// 3.1 Only store ToolResult, not Vulnerabilities
 			if err := h.scanService.InsertScanResult(scanResult); err != nil {
 				slog.Error("Error inserting ScanResult to DB",
-					slog.String("scan_id", evt.ScanID),
+					slog.String("scan_id", evt.ScanID.String()),
 					slog.String("tool_name", string(evt.ToolResult.Tool)),
 					slog.Any("error", err),
 				)
@@ -71,7 +62,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 			// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
 			if err := h.scanService.InsertVulnerabilityResult(scanResult); err != nil {
 				slog.Error("Error inserting VulnerabilityResult to DB",
-					slog.String("scan_id", evt.ScanID),
+					slog.String("scan_id", evt.ScanID.String()),
 					slog.String("tool_name", string(evt.ToolResult.Tool)),
 					slog.Any("error", err))
 			}

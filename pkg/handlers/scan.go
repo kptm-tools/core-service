@@ -65,8 +65,8 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 	for _, dataScan := range scans {
 		scanStartedPayload := &cmmn.ScanStartedEvent{
 			BaseEvent: cmmn.BaseEvent{
-				ScanID:    dataScan.ID.String(),
-				Timestamp: dataScan.CreatedAt.Unix(),
+				ScanID:    dataScan.ID,
+				Timestamp: dataScan.CreatedAt.UTC(),
 			},
 			Target: dataScan.Target,
 		}

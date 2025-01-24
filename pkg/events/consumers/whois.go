@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -36,7 +35,7 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 		// 2. Validate contents
 		if evt.ToolResult.Tool != enums.ToolWhoIs {
 			slog.Error("Invalid toolName for WhoIsEvent",
-				slog.String("scan_id", evt.ScanID),
+				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)))
 			return
 		}
@@ -44,25 +43,18 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 		// 2.1 Check for errors in the result
 		if evt.ToolResult.Err != nil {
 			slog.Warn("ToolResult contains an error",
-				slog.String("scan_id", evt.ScanID),
+				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err),
 			)
 		}
 
 		// 3. Save ToolResult to DB
-		scanID, err := uuid.Parse(evt.ScanID)
-		if err != nil {
-			slog.Error("ScanID is invalid UUID",
-				slog.String("scan_id", evt.ScanID),
-				slog.Any("error", err))
-			return
-		}
 
-		scanResult := domain.NewScanResult(scanID, evt.ToolResult)
+		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 		if err := h.scanService.InsertScanResult(scanResult); err != nil {
 			slog.Error("Error inserting ScanResult to DB",
-				slog.String("scan_id", evt.ScanID),
+				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", err))
 			return
