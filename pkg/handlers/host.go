@@ -171,14 +171,6 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	if err := h.hostService.ValidateAlias(validateHostRequest.Hostname); err != nil {
-
-		if errors.Is(err, services.ErrAliasTaken) {
-			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
-		}
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-	}
-
 	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
@@ -242,5 +234,27 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 	}
 
 	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(enums.Domain), string(enums.IP))
+}
 
+func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) error {
+	validateHostRequest := new(ValidateHostRequest)
+
+	if err := decodeJSONBody(w, req, validateHostRequest); err != nil {
+		var mr *malformedRequest
+
+		if errors.As(err, &mr) {
+			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	if err := h.hostService.ValidateAlias(validateHostRequest.Hostname); err != nil {
+
+		if errors.Is(err, services.ErrAliasTaken) {
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
