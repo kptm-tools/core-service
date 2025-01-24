@@ -47,6 +47,11 @@ func (s *PostgreSQLStore) CreateScanVulnerabilityTable() error {
       cvss       DECIMAL(4,2),
       vuln_references  JSONB,
       exploitable BOOLEAN,
+      port_id INT,
+      protocol VARCHAR(10),
+      service_name VARCHAR(255),
+      service_version VARCHAR(255),
+      port_state VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`
@@ -250,10 +255,11 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 	}
 
 	// Get all vulnerabilities and insert each one to our DB
-	vulners := nr.GetAllVulnerabilites()
-	for _, vuln := range vulners {
-		if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, toolID, vuln); err != nil {
-			return err
+	for _, port := range nr.ScannedPorts {
+		for _, vuln := range port.Vulnerabilities {
+			if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, toolID, vuln, port); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -264,18 +270,33 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 	return nil
 }
 
-func (s *PostgreSQLStore) InsertScanVulnerability(tx *sql.Tx, scanID uuid.UUID, hostID int, toolID int, vuln results.Vulnerability) error {
+func (s *PostgreSQLStore) InsertScanVulnerability(
+	tx *sql.Tx,
+	scanID uuid.UUID,
+	hostID int,
+	toolID int,
+	vuln results.Vulnerability,
+	port results.PortData,
+) error {
 	query := `
-    INSERT INTO scan_vulnerabilities (vulnerability_id, scan_id, host_id, tool_id, type, cvss, vuln_references, exploitable)
-    values ($1, $2, $3, $4, $5, $6, $7, $8)`
+    INSERT INTO scan_vulnerabilities (
+      vulnerability_id, scan_id, host_id, tool_id, type, cvss, vuln_references, exploitable,
+      port_id, protocol, service_name, service_version, port_state
+    )
+    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	referencesBytes, err := json.Marshal(vuln.References)
 	if err != nil {
 		return fmt.Errorf("failed to marshal vulnerability references: %w", err)
 	}
-	if _, err := tx.Exec(query, vuln.ID, scanID, hostID, toolID, vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable); err != nil {
+
+	if _, err := tx.Exec(query,
+		vuln.ID, scanID, hostID, toolID, vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable,
+		port.ID, port.Protocol, port.Service.Name, port.Service.Version, port.State,
+	); err != nil {
 		return fmt.Errorf("failed to insert vulnerability: %w", err)
 	}
+
 	return nil
 }
 
