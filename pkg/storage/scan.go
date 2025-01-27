@@ -503,10 +503,42 @@ func (s *PostgreSQLStore) GetToolIDByName(toolName string) (int, error) {
 }
 
 func (s *PostgreSQLStore) UpdateScanStatus(scanID uuid.UUID, status string) error {
-	query := `UPDATE scans SET status = $1 WHERE scan_id = $2`
+	query := `UPDATE scans
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE scan_id = $2`
 	result, err := s.db.Exec(query, status, scanID)
 	if err != nil {
 		return fmt.Errorf("failed to update scan status: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("scan with id %s not found", scanID.String())
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error {
+	query := `UPDATE scans
+            SET status = $1, updated_at = CURRENT_TIMESTAMP, ended_at = $2
+            WHERE id = $3`
+
+	execFunc := func(query string, args ...interface{}) (sql.Result, error) {
+		if tx != nil {
+			return tx.Exec(query, args...)
+		} else {
+			return s.db.Exec(query, args...)
+		}
+	}
+
+	result, err := execFunc(query, status, endedAt, scanID)
+	if err != nil {
+		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
