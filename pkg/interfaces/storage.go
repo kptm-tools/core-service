@@ -3,6 +3,7 @@ package interfaces
 import (
 	"database/sql"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -20,4 +21,5 @@ type IStorage interface {
 	GetScans(tenantID string) ([]*domain.ScanSummary, error)
 	InsertScanResult(*sql.Tx, *domain.ScanResult) error
 	InsertVulnerabilityResult(*domain.ScanResult) error
+	UpdateScanStatus(scanID uuid.UUID, status string) error
 }

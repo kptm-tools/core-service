@@ -1,8 +1,11 @@
 package interfaces
 
 import (
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/enums"
+	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 type IScanService interface {
@@ -10,6 +13,7 @@ type IScanService interface {
 	GetScans(string) ([]*domain.ScanSummary, error)
 	InsertScanResult(*domain.ScanResult) error
 	InsertVulnerabilityResult(*domain.ScanResult) error
+	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
 }
 
 type IScanHandlers interface {

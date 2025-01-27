@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/results"
 
 	"github.com/kptm-tools/common/common/enums"
@@ -70,4 +72,8 @@ func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
 
 func (s *ScanService) InsertVulnerabilityResult(scanResult *domain.ScanResult) error {
 	return s.storage.InsertVulnerabilityResult(scanResult)
+}
+
+func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error {
+	return s.storage.UpdateScanStatus(scanID, status.String())
 }

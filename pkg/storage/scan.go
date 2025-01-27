@@ -501,3 +501,22 @@ func (s *PostgreSQLStore) GetToolIDByName(toolName string) (int, error) {
 	}
 	return toolID, nil
 }
+
+func (s *PostgreSQLStore) UpdateScanStatus(scanID uuid.UUID, status string) error {
+	query := `UPDATE scans SET status = $1 WHERE scan_id = $2`
+	result, err := s.db.Exec(query, status, scanID)
+	if err != nil {
+		return fmt.Errorf("failed to update scan status: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("scan with id %s not found", scanID.String())
+	}
+
+	return nil
+}
