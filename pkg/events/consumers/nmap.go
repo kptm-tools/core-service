@@ -55,9 +55,16 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 					slog.String("tool_name", string(evt.ToolResult.Tool)),
 					slog.Any("error", err),
 				)
-				slog.Debug("NmapResult saved successfully")
 				return
 			}
+			slog.Debug("NmapResult saved successfully")
+			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+				slog.Error("Error marking scan as failed",
+					slog.String("scan_id", evt.ScanID.String()),
+					slog.Any("error", err))
+				return
+			}
+			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
 		} else {
 			// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
 			if err := h.scanService.InsertVulnerabilityResult(scanResult); err != nil {
