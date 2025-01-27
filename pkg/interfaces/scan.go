@@ -15,6 +15,7 @@ type IScanService interface {
 	InsertVulnerabilityResult(*domain.ScanResult) error
 	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
 	MarkScanAsFailed(scanID uuid.UUID) error
+	MarkScanAsCancelled(scanID uuid.UUID) error
 }
 
 type IScanHandlers interface {

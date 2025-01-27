@@ -101,6 +101,7 @@ func (s *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: http.StatusText(http.StatusBadRequest)})
 	}
 
+	// 1. Publish the event
 	scanCancelledPayload := &cmmn.ScanCancelledEvent{
 		BaseEvent: cmmn.BaseEvent{
 			ScanID:    scanID,
@@ -113,7 +114,13 @@ func (s *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 	if err := s.eventBus.Publish(string(enums.ScanCancelledEventSubject), scanCancelledBytes); err != nil {
-		slog.Error("failed to publish ScanCancelledEvent", slog.Any("error", err))
+		slog.Error("Failed to publish ScanCancelledEvent", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+
+	// 2. Update scan status and ended_at in our storage
+	if err := s.scanService.MarkScanAsCancelled(scanID); err != nil {
+		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
