@@ -86,7 +86,7 @@ func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
 	}
 
-	user, err := h.authService.GetUserByID(id, nil)
+	user, err := h.authService.GetUserByID(id.String(), nil)
 	if err != nil {
 		var fae *services.FaError
 
@@ -183,7 +183,7 @@ func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, id, tenantID)
+	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, id.String(), tenantID)
 	if err != nil {
 		var fae *services.FaError
 

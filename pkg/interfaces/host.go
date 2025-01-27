@@ -24,4 +24,5 @@ type IHostHandlers interface {
 	DeleteHostByID(w http.ResponseWriter, req *http.Request) error
 	PatchHostByID(w http.ResponseWriter, req *http.Request) error
 	ValidateHost(w http.ResponseWriter, req *http.Request) error
+	ValidateAlias(w http.ResponseWriter, req *http.Request) error
 }

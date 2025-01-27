@@ -2,17 +2,28 @@ package main
 
 import (
 	"log"
+	"log/slog"
+	"os"
+	"time"
 
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"github.com/lmittmann/tint"
 )
 
 func main() {
 	c := config.LoadConfig()
+
+	// Configure logging
+	slog.SetDefault(slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      slog.LevelDebug,
+		TimeFormat: time.Stamp,
+	})))
 
 	rootStore, err := storage.NewPostgreSQLStore(c.PostgreSQLRootConnStr())
 
@@ -52,6 +63,12 @@ func main() {
 	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
 	scanHandlers := handlers.NewScanHandlers(scanService, eventBus)
+
+	// Event Subscriptions
+	if err := events.SetupEventBus(eventBus, scanService); err != nil {
+		log.Fatalf("Error setting up Event Bus: %s", err.Error())
+	}
+
 	// Server
 	s := api.NewAPIServer(":8000", healthHandler, hostHandlers, tenantHandlers, authHandlers, scanHandlers)
 

@@ -64,7 +64,8 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/users/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), "getUser"))
 
 	router.HandleFunc("POST /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.CreateHost), "newHost"))
-	router.HandleFunc("POST /api/hosts/validate", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateHost), "validateHost"))
+	router.HandleFunc("POST /api/hosts/validate-host", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateHost), "validateHost"))
+	router.HandleFunc("POST /api/hosts/validate-alias", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateAlias), "validateAlias"))
 	router.HandleFunc("GET /api/hosts", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantIDAndUserID), "getHostsByTenantAndUser"))
 	router.HandleFunc("GET /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), "getHostByID"))
 	router.HandleFunc("DELETE /api/hosts/{id}", middleware.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
@@ -72,6 +73,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /tenants", middleware.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	router.HandleFunc("POST /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScans), "createScans"))
+	router.HandleFunc("GET /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 
 	stack := middleware.CreateStack(

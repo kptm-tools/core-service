@@ -58,7 +58,9 @@ func GetValidRoles(funcName string) ([]Role, error) {
 		"deleteHostByID":          {RoleAdmin, RoleOperator},
 		"patchHostByID":           {RoleAdmin, RoleOperator},
 		"validateHost":            {RoleOperator, RoleAnalyst},
+		"validateAlias":           {RoleOperator, RoleAnalyst},
 		"createScans":             {RoleOperator},
+		"getScans":                {RoleOperator, RoleAnalyst},
 		"cancelScanByID":          {RoleOperator},
 	}
 
