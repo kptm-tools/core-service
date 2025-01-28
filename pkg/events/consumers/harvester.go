@@ -9,6 +9,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/nats-io/nats.go"
+	"slices"
 )
 
 type HarvesterHandler struct {
@@ -45,6 +46,21 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err))
+		}
+
+		actualScan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		if errScan != nil {
+			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
+			return
+		}
+		statusNotToUpdateResult := []string{enums.StatusFailed.String(), enums.StatusCancelled.String()}
+		if slices.Contains(statusNotToUpdateResult, actualScan.Status) {
+			slog.Error("Error inserting ScanResult to DB because of Scan Status",
+				slog.String("scan_id", evt.ScanID.String()),
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("Status ", actualScan.Status),
+			)
+			return
 		}
 
 		// 3. Save ToolResult to DB

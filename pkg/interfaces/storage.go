@@ -20,6 +20,7 @@ type IStorage interface {
 	CreateScans(*domain.Scan, []int) ([]*domain.Scan, error)
 	ExistAlias(string) (bool, error)
 	GetScans(tenantID string) ([]*domain.ScanSummary, error)
+	GetScanByID(UUID uuid.UUID) (*domain.Scan, error)
 	InsertScanResult(*sql.Tx, *domain.ScanResult) error
 	InsertVulnerabilityResult(*domain.ScanResult) error
 	UpdateScanStatus(scanID uuid.UUID, status string) error

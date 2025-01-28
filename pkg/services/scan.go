@@ -102,3 +102,11 @@ func (s *ScanService) GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsight
 func (s *ScanService) CalculateProtectionScore(scanID uuid.UUID) (float64, error) {
 	return s.storage.GetProtectionScore(scanID)
 }
+
+func (s *ScanService) GetScanByID(scanID uuid.UUID) (*domain.Scan, error) {
+	scan, err := s.storage.GetScanByID(scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain scan by ID : %w", err)
+	}
+	return scan, nil
+}

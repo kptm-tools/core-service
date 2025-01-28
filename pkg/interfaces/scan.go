@@ -18,6 +18,7 @@ type IScanService interface {
 	MarkScanAsCancelled(scanID uuid.UUID) error
 	GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
+	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
 }
 
 type IScanHandlers interface {
