@@ -80,13 +80,14 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 	return nil
 }
 
-func GetUUID(req *http.Request) (string, error) {
+func GetUUID(req *http.Request) (uuid.UUID, error) {
 	reqUUID := req.PathValue("id")
 
-	if err := uuid.Validate(reqUUID); err != nil {
-		return "", fmt.Errorf("invalid UUID: `%s`", reqUUID)
+	u, err := uuid.Parse(reqUUID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse uuid: %w", err)
 	}
-	return reqUUID, nil
+	return u, nil
 }
 
 func GetID(req *http.Request) (int, error) {

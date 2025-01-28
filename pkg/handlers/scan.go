@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/kptm-tools/common/common/enums"
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
-	"net/http"
-	"strconv"
 )
 
 type ScanHandlers struct {
@@ -89,4 +92,38 @@ func (s ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 	return api.WriteJSON(w, http.StatusCreated, scans)
+}
+
+func (s *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
+	scanID, err := GetUUID(req)
+	if err != nil {
+		slog.Error("failed to extract scanID", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: http.StatusText(http.StatusBadRequest)})
+	}
+
+	// 1. Publish the event
+	scanCancelledPayload := &cmmn.ScanCancelledEvent{
+		BaseEvent: cmmn.BaseEvent{
+			ScanID:    scanID,
+			Timestamp: time.Now().UTC(),
+		},
+	}
+	scanCancelledBytes, err := json.Marshal(scanCancelledPayload)
+	if err != nil {
+		slog.Error("faild to unmarshal scanCancelledEvent", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+	if err := s.eventBus.Publish(string(enums.ScanCancelledEventSubject), scanCancelledBytes); err != nil {
+		slog.Error("Failed to publish ScanCancelledEvent", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+
+	// 2. Update scan status and ended_at in our storage
+	if err := s.scanService.MarkScanAsCancelled(scanID); err != nil {
+		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+
+	return api.WriteJSON(w, http.StatusOK, "Scan was cancelled")
+
 }

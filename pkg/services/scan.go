@@ -82,7 +82,15 @@ func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus
 func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
 	err := s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusFailed.String(), time.Now())
 	if err != nil {
-		return fmt.Errorf("failed to mark scan as failed: %w", err)
+		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
+	}
+	return nil
+}
+
+func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
+	err := s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusCancelled.String(), time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
 	return nil
 }
