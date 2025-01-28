@@ -612,10 +612,13 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	// Parse JSON severity_per_type into the desired map
+	// Parse JSON severity_per_type into the desired map if there are vulnerabilities
 	var severityPerType map[string]float64
-	if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal severity_per_type JSON: %w", err)
+
+	if insights.TotalVulnerabilities > 0 {
+		if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal severity_per_type JSON: %w", err)
+		}
 	}
 
 	// Map max cvss values into enums.Severity
