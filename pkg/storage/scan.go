@@ -630,10 +630,74 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 	insights.SeverityPerType = mapSeverities(severityPerType, results.MapCVSS)
 
 	// 1. Calculate total_vulnerabilities variation since last scan
+	vulnerabilityVariation, err := s.GetTotalVulnerabilityVariationSinceLastScan(scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get total vulnerability variation: %w", err)
+	}
+	insights.VulnerabilityVariation = vulnerabilityVariation
 
 	// 2. Calculate protection_score
 
 	return &insights, nil
+}
+
+func (s *PostgreSQLStore) GetTotalVulnerabilityVariationSinceLastScan(scanID uuid.UUID) (int, error) {
+
+	// 1. Get the HostID for the current scan
+	var hostID int
+	var currentScanCreatedAt time.Time
+	query := `
+    SELECT host_id, created_at
+    FROM scans
+    WHERE id = $1
+  `
+	err := s.db.QueryRow(query, scanID).Scan(&hostID, &currentScanCreatedAt)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get host_id and created_at for the current scan: %w", err)
+	}
+
+	// 2. Get the last scan's vulnerabilities for the same host
+	var lastScanVulns int
+	query = `
+    SELECT COUNT(V.id)
+    FROM scan_vulnerabilities V
+    JOIN scans S ON S.id = V.scan_id
+    WHERE S.host_id = $1
+    AND S.created_at < $2
+    GROUP BY S.host_id
+    ORDER BY MAX(S.created_at) DESC
+    LIMIT 1`
+	err = s.db.QueryRow(query, hostID, currentScanCreatedAt).Scan(&lastScanVulns)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// There is no last scan, which means that the variation is 0
+			slog.Debug("No last scan found", slog.Int("host_id", hostID), slog.Time("current_scan_created_at", currentScanCreatedAt))
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to get the last scan's total vulnerabilities: %w", err)
+	}
+
+	slog.Debug("Last scan's total vulns", slog.Int("total_vulnerabilities", lastScanVulns))
+
+	// 3. Get the current scan's vulnerabilities
+	var currentScanVulns int
+	query = `
+    SELECT count(V.id)
+    FROM scan_vulnerabilities V
+    WHERE V.scan_id = $1
+  `
+	err = s.db.QueryRow(query, scanID).Scan(&currentScanVulns)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("scan does not exist: %w", err)
+		}
+		return 0, fmt.Errorf("failed to get the current scan's total vulnerabilities: %w", err)
+	}
+
+	slog.Debug("Current scan's total vulns", slog.Int("total_vulnerabilities", currentScanVulns))
+
+	// 4. Calculate the vulnerability variation
+	return currentScanVulns - lastScanVulns, nil
 }
 
 func (s *PostgreSQLStore) GetProtectionScore(scanID uuid.UUID) (float64, error) {
