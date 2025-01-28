@@ -552,3 +552,90 @@ func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUI
 
 	return nil
 }
+
+func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error) {
+	query := `
+    WITH severity_per_type AS (
+      SELECT
+        sv.type AS vuln_type,
+        MAX(sv.cvss) AS max_cvss
+      FROM
+        scan_vulnerabilities sv
+      WHERE
+        sv.scan_id = $1
+      GROUP BY
+        sv.type
+  )
+    SELECT
+      scans.id AS scan_id,
+      hosts.alias AS scan_alias,
+      scans.started_at AS scan_date,
+      COUNT(sv.id) AS total_vulnerabilities,
+      SUM(CASE WHEN sv.cvss < 4.0 THEN 1 ELSE 0 END) AS low_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 4.0 AND sv.cvss < 7.0 THEN 1 ELSE 0 END) as medium_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 7.0 AND sv.cvss < 9.0 THEN 1 ELSE 0 END) as high_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical_vulnerabilities,
+      (
+        SELECT json_object_agg(
+          vuln_type,
+          max_cvss
+        )
+        FROM severity_per_type
+      ) AS severity_per_type_map
+    FROM
+      scans
+    INNER JOIN hosts ON scans.host_id = hosts.id
+    LEFT JOIN
+      scan_vulnerabilities sv ON scans.id = sv.scan_id
+    WHERE
+      scans.id = $1
+    GROUP BY scans.id, hosts.alias, scans.started_at, sv.type;
+  `
+
+	rows := s.db.QueryRow(query, scanID)
+
+	var insights domain.ScanInsights
+	var severityPerTypeJSON []byte
+
+	err := rows.Scan(
+		&insights.Metadata.ScanID,
+		&insights.Metadata.HostAlias,
+		&insights.Metadata.ScanDate,
+		&insights.TotalVulnerabilities,
+		&insights.SeverityCounts.Low,
+		&insights.SeverityCounts.Medium,
+		&insights.SeverityCounts.High,
+		&insights.SeverityCounts.Critical,
+		&severityPerTypeJSON,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	// Parse JSON severity_per_type into the desired map
+	var severityPerType map[string]float64
+	if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal severity_per_type JSON: %w", err)
+	}
+
+	// Map max cvss values into enums.Severity
+	mapSeverities := func(a map[string]float64, f func(float64) int) map[string]int {
+		n := make(map[string]int, len(a))
+		for k, v := range a {
+			n[k] = f(v)
+		}
+		return n
+	}
+
+	insights.SeverityPerType = mapSeverities(severityPerType, results.MapCVSS)
+
+	// 1. Calculate total_vulnerabilities variation since last scan
+
+	// 2. Calculate protection_score
+
+	return &insights, nil
+}
+
+func (s *PostgreSQLStore) GetProtectionScore(scanID uuid.UUID) (float64, error) {
+	return 0.0, fmt.Errorf("implementation pending")
+}

@@ -94,3 +94,11 @@ func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
 	}
 	return nil
 }
+
+func (s *ScanService) GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error) {
+	return s.storage.GetScanInsights(scanID)
+}
+
+func (s *ScanService) CalculateProtectionScore(scanID uuid.UUID) (float64, error) {
+	return s.storage.GetProtectionScore(scanID)
+}
