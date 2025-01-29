@@ -21,11 +21,11 @@ func (s *PostgreSQLStore) CreateScanTable() error {
       tenant_id UUID NOT NULL,
       operator_id UUID NOT NULL,
       host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
-      status VARCHAR(50) NOT NULL, -- e.g., 'pending', 'in_progress', 'completed', 'failed'
-      started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      ended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      status VARCHAR(50) NOT NULL CHECK (status IN ('Pending', 'InProgress', 'Completed', 'Failed', 'Cancelled')), 
+      started_at TIMESTAMP DEFAULT now(),
+      ended_at TIMESTAMP DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
   )`
 
 	_, err := s.db.Query(query)
@@ -193,12 +193,12 @@ func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain
 	defer tx.Rollback()
 	scans := []*domain.Scan{}
 	query := `
-    INSERT INTO scans (id, tenant_id, operator_id, host_id, status, started_at, ended_at)
-                values ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, tenant_id, operator_id, host_id, status, started_at, ended_at`
+    INSERT INTO scans (id, tenant_id, operator_id, host_id, status, started_at)
+                values ($1, $2, $3, $4, $5, $6)
+    RETURNING id, tenant_id, operator_id, host_id, status, started_at`
 
 	for _, hostID := range hostIDs {
-		row := tx.QueryRow(query, sc.ID, sc.TenantID, sc.OperatorID, hostID, sc.Status, sc.StartedAt, sc.EndedAt)
+		row := tx.QueryRow(query, sc.ID, sc.TenantID, sc.OperatorID, hostID, sc.Status, sc.StartedAt)
 		newScan := &domain.Scan{}
 		if err := scanIntoScan(row, newScan); err != nil {
 			return nil, fmt.Errorf("failed to insert scan: %w", err)
@@ -302,7 +302,7 @@ func (s *PostgreSQLStore) InsertScanVulnerability(
 }
 
 func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
-	if err := row.Scan(&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt, &scan.EndedAt); err != nil {
+	if err := row.Scan(&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt); err != nil {
 		return fmt.Errorf("error scanning row: %w", err)
 	}
 	return nil
@@ -348,7 +348,7 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
       S.id AS scan_id,
       S.started_at AS scan_date,
       H.alias AS host,
-      EXTRACT(epoch from COALESCE(S.ended_at, NOW()) - S.started_at) as duration,
+      EXTRACT(epoch from COALESCE(S.ended_at, NOW()) - S.started_at) as duration_in_seconds,
       S.status,
       COALESCE(total_vulnerabilities, 0) as total_vulnerabilities,
       COALESCE(A.low, 0) AS low,
