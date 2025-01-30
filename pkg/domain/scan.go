@@ -33,7 +33,7 @@ type Scan struct {
 	CreatedAt    time.Time      `json:"created_at,omitempty"`
 	UpdatedAt    time.Time      `json:"updated_at,omitempty"`
 	StartedAt    time.Time      `json:"started_at"`
-	EndedAt      time.Time      `json:"ended_at"`
+	EndedAt      *time.Time     `json:"ended_at"`
 	Status       string         `json:"status,omitempty"`
 }
 
