@@ -554,7 +554,6 @@ func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUI
 	return nil
 }
 
-<<<<<<< HEAD
 func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error) {
 	query := `
     WITH severity_per_type AS (
