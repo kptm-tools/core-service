@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -446,7 +447,7 @@ func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) er
 		return fmt.Errorf("failed to fetch tool by name: %w", err)
 	}
 
-	resultBytes, err := json.Marshal(sr.Result)
+	resultBytes, err := json.Marshal(sr.Result.Result)
 	if err != nil {
 		return fmt.Errorf("error marshalling scan result: %w", err)
 	}
@@ -551,4 +552,314 @@ func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUI
 	}
 
 	return nil
+}
+
+func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error) {
+	query := `
+    WITH severity_per_type AS (
+      SELECT
+        sv.type AS vuln_type,
+        MAX(sv.cvss) AS max_cvss
+      FROM
+        scan_vulnerabilities sv
+      WHERE
+        sv.scan_id = $1
+      GROUP BY
+        sv.type
+  )
+    SELECT
+      scans.id AS scan_id,
+      hosts.alias AS scan_alias,
+      scans.started_at AS scan_date,
+      COUNT(sv.id) AS total_vulnerabilities,
+      SUM(CASE WHEN sv.cvss < 4.0 THEN 1 ELSE 0 END) AS low_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 4.0 AND sv.cvss < 7.0 THEN 1 ELSE 0 END) as medium_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 7.0 AND sv.cvss < 9.0 THEN 1 ELSE 0 END) as high_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical_vulnerabilities,
+      (
+        SELECT json_object_agg(
+          vuln_type,
+          max_cvss
+        )
+        FROM severity_per_type
+      ) AS severity_per_type_map
+    FROM
+      scans
+    INNER JOIN hosts ON scans.host_id = hosts.id
+    LEFT JOIN
+      scan_vulnerabilities sv ON scans.id = sv.scan_id
+    WHERE
+      scans.id = $1
+    GROUP BY scans.id, hosts.alias, scans.started_at, sv.type;
+  `
+
+	rows := s.db.QueryRow(query, scanID)
+
+	var insights domain.ScanInsights
+	var severityPerTypeJSON []byte
+
+	err := rows.Scan(
+		&insights.Metadata.ScanID,
+		&insights.Metadata.HostAlias,
+		&insights.Metadata.ScanDate,
+		&insights.TotalVulnerabilities,
+		&insights.SeverityCounts.Low,
+		&insights.SeverityCounts.Medium,
+		&insights.SeverityCounts.High,
+		&insights.SeverityCounts.Critical,
+		&severityPerTypeJSON,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	// Parse JSON severity_per_type into the desired map if there are vulnerabilities
+	var severityPerType map[string]float64
+
+	if insights.TotalVulnerabilities > 0 {
+		if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal severity_per_type JSON: %w", err)
+		}
+	}
+
+	// Map max cvss values into enums.Severity
+	mapSeverities := func(a map[string]float64, f func(float64) int) map[string]int {
+		n := make(map[string]int, len(a))
+		for k, v := range a {
+			n[k] = f(v)
+		}
+		return n
+	}
+
+	insights.SeverityPerType = mapSeverities(severityPerType, results.MapCVSS)
+
+	// 1. Calculate total_vulnerabilities variation since last scan
+	vulnerabilityVariation, err := s.GetTotalVulnerabilityVariationSinceLastScan(scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get total vulnerability variation: %w", err)
+	}
+	insights.VulnerabilityVariation = vulnerabilityVariation
+
+	// 2. Calculate protection_score
+	protectionScore, err := s.GetProtectionScore(scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get protection score: %w", err)
+	}
+	insights.ProtectionScore = protectionScore
+
+	return &insights, nil
+}
+
+func (s *PostgreSQLStore) GetTotalVulnerabilityVariationSinceLastScan(scanID uuid.UUID) (int, error) {
+
+	// 1. Get the HostID for the current scan
+	var hostID int
+	var currentScanCreatedAt time.Time
+	query := `
+    SELECT host_id, created_at
+    FROM scans
+    WHERE id = $1
+  `
+	err := s.db.QueryRow(query, scanID).Scan(&hostID, &currentScanCreatedAt)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get host_id and created_at for the current scan: %w", err)
+	}
+
+	// 2. Get the last scan's vulnerabilities for the same host
+	var lastScanVulns int
+	query = `
+    SELECT COUNT(V.id)
+    FROM scan_vulnerabilities V
+    JOIN scans S ON S.id = V.scan_id
+    WHERE S.host_id = $1
+    AND S.created_at < $2
+    GROUP BY S.host_id
+    ORDER BY MAX(S.created_at) DESC
+    LIMIT 1`
+	err = s.db.QueryRow(query, hostID, currentScanCreatedAt).Scan(&lastScanVulns)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// There is no last scan, which means that the variation is 0
+			slog.Debug("No last scan found", slog.Int("host_id", hostID), slog.Time("current_scan_created_at", currentScanCreatedAt))
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to get the last scan's total vulnerabilities: %w", err)
+	}
+
+	slog.Debug("Last scan's total vulns", slog.Int("total_vulnerabilities", lastScanVulns))
+
+	// 3. Get the current scan's vulnerabilities
+	var currentScanVulns int
+	query = `
+    SELECT count(V.id)
+    FROM scan_vulnerabilities V
+    WHERE V.scan_id = $1
+  `
+	err = s.db.QueryRow(query, scanID).Scan(&currentScanVulns)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("scan does not exist: %w", err)
+		}
+		return 0, fmt.Errorf("failed to get the current scan's total vulnerabilities: %w", err)
+	}
+
+	slog.Debug("Current scan's total vulns", slog.Int("total_vulnerabilities", currentScanVulns))
+
+	// 4. Calculate the vulnerability variation
+	return currentScanVulns - lastScanVulns, nil
+}
+
+// GetToolResults is a generic function that parses a ToolResult from the scan_results
+// result column. It uses generics to be extensible and ensure type safety.
+func GetToolResults[T results.IToolResult](s *PostgreSQLStore, scanID uuid.UUID) (T, error) {
+	var toolResult T
+
+	toolName := string(toolResult.GetToolName())
+
+	toolID, err := s.GetToolIDByName(toolName)
+	if err != nil {
+		return toolResult, fmt.Errorf("failed to fetch %s tool_id: %w", string(toolName), err)
+	}
+
+	var toolResultBytes []byte
+	query := `
+    SELECT result
+    FROM scan_results
+    WHERE scan_id = $1 AND tool_id = $2
+  `
+	if err := s.db.QueryRow(query, scanID, toolID).Scan(&toolResultBytes); err != nil {
+		return toolResult, fmt.Errorf("failed to fetch %s results: %w", string(toolName), err)
+	}
+
+	if err := json.Unmarshal(toolResultBytes, &toolResult); err != nil {
+		return toolResult, fmt.Errorf("failed to unmarshal ToolResult for %s: %w", string(toolName), err)
+	}
+
+	slog.Debug("Got Tool Result from DB",
+		slog.String("scan_id", scanID.String()),
+		slog.String("tool_name", string(toolName)),
+		slog.Any("tool_result", toolResult))
+
+	return toolResult, nil
+}
+
+func (s *PostgreSQLStore) GetProtectionScore(scanID uuid.UUID) (float64, error) {
+	const (
+		maxEmails      = 50
+		maxSubdomains  = 100
+		openPortsLimit = 50
+		vulnLimit      = 50
+	)
+
+	var emailCount, subdomainCount, dnsRecordCount int
+	var whoisSuccessful bool
+	var vulnResults []results.Vulnerability
+	var osDetectionPenalty float64
+
+	// 1. Fetch harvester results
+	harvesterResult, err := GetToolResults[*results.HarvesterResult](s, scanID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch harvester results: %w", err)
+	}
+
+	// Fetch whois results
+	whoisResult, err := GetToolResults[*results.WhoIsResult](s, scanID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch whois results: %w", err)
+	}
+
+	// Fetch dnslookup results
+	dnsLookupResult, err := GetToolResults[*results.DNSLookupResult](s, scanID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch dnslookup results: %w", err)
+	}
+
+	// Fetch nmap results
+	nmapResult, err := GetToolResults[*results.NmapResult](s, scanID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch nmap results: %w", err)
+	}
+
+	// Extract relevant data
+	emailCount = len(harvesterResult.Emails)
+	subdomainCount = len(harvesterResult.Subdomains)
+	dnsRecordCount = len(dnsLookupResult.DNSRecords)
+	whoisSuccessful = whoisResult.Error == ""
+	openPorts := len(nmapResult.GetOpenPorts())
+
+	// Extract vulnerability data
+	vulners := nmapResult.GetAllVulnerabilites()
+	slog.Debug("Got vulnerabilities from scan",
+		slog.String("scan_id", scanID.String()),
+		slog.Any("vulnerabilities", vulners))
+	vulnResults = append(vulnResults, vulners...)
+	vulnCounts := results.GetSeverityCounts(vulnResults)
+
+	// Calculate penalties
+	if nmapResult.MostLikelyOS != "" {
+		osDetectionPenalty = 10.0
+	}
+
+	// Calculate protection sub-scores
+	emailScore := normalizeScore(float64(emailCount), maxEmails)
+	subdomainScore := normalizeScore(float64(subdomainCount), maxSubdomains)
+	whoisScore := 20 * boolToFloat(whoisSuccessful)
+	dnsScore := normalizeScore(float64(dnsRecordCount)*10, 1)
+	openPortsScore := normalizeScore(float64(openPorts), openPortsLimit)
+
+	// Vulnerability score (severity-weighted)
+	vulnScore := normalizeScore(float64(vulnCounts.Low*1+vulnCounts.Medium*3+vulnCounts.High*7+vulnCounts.Critical*15), vulnLimit)
+
+	slog.Info("Protection Score Calculation Data",
+		slog.Int("email_count", emailCount),
+		slog.Int("subdomain_count", subdomainCount),
+		slog.Int("dns_record_count", dnsRecordCount),
+		slog.Bool("whois_successful", whoisSuccessful),
+		slog.Int("open_ports", openPorts),
+		slog.Int("vuln_low", vulnCounts.Low),
+		slog.Int("vuln_medium", vulnCounts.Medium),
+		slog.Int("vuln_high", vulnCounts.High),
+		slog.Int("vuln_critical", vulnCounts.Critical),
+	)
+
+	slog.Debug("Individual Component Scores",
+		slog.Float64("email_score", emailScore),
+		slog.Float64("subdomain_score", subdomainScore),
+		slog.Float64("whois_score", whoisScore),
+		slog.Float64("dns_score", dnsScore),
+		slog.Float64("vuln_score", vulnScore),
+		slog.Float64("open_ports_score", openPortsScore),
+		slog.Float64("os_detection_penalty", osDetectionPenalty),
+	)
+
+	// Calculate final protection score (higher sub-scores decrease protection)
+	finalScore := 100 - (0.2*emailScore +
+		0.2*subdomainScore +
+		0.1*whoisScore +
+		0.1*dnsScore +
+		0.4*vulnScore +
+		0.2*openPortsScore +
+		osDetectionPenalty)
+
+	// Normalize between [0,1]
+	finalScore = math.Max(0, math.Min(finalScore/100, 1))
+
+	slog.Info("Final Protection Score",
+		slog.String("scan_id", scanID.String()),
+		slog.Float64("final_score", finalScore))
+
+	return finalScore, nil
+}
+
+// normalizeScore is a utility function to normalize a score
+// (higher values indicate higher risk)
+func normalizeScore(value, max float64) float64 {
+	return 100 * (math.Min(value/max, 1))
+}
+
+func boolToFloat(value bool) float64 {
+	if value {
+		return 1.0
+	}
+	return 0.0
 }

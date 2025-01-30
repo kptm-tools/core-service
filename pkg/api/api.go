@@ -75,6 +75,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScans), "createScans"))
 	router.HandleFunc("GET /api/scans", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
+	router.HandleFunc("GET /api/scans/{id}/insights", middleware.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,

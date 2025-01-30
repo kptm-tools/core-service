@@ -24,4 +24,6 @@ type IStorage interface {
 	InsertVulnerabilityResult(*domain.ScanResult) error
 	UpdateScanStatus(scanID uuid.UUID, status string) error
 	UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error
+	GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error)
+	GetProtectionScore(scanID uuid.UUID) (float64, error)
 }

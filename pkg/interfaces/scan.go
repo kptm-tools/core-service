@@ -16,10 +16,13 @@ type IScanService interface {
 	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
 	MarkScanAsFailed(scanID uuid.UUID) error
 	MarkScanAsCancelled(scanID uuid.UUID) error
+	GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error)
+	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 }
 
 type IScanHandlers interface {
 	CreateScans(writer http.ResponseWriter, request *http.Request) error
 	GetScans(writer http.ResponseWriter, request *http.Request) error
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
+	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
 }

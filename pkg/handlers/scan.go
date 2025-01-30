@@ -31,7 +31,7 @@ func NewScanHandlers(scanService interfaces.IScanService, bus cmmn.EventBus) *Sc
 	}
 }
 
-func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) error {
+func (h *ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) error {
 	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
 	userID := req.Context().Value(middleware.ContextUserID).(string)
 	scanRequest := new(ScanRequest)
@@ -56,7 +56,7 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 		hostIDs = append(hostIDs, intID)
 	}
 
-	scans, err := s.scanService.CreateScans(hostIDs, tenantID, userID)
+	scans, err := h.scanService.CreateScans(hostIDs, tenantID, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
@@ -77,16 +77,16 @@ func (s ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) erro
 		if err != nil {
 			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		}
-		s.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
+		h.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
 	}
 
 	return api.WriteJSON(w, http.StatusCreated, scans)
 }
 
-func (s ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
+func (h ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
 	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	scans, err := s.scanService.GetScans(tenantID)
+	scans, err := h.scanService.GetScans(tenantID)
 	if err != nil {
 
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
@@ -94,7 +94,7 @@ func (s ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
 	return api.WriteJSON(w, http.StatusCreated, scans)
 }
 
-func (s *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
+func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
 	scanID, err := GetUUID(req)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
@@ -113,17 +113,33 @@ func (s *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		slog.Error("faild to unmarshal scanCancelledEvent", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
-	if err := s.eventBus.Publish(string(enums.ScanCancelledEventSubject), scanCancelledBytes); err != nil {
+	if err := h.eventBus.Publish(string(enums.ScanCancelledEventSubject), scanCancelledBytes); err != nil {
 		slog.Error("Failed to publish ScanCancelledEvent", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
 	// 2. Update scan status and ended_at in our storage
-	if err := s.scanService.MarkScanAsCancelled(scanID); err != nil {
+	if err := h.scanService.MarkScanAsCancelled(scanID); err != nil {
 		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
 	return api.WriteJSON(w, http.StatusOK, "Scan was cancelled")
 
+}
+
+func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error {
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("failed to extract scanID", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: http.StatusText(http.StatusBadRequest)})
+	}
+
+	summary, err := h.scanService.GetScanInsightsByID(scanID)
+	if err != nil {
+		slog.Error("failed to get scan summary by ID", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+
+	return api.WriteJSON(w, http.StatusOK, summary)
 }
