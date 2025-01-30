@@ -554,6 +554,7 @@ func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUI
 	return nil
 }
 
+<<<<<<< HEAD
 func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error) {
 	query := `
     WITH severity_per_type AS (
@@ -862,4 +863,62 @@ func boolToFloat(value bool) float64 {
 		return 1.0
 	}
 	return 0.0
+}
+
+func (s *PostgreSQLStore) CreateTrigger() error {
+	// SQL query to create the trigger
+	createTriggerQuery := `
+	CREATE OR REPLACE FUNCTION scan_status_changes()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS
+$$
+DECLARE
+    quantityTools INT;
+    quantityScanResults INT;
+    currentStatus TEXT;
+BEGIN
+    -- Get the total number of tools
+    SELECT COUNT(*) INTO quantityTools FROM tools;
+    
+    -- Get the number of scan results for this scan
+    SELECT COUNT(*) INTO quantityScanResults FROM scan_results WHERE scan_id = NEW.scan_id;
+    
+    -- Get current scan status
+    SELECT status INTO currentStatus FROM scans WHERE id = NEW.scan_id;
+
+    -- If scan is already completed, do nothing
+    IF currentStatus = 'Completed' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Update status to 'InProgress' if at least one result exists and it's not yet 'InProgress'
+    IF quantityScanResults > 0 AND currentStatus NOT IN ('InProgress', 'Completed') THEN
+        UPDATE scans SET status = 'InProgress' WHERE id = NEW.scan_id;
+    END IF;
+
+    -- If all expected results are present, mark as 'Completed'
+    IF quantityScanResults >= quantityTools THEN
+        UPDATE scans SET status = 'Completed' WHERE id = NEW.scan_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+	CREATE TRIGGER scan_update
+    AFTER INSERT ON scan_results
+    FOR EACH ROW
+    EXECUTE PROCEDURE scan_status_changes();
+	`
+
+	// Execute the query to create the trigger
+	_, err := s.db.Exec(createTriggerQuery)
+	if err != nil {
+		slog.Error("failed to create trigger", slog.Any("error", err))
+		return err
+	}
+
+	fmt.Println("Trigger created successfully.")
+	return nil
 }

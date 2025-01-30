@@ -7,9 +7,9 @@ import (
 	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	eventsCore "github.com/kptm-tools/core-service/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/nats-io/nats.go"
-	"slices"
 )
 
 type DNSLookupHandler struct {
@@ -52,8 +52,8 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
 			return
 		}
-		statusNotToUpdateResult := []string{enums.StatusFailed.String(), enums.StatusCancelled.String()}
-		if slices.Contains(statusNotToUpdateResult, actualScan.Status) {
+
+		if eventsCore.CanInsertScanResult(actualScan.Status) {
 			slog.Error("Error inserting ScanResult to DB because of Scan Status",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),

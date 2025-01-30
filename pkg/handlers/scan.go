@@ -110,7 +110,7 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 	}
 	scanCancelledBytes, err := json.Marshal(scanCancelledPayload)
 	if err != nil {
-		slog.Error("faild to unmarshal scanCancelledEvent", slog.Any("error", err))
+		slog.Error("failed to unmarshal scanCancelledEvent", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 	if err := h.eventBus.Publish(string(enums.ScanCancelledEventSubject), scanCancelledBytes); err != nil {
