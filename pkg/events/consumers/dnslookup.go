@@ -53,7 +53,7 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
-		if eventUtils.CanInsertScanResult(actualScan.Status) {
+		if !eventUtils.CanInsertScanResult(actualScan.Status) {
 			slog.Error("Error inserting ScanResult to DB because of Scan Status",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
