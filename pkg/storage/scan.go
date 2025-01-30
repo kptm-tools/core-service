@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -647,6 +648,22 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 	}
 	insights.ProtectionScore = protectionScore
 
+	// 3. Calculate protection_score variation since last scan
+	prevScan, err := s.GetPreviousScan(scanID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			insights.ProtectionScoreVariation = 0.0
+			return &insights, nil
+		}
+		return nil, fmt.Errorf("failed to fetch previous scan: %w", err)
+	}
+
+	prevProtectionScore, err := s.GetProtectionScore(prevScan.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get previous scan's protection score: %w", err)
+	}
+
+	insights.ProtectionScoreVariation = insights.ProtectionScore - prevProtectionScore
 	return &insights, nil
 }
 
@@ -707,6 +724,34 @@ func (s *PostgreSQLStore) GetTotalVulnerabilityVariationSinceLastScan(scanID uui
 
 	// 4. Calculate the vulnerability variation
 	return currentScanVulns - lastScanVulns, nil
+}
+
+func (s *PostgreSQLStore) GetPreviousScan(scanID uuid.UUID) (*domain.Scan, error) {
+	var createdAt time.Time
+	query := `SELECT created_at FROM scans WHERE id = $1`
+	err := s.db.QueryRow(query, scanID).Scan(&createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current scan's created_at: %w", err)
+	}
+
+	var scan domain.Scan
+	query = `
+    SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at
+    FROM scans
+    WHERE created_at < $1
+    ORDER BY created_at DESC
+    LIMIT 1`
+
+	err = s.db.QueryRow(query, createdAt).Scan(
+		&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt, &scan.EndedAt, &scan.CreatedAt, &scan.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.Debug("Got previous scan", slog.Any("prev_scan", scan))
+
+	return &scan, nil
 }
 
 // GetToolResults is a generic function that parses a ToolResult from the scan_results
