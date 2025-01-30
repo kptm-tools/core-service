@@ -7,8 +7,8 @@ import (
 	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	eventsCore "github.com/kptm-tools/core-service/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	eventUtils "github.com/kptm-tools/core-service/pkg/utils/events"
 	"github.com/nats-io/nats.go"
 )
 
@@ -53,7 +53,7 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
-		if eventsCore.CanInsertScanResult(actualScan.Status) {
+		if eventUtils.CanInsertScanResult(actualScan.Status) {
 			slog.Error("Error inserting ScanResult to DB because of Scan Status",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),

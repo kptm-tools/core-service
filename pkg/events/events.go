@@ -5,7 +5,6 @@ import (
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/events/consumers"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"slices"
 )
 
 func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) error {
@@ -35,12 +34,4 @@ func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) 
 	}
 
 	return nil
-}
-
-func CanInsertScanResult(currentStatus string) bool {
-	statusNotToUpdateResult := []string{enums.StatusFailed.String(), enums.StatusCancelled.String()}
-	if !slices.Contains(statusNotToUpdateResult, currentStatus) {
-		return true
-	}
-	return false
 }

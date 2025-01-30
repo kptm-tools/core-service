@@ -2,7 +2,7 @@ package consumers
 
 import (
 	"encoding/json"
-	eventsCore "github.com/kptm-tools/core-service/pkg/events"
+	eventsCore "github.com/kptm-tools/core-service/pkg/utils/events"
 	"log/slog"
 
 	"github.com/kptm-tools/common/common/enums"
