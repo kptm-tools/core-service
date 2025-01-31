@@ -40,14 +40,7 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 			slog.Error("Invalid toolName for HarvesterEvent", slog.String("tool_name", string(evt.ToolResult.Tool)))
 		}
 
-		// 2.1 Check for errors in the result
-		if evt.ToolResult.Err != nil {
-			slog.Warn("ToolResult contains an error",
-				slog.String("scan_id", evt.ScanID.String()),
-				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", evt.ToolResult.Err))
-		}
-
+		// 2.1 Check if the current scan status is still healthy
 		actualScan, errScan := h.scanService.GetScanByID(evt.ScanID)
 		if errScan != nil {
 			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
@@ -60,6 +53,22 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 				slog.Any("Status ", actualScan.Status),
 			)
 			return
+		}
+
+		// 2.2 Check for errors in the result
+		if evt.ToolResult.Err != nil {
+			slog.Warn("ToolResult contains an error",
+				slog.String("scan_id", evt.ScanID.String()),
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("error", evt.ToolResult.Err))
+
+			// Mark the scan as failed
+			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+				slog.Error("Failed to mark scan as failed",
+					slog.String("scan_id", evt.ScanID.String()),
+					slog.Any("error", err))
+			}
+			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
 		}
 
 		// 3. Save ToolResult to DB
