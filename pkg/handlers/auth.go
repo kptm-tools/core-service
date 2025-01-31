@@ -260,7 +260,7 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 				WriteUnauthorized(w)
 			} else {
 				// General error
-				slog.Error("General error: ", err.Error())
+				slog.Error("General error", slog.Any("error", err))
 				WriteInternalServerError(w)
 			}
 			return
