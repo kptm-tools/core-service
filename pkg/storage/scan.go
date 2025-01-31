@@ -728,8 +728,9 @@ func (s *PostgreSQLStore) GetTotalVulnerabilityVariationSinceLastScan(scanID uui
 
 func (s *PostgreSQLStore) GetPreviousScan(scanID uuid.UUID) (*domain.Scan, error) {
 	var createdAt time.Time
-	query := `SELECT created_at FROM scans WHERE id = $1`
-	err := s.db.QueryRow(query, scanID).Scan(&createdAt)
+	var hostID string
+	query := `SELECT created_at, host_id FROM scans WHERE id = $1`
+	err := s.db.QueryRow(query, scanID).Scan(&createdAt, &hostID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current scan's created_at: %w", err)
 	}
@@ -738,11 +739,11 @@ func (s *PostgreSQLStore) GetPreviousScan(scanID uuid.UUID) (*domain.Scan, error
 	query = `
     SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at
     FROM scans
-    WHERE created_at < $1
+    WHERE created_at < $1 AND host_id = $2
     ORDER BY created_at DESC
     LIMIT 1`
 
-	err = s.db.QueryRow(query, createdAt).Scan(
+	err = s.db.QueryRow(query, createdAt, hostID).Scan(
 		&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt, &scan.EndedAt, &scan.CreatedAt, &scan.UpdatedAt,
 	)
 	if err != nil {
