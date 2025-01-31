@@ -898,7 +898,7 @@ BEGIN
 
     -- If all expected results are present, mark as 'Completed'
     IF quantityScanResults >= quantityTools THEN
-        UPDATE scans SET status = 'Completed' WHERE id = NEW.scan_id;
+        UPDATE scans SET status = 'Completed', ended_at = now() WHERE id = NEW.scan_id;
     END IF;
 
     RETURN NEW;
