@@ -2,6 +2,7 @@ package consumers
 
 import (
 	"encoding/json"
+	eventsCore "github.com/kptm-tools/core-service/pkg/utils/events"
 	"log/slog"
 
 	"github.com/kptm-tools/common/common/enums"
@@ -45,6 +46,20 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err))
+		}
+
+		actualScan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		if errScan != nil {
+			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
+			return
+		}
+		if !eventsCore.CanInsertScanResult(actualScan.Status) {
+			slog.Error("Error inserting ScanResult to DB because of Scan Status",
+				slog.String("scan_id", evt.ScanID.String()),
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("Status ", actualScan.Status),
+			)
+			return
 		}
 
 		// 3. Save ToolResult to DB

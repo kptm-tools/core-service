@@ -8,6 +8,7 @@ import (
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	eventUtils "github.com/kptm-tools/core-service/pkg/utils/events"
 	"github.com/nats-io/nats.go"
 )
 
@@ -46,7 +47,20 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err))
 		}
+		actualScan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		if errScan != nil {
+			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
+			return
+		}
 
+		if !eventUtils.CanInsertScanResult(actualScan.Status) {
+			slog.Error("Error inserting ScanResult to DB because of Scan Status",
+				slog.String("scan_id", evt.ScanID.String()),
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("Status ", actualScan.Status),
+			)
+			return
+		}
 		// 3. Save ToolResult to DB
 		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 

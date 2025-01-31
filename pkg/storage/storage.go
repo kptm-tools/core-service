@@ -79,6 +79,8 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	if err := s.InsertTools(); err != nil {
 		return err
 	}
+	if err := s.CreateTrigger(); err != nil {
+	}
 	return nil
 }
 
