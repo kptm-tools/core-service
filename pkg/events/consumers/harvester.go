@@ -63,7 +63,12 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 				slog.Any("error", evt.ToolResult.Err))
 
 			// Mark the scan as failed
-			h.scanService.MarkScanAsFailed(evt.ScanID)
+			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+				slog.Error("Failed to mark scan as failed",
+					slog.String("scan_id", evt.ScanID.String()),
+					slog.Any("error", err))
+			}
+			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
 		}
 
 		// 3. Save ToolResult to DB

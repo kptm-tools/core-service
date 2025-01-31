@@ -63,7 +63,14 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err),
 			)
-			h.scanService.MarkScanAsFailed(evt.ScanID)
+
+			// Mark the scan as failed
+			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+				slog.Error("Failed to mark scan as failed",
+					slog.String("scan_id", evt.ScanID.String()),
+					slog.Any("error", err))
+			}
+			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
 		}
 
 		// 3. Save ToolResult to DB
