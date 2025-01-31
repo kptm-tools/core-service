@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/kptm-tools/core-service/pkg/config"
 	_ "github.com/lib/pq"
@@ -20,6 +21,10 @@ func NewPostgreSQLStore(connStr string) (*PostgreSQLStore, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	db.SetMaxIdleConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxIdleTime(30 * time.Minute)
 
 	// Ping the DB to healthcheck it
 	if err := db.Ping(); err != nil {
