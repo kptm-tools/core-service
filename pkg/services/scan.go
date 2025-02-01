@@ -2,9 +2,12 @@ package services
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/kptm-tools/common/common/events"
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/results"
+
+	"github.com/kptm-tools/common/common/enums"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -21,63 +24,38 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScans(hostIDs []int) (*domain.Scan, error) {
+func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error) {
 	scanDB := domain.NewScan()
-	metadataDefault := createMetadata()
+	scanDB.TenantID = tenantID
+	scanDB.OperatorID = operatorID
 
-	for _, hostID := range hostIDs {
-		host, err := s.storage.GetHostByID(hostID)
+	dataScans, err := s.storage.CreateScans(scanDB, hostIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scan: %w", err)
+	}
+	for _, dataScan := range dataScans {
+		host, err := s.storage.GetHostByID(dataScan.HostID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get host: %w", err)
 		}
 
-		// Process the host data into the scan
-		scanDB.HostsStatus = append(scanDB.HostsStatus, createHostStatus(*host, metadataDefault))
-		scanDB.Targets = append(scanDB.Targets, createTarget(*host))
+		dataScan.Target = createTarget(*host)
 	}
-
-	dataScan, err := s.storage.CreateScan(scanDB)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scan: %w", err)
-	}
-
-	dataScan.Targets = scanDB.Targets
-	return dataScan, nil
+	return dataScans, nil
 }
 
-func createMetadata() []domain.Metadata {
-	// set dataResults of host in status scan
-	metadataWhois := domain.Metadata{
-		Progress: "0%",
-		Service:  results.ServiceWhoIs,
-	}
-	metadataHarvester := domain.Metadata{
-		Progress: "0%",
-		Service:  results.ServiceHarvester,
-	}
-	metadataDNSLookup := domain.Metadata{
-		Progress: "0%",
-		Service:  results.ServiceDNSLookup,
-	}
-	metadataNmap := domain.Metadata{
-		Progress: "0%",
-		Service:  results.ServiceNmap,
-	}
-	return []domain.Metadata{metadataHarvester, metadataWhois, metadataDNSLookup, metadataNmap}
-}
-
-func createTarget(host domain.Host) events.Target {
+func createTarget(host domain.Host) results.Target {
 	var hostValue string
-	var hostType events.TargetType
+	var hostType enums.TargetType
 	if host.Domain == "" {
-		hostType = events.IP
+		hostType = enums.IP
 		hostValue = host.IP
 	} else {
-		hostType = events.Domain
+		hostType = enums.Domain
 		hostValue = host.Domain
 	}
 
-	target := events.Target{
+	target := results.Target{
 		Alias: host.Name,
 		Value: hostValue,
 		Type:  hostType,
@@ -85,10 +63,50 @@ func createTarget(host domain.Host) events.Target {
 	return target
 }
 
-func createHostStatus(host domain.Host, metadata []domain.Metadata) domain.StatusHost {
-	hostStatus := domain.StatusHost{
-		Host:     host.Name,
-		Metadata: metadata,
+func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+	return s.storage.GetScans(tenantID)
+}
+
+func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
+	return s.storage.InsertScanResult(nil, scanResult)
+}
+
+func (s *ScanService) InsertVulnerabilityResult(scanResult *domain.ScanResult) error {
+	return s.storage.InsertVulnerabilityResult(scanResult)
+}
+
+func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error {
+	return s.storage.UpdateScanStatus(scanID, status.String())
+}
+
+func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
+	err := s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusFailed.String(), time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
-	return hostStatus
+	return nil
+}
+
+func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
+	err := s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusCancelled.String(), time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
+	}
+	return nil
+}
+
+func (s *ScanService) GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error) {
+	return s.storage.GetScanInsights(scanID)
+}
+
+func (s *ScanService) CalculateProtectionScore(scanID uuid.UUID) (float64, error) {
+	return s.storage.GetProtectionScore(scanID)
+}
+
+func (s *ScanService) GetScanByID(scanID uuid.UUID) (*domain.Scan, error) {
+	scan, err := s.storage.GetScanByID(scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain scan by ID : %w", err)
+	}
+	return scan, nil
 }

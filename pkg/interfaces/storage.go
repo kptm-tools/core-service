@@ -1,6 +1,10 @@
 package interfaces
 
 import (
+	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -13,6 +17,14 @@ type IStorage interface {
 	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
 	GetTenants() ([]*domain.Tenant, error)
 	Ping() error
-	CreateScan(*domain.Scan) (*domain.Scan, error)
+	CreateScans(*domain.Scan, []int) ([]*domain.Scan, error)
 	ExistAlias(string) (bool, error)
+	GetScans(tenantID string) ([]*domain.ScanSummary, error)
+	GetScanByID(UUID uuid.UUID) (*domain.Scan, error)
+	InsertScanResult(*sql.Tx, *domain.ScanResult) error
+	InsertVulnerabilityResult(*domain.ScanResult) error
+	UpdateScanStatus(scanID uuid.UUID, status string) error
+	UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error
+	GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error)
+	GetProtectionScore(scanID uuid.UUID) (float64, error)
 }

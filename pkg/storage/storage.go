@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/kptm-tools/core-service/pkg/config"
 	_ "github.com/lib/pq"
@@ -20,6 +21,10 @@ func NewPostgreSQLStore(connStr string) (*PostgreSQLStore, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	db.SetMaxIdleConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxIdleTime(30 * time.Minute)
 
 	// Ping the DB to healthcheck it
 	if err := db.Ping(); err != nil {
@@ -63,16 +68,30 @@ func (s *PostgreSQLStore) InitCoreDB() error {
 	if err := s.CreateTenantsTable(); err != nil {
 		return err
 	}
-	if err := s.CreateScansTable(); err != nil {
+	if err := s.CreateToolTable(); err != nil {
 		return err
 	}
 
+	if err := s.CreateScanTable(); err != nil {
+		return err
+	}
+	if err := s.CreateScanVulnerabilityTable(); err != nil {
+		return err
+	}
+	if err := s.CreateScanResultsTable(); err != nil {
+		return err
+	}
+	if err := s.InsertTools(); err != nil {
+		return err
+	}
+	if err := s.CreateTrigger(); err != nil {
+	}
 	return nil
 }
 
 func (s *PostgreSQLStore) ClearCoreDB() error {
 	// Attempt to clear Scans Table
-	if err := s.ClearScansTable(); err != nil {
+	if err := s.ClearScanTable(); err != nil {
 		return err
 	}
 
