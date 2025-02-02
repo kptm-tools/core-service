@@ -8,7 +8,6 @@ import (
 	"github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	eventUtils "github.com/kptm-tools/core-service/pkg/utils/events"
 	"github.com/nats-io/nats.go"
 )
 
@@ -41,17 +40,17 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2.1 Check if the current scan status is still healthy
-		actualScan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		scan, errScan := h.scanService.GetScanByID(evt.ScanID)
 		if errScan != nil {
 			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
 			return
 		}
 
-		if !eventUtils.CanInsertScanResult(actualScan.Status) {
+		if scan.IsFailedOrCancelled() {
 			slog.Error("Error inserting ScanResult to DB because of Scan Status",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("Status ", actualScan.Status),
+				slog.Any("current_status ", scan.Status),
 			)
 			return
 		}
