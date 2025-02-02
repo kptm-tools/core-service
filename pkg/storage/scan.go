@@ -658,12 +658,17 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 		return nil, fmt.Errorf("failed to fetch previous scan: %w", err)
 	}
 
-	prevProtectionScore, err := s.GetProtectionScore(prevScan.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get previous scan's protection score: %w", err)
+	// Calculate protectionScore Variation
+	var protectionScoreVariation float64
+	if !prevScan.IsFailedOrCancelled() {
+		prevProtectionScore, err := s.GetProtectionScore(prevScan.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get previous scan's protection score: %w", err)
+		}
+		protectionScoreVariation = insights.ProtectionScore - prevProtectionScore
 	}
 
-	insights.ProtectionScoreVariation = insights.ProtectionScore - prevProtectionScore
+	insights.ProtectionScoreVariation = protectionScoreVariation
 	return &insights, nil
 }
 

@@ -98,3 +98,7 @@ func NewScanResult(scanID uuid.UUID, result results.ToolResult) *ScanResult {
 		CreatedAt: time.Now().UTC(),
 	}
 }
+
+func (s *Scan) IsFailedOrCancelled() bool {
+	return s.Status == enums.StatusFailed.String() || s.Status == enums.StatusCancelled.String()
+}
