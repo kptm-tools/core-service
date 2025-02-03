@@ -53,6 +53,17 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		}
 		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 
+		// 3.1 Only store ToolResult, not Vulnerabilities
+		if err := h.scanService.InsertScanResult(scanResult); err != nil {
+			slog.Error("Error inserting ScanResult to DB",
+				slog.String("scan_id", evt.ScanID.String()),
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("error", err),
+			)
+			return
+		}
+		slog.Debug("Nmap ToolResult saved successfully")
+
 		// 2.1 Check for errors in the result
 		if evt.ToolResult.Err != nil {
 			slog.Warn("ToolResult contains an error, only storing ToolResult",
@@ -60,16 +71,6 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err))
 
-			// 3.1 Only store ToolResult, not Vulnerabilities
-			if err := h.scanService.InsertScanResult(scanResult); err != nil {
-				slog.Error("Error inserting ScanResult to DB",
-					slog.String("scan_id", evt.ScanID.String()),
-					slog.String("tool_name", string(evt.ToolResult.Tool)),
-					slog.Any("error", err),
-				)
-				return
-			}
-			slog.Debug("NmapResult saved successfully")
 			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
 				slog.Error("Error marking scan as failed",
 					slog.String("scan_id", evt.ScanID.String()),
@@ -77,14 +78,16 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 				return
 			}
 			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
-		} else {
-			// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
-			if err := h.scanService.InsertVulnerabilityResult(scanResult); err != nil {
-				slog.Error("Error inserting VulnerabilityResult to DB",
-					slog.String("scan_id", evt.ScanID.String()),
-					slog.String("tool_name", string(evt.ToolResult.Tool)),
-					slog.Any("error", err))
-			}
+			return
+		}
+
+		// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
+		if err := h.scanService.InsertVulnerabilityResult(scanResult); err != nil {
+			slog.Error("Error inserting VulnerabilityResult to DB",
+				slog.String("scan_id", evt.ScanID.String()),
+				slog.String("tool_name", string(evt.ToolResult.Tool)),
+				slog.Any("error", err))
+			return
 		}
 
 		slog.Debug("NmapEvent handled successfully")
