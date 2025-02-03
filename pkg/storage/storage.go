@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/kptm-tools/core-service/pkg/config"
 	_ "github.com/lib/pq"
 )
@@ -50,6 +52,25 @@ func (s *PostgreSQLStore) Init() error {
 		if err := s.CreateDB(dbName); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) Migrate() error {
+	cfg := config.LoadConfig()
+	driver, err := postgres.WithInstance(s.db, &postgres.Config{})
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		cfg.DatabaseName,
+		driver,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to initialize migrations: %w", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", err)
 	}
 
 	return nil
