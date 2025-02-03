@@ -229,12 +229,7 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 		return fmt.Errorf("failed to fetch scan by ID: %w", err)
 	}
 
-	// 1. Save the result to scan_results
-	if err := s.InsertScanResult(tx, sr); err != nil {
-		return fmt.Errorf("failed to insert to scan_results: %w", err)
-	}
-
-	// 2. Parse vulnerabilities and store them to vulnerabilities
+	// 1. Parse vulnerabilities and store them to vulnerabilities
 	if sr.Result.Err != nil {
 		slog.Warn("Vulnerability scan has errors, skipping vulnerability insertion")
 		return nil
@@ -695,7 +690,6 @@ func (s *PostgreSQLStore) GetTotalVulnerabilityVariationSinceLastScan(scanID uui
     JOIN scans S ON S.id = V.scan_id
     WHERE S.host_id = $1
     AND S.created_at < $2
-    GROUP BY S.host_id
     ORDER BY MAX(S.created_at) DESC
     LIMIT 1`
 	err = s.db.QueryRow(query, hostID, currentScanCreatedAt).Scan(&lastScanVulns)
