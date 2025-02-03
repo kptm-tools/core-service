@@ -586,7 +586,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
       scan_vulnerabilities sv ON scans.id = sv.scan_id
     WHERE
       scans.id = $1
-    GROUP BY scans.id, hosts.alias, scans.started_at, sv.type;
+    GROUP BY scans.id, hosts.alias, scans.started_at;
   `
 
 	rows := s.db.QueryRow(query, scanID)
