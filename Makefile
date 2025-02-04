@@ -2,6 +2,7 @@
 main_package_path = ./cmd/core-server
 sample_package_path = ./cmd/sample-data
 binary_name = core-service
+DATABASE_URL = 
 
 # ==================================================================================== #
 # HELPERS
@@ -45,6 +46,38 @@ run/live:
 		--build.exclude_dir "" \
 		--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, git, png, bmp, wbp, ico" \
 		--misc.clean_on_exit "true"
+
+# ==================================================================================== #
+# DATABASE MIGRATIONS
+# ==================================================================================== #
+
+## migrate/create NAME=<name>: create a new migration file
+.PHONY: migrate/create
+migrate/create:
+	@if [ -z "$(NAME)" ]; then \
+		echo "Usage: make migrate/create NAME=<migration-name>"; \
+		exit 1; \
+	fi
+	migrate create -ext sql -dir migrations -seq $(NAME)
+
+## migrate/up: apply all up migrations
+.PHONY: migrate/up
+migrate/up:
+	migrate -database $(DATABASE_URL) -path migrations up
+
+## migrate/down: apply the latest down migration
+.PHONY: migrate/down
+migrate/down:
+	migrate -database $(DATABASE_URL) -path migrations down
+
+## migrate/force VERSION=<version>: force a specific miration version
+.PHONY: migrate/force
+migrate/force:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make migrate/force VERSION=<version>"; \
+		exit 1; \
+	fi
+	migrate -database $(DATABASE_URL) -path migrations force $(VERSION)
 
 ## populate: populate DB with sample data
 .PHONY: populate
