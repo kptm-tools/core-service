@@ -7,25 +7,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func (s *PostgreSQLStore) CreateTenantsTable() error {
-	query := `create table if not exists tenants (
-      id SERIAL PRIMARY KEY,
-      provider_id UUID,
-      application_id UUID,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-	fmt.Println("Tenant table created")
-	return nil
-
-}
-
 func (s *PostgreSQLStore) ClearTenantsTable() error {
 	query := `TRUNCATE TABLE tenants RESTART IDENTITY CASCADE`
 

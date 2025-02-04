@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/kptm-tools/core-service/pkg/config"
 	_ "github.com/lib/pq"
 )
@@ -57,6 +58,13 @@ func (s *PostgreSQLStore) Init() error {
 	return nil
 }
 
+func (s *PostgreSQLStore) Close() error {
+	if s.db != nil {
+		return s.db.Close()
+	}
+	return nil
+}
+
 func (s *PostgreSQLStore) Migrate() error {
 	cfg := config.LoadConfig()
 	driver, err := postgres.WithInstance(s.db, &postgres.Config{})
@@ -76,41 +84,15 @@ func (s *PostgreSQLStore) Migrate() error {
 	return nil
 }
 
-func (s *PostgreSQLStore) InitCoreDB() error {
-
-	// Attempt to create Hosts Table
-	if err := s.CreateHostsTable(); err != nil {
-		return err
-	}
-	if err := s.CreateCredentialsTable(); err != nil {
-		return err
-	}
-	// Attempt to create Tenants Table
-	if err := s.CreateTenantsTable(); err != nil {
-		return err
-	}
-	if err := s.CreateToolTable(); err != nil {
-		return err
-	}
-
-	if err := s.CreateScanTable(); err != nil {
-		return err
-	}
-	if err := s.CreateScanVulnerabilityTable(); err != nil {
-		return err
-	}
-	if err := s.CreateScanResultsTable(); err != nil {
-		return err
-	}
-	if err := s.InsertTools(); err != nil {
-		return err
-	}
-	if err := s.CreateTrigger(); err != nil {
-	}
-	return nil
-}
-
 func (s *PostgreSQLStore) ClearCoreDB() error {
+	if err := s.ClearScanVulnerabilitiesTable(); err != nil {
+		return err
+	}
+
+	if err := s.ClearScanVulnerabilitiesTable(); err != nil {
+		return err
+	}
+
 	// Attempt to clear Scans Table
 	if err := s.ClearScanTable(); err != nil {
 		return err

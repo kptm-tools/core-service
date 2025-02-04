@@ -16,164 +16,30 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func (s *PostgreSQLStore) CreateScanTable() error {
-	query := `create table if not exists scans (
-      id UUID PRIMARY KEY,
-      tenant_id UUID NOT NULL,
-      operator_id UUID NOT NULL,
-      host_id INT REFERENCES hosts(id) ON DELETE CASCADE,
-      status VARCHAR(50) NOT NULL CHECK (status IN ('Pending', 'InProgress', 'Completed', 'Failed', 'Cancelled')), 
-      started_at TIMESTAMP DEFAULT now(),
-      ended_at TIMESTAMP DEFAULT NULL,
-      created_at TIMESTAMP DEFAULT now(),
-      updated_at TIMESTAMP DEFAULT now()
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *PostgreSQLStore) CreateScanVulnerabilityTable() error {
-	query := `create table if not exists scan_vulnerabilities (
-      id SERIAL PRIMARY KEY,
-      vulnerability_id VARCHAR(100) NOT NULL,
-      scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-      host_id INT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
-      tool_id INT NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
-      type       VARCHAR(50) NOT NULL,
-      cvss       DECIMAL(4,2),
-      vuln_references  JSONB,
-      exploitable BOOLEAN,
-      port_id INT,
-      protocol VARCHAR(10),
-      service_name VARCHAR(255),
-      service_version VARCHAR(255),
-      port_state VARCHAR(50),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *PostgreSQLStore) CreateScanResultsTable() error {
-	query := `create table if not exists scan_results (
-      id SERIAL PRIMARY KEY,
-      scan_id UUID REFERENCES scans (id) ON DELETE CASCADE,
-      tool_id INT REFERENCES tools(id) ON DELETE CASCADE,
-      success  BOOLEAN NOT NULL,
-      result JSONB,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *PostgreSQLStore) CreateToolTable() error {
-	query := `create table if not exists tools (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL, -- Tool name
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    type INT NOT NULL
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *PostgreSQLStore) InsertTools() error {
-	// Check if the table is already populated
-	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM tools").Scan(&count)
-	if err != nil {
-		return fmt.Errorf("failed to check tools count: %w", err)
-	}
-
-	if count > 0 {
-		slog.Info("Tools table already populated, skipping insertion.")
-		return nil
-	}
-
-	toolsData := s.getDefaultTools()
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to start transaction %w", err)
-	}
-	defer tx.Rollback()
-
-	query := `INSERT INTO tools (name, description, created_at, type) 
- 	VALUES ($1, $2, $3, $4)`
-
-	for _, data := range toolsData {
-		if _, err := tx.Exec(query, data.Name, data.Description, data.CreatedAt, data.Type); err != nil {
-			return fmt.Errorf("failed to insert tool: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	slog.Info("Tools table populated successfully.")
-	return nil
-}
-
-func (s *PostgreSQLStore) getDefaultTools() []domain.Tool {
-	toolsData := []domain.Tool{
-		{
-			Name:        string(enums.ToolDNSLookup),
-			Description: "This kali tool looks up the DNS server IP address",
-			CreatedAt:   time.Now(),
-			Type:        0,
-		},
-		{
-			Name:        string(enums.ToolWhoIs),
-			Description: "This kali tool uses WhoIs to obtain ownership info and IP address history",
-			CreatedAt:   time.Now(),
-			Type:        0,
-		},
-		{
-			Name:        string(enums.ToolHarvester),
-			Description: "This kali tool uses harvester to obtain subdomain names, e-mail addresses, virtual hosts, open ports/ banners, and employee names from different public source",
-			CreatedAt:   time.Now(),
-			Type:        0,
-		},
-		{
-			Name:        string(enums.ToolNmap),
-			Description: "This kali tool uses nmap to obtain vulnerabilities",
-			CreatedAt:   time.Now(),
-			Type:        1,
-		},
-	}
-	return toolsData
-}
-
 func (s *PostgreSQLStore) ClearScanTable() error {
 	query := `TRUNCATE TABLE scans RESTART IDENTITY CASCADE`
+
+	_, err := s.db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) ClearScanResultsTable() error {
+	query := `TRUNCATE TABLE scan_results RESTART IDENTITY CASCADE`
+
+	_, err := s.db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) ClearScanVulnerabilitiesTable() error {
+	query := `TRUNCATE TABLE scan_vulnerabilities RESTART IDENTITY CASCADE`
 
 	_, err := s.db.Exec(query)
 	if err != nil {
@@ -245,16 +111,10 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 		return fmt.Errorf("failed to unmarshal nmap result: %w", err)
 	}
 
-	// Get the toolID
-	toolID, err := s.GetToolIDByName(string(sr.Result.Tool))
-	if err != nil {
-		return fmt.Errorf("failed to fetch tool by name: %w", err)
-	}
-
 	// Get all vulnerabilities and insert each one to our DB
 	for _, port := range nr.ScannedPorts {
 		for _, vuln := range port.Vulnerabilities {
-			if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, toolID, vuln, port); err != nil {
+			if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, sr.Result.Tool, vuln, port); err != nil {
 				return err
 			}
 		}
@@ -271,14 +131,14 @@ func (s *PostgreSQLStore) InsertScanVulnerability(
 	tx *sql.Tx,
 	scanID uuid.UUID,
 	hostID int,
-	toolID int,
+	toolName enums.ToolName,
 	vuln results.Vulnerability,
 	port results.PortData,
 ) error {
 	query := `
     INSERT INTO scan_vulnerabilities (
-      vulnerability_id, scan_id, host_id, tool_id, type, cvss, vuln_references, exploitable,
-      port_id, protocol, service_name, service_version, port_state
+      vulnerability_id, scan_id, host_id, tool, type, cvss, vuln_references, exploitable,
+      port, protocol, service_name, service_version, port_state
     )
     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
@@ -288,7 +148,7 @@ func (s *PostgreSQLStore) InsertScanVulnerability(
 	}
 
 	if _, err := tx.Exec(query,
-		vuln.ID, scanID, hostID, toolID, vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable,
+		vuln.ID, scanID, hostID, string(toolName), vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable,
 		port.ID, port.Protocol, port.Service.Name, port.Service.Version, port.State,
 	); err != nil {
 		return fmt.Errorf("failed to insert vulnerability: %w", err)
@@ -401,9 +261,8 @@ func (s *PostgreSQLStore) GetScanByID(UUID uuid.UUID) (*domain.Scan, error) {
 }
 
 func (s *PostgreSQLStore) GetListOfScanResults(tenantID string) ([]*domain.ScanResult, error) {
-	query := `SELECT S.id, SR.tool_id, result from scan_results SR
-	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id
-	    INNER JOIN (SELECT * FROM tools WHERE type= 1) T ON SR.tool_id= T.id`
+	query := `SELECT S.id, SR.tool, result from scan_results SR
+	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id`
 	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch scans: %w", err)
@@ -423,7 +282,7 @@ func (s *PostgreSQLStore) GetListOfScanResults(tenantID string) ([]*domain.ScanR
 
 func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
 	var result []byte
-	if err := rows.Scan(&scanRes.ScanID, &scanRes.ToolID, &result); err != nil {
+	if err := rows.Scan(&scanRes.ScanID, &scanRes.ToolName, &result); err != nil {
 		return fmt.Errorf("failed to scan host: %w", err)
 	}
 	if err := json.Unmarshal(result, &scanRes.Result); err != nil {
@@ -435,13 +294,10 @@ func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
 
 func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) error {
 	query := `
-    INSERT INTO scan_results (scan_id, tool_id, success, result, created_at)
+    INSERT INTO scan_results (scan_id, tool, success, result, created_at)
     values ($1, $2, $3, $4, $5)`
 
-	toolID, err := s.GetToolIDByName(string(sr.Result.Tool))
-	if err != nil {
-		return fmt.Errorf("failed to fetch tool by name: %w", err)
-	}
+	toolName := string(sr.Result.Tool)
 
 	resultBytes, err := json.Marshal(sr.Result.Result)
 	if err != nil {
@@ -449,9 +305,9 @@ func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) er
 	}
 
 	if tx != nil {
-		_, err = tx.Exec(query, sr.ScanID, toolID, sr.Success, resultBytes, sr.CreatedAt)
+		_, err = tx.Exec(query, sr.ScanID, toolName, sr.Success, resultBytes, sr.CreatedAt)
 	} else {
-		_, err = s.db.Exec(query, sr.ScanID, toolID, sr.Success, resultBytes, sr.CreatedAt)
+		_, err = s.db.Exec(query, sr.ScanID, toolName, sr.Success, resultBytes, sr.CreatedAt)
 	}
 
 	if err != nil {
@@ -459,44 +315,6 @@ func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) er
 	}
 
 	return nil
-}
-
-func (s *PostgreSQLStore) GetTools() ([]string, error) {
-	query := `
-    SELECT id FROM tools
-  	`
-	rows, err := s.db.Query(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
-	}
-	defer rows.Close()
-	IDs := []string{}
-	for rows.Next() {
-		var ID string
-		if err := rows.Scan(&ID); err != nil {
-			log.Fatal(err)
-		}
-		IDs = append(IDs, ID)
-	}
-
-	return IDs, nil
-}
-
-func (s *PostgreSQLStore) GetToolIDByName(toolName string) (int, error) {
-	query := `
-    SELECT id
-    FROM tools
-    WHERE name = $1
-  `
-	var toolID int
-	err := s.db.QueryRow(query, toolName).Scan(&toolID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("tool not found: %s", toolName)
-		}
-		return 0, fmt.Errorf("error querying tool ID: %w", err)
-	}
-	return toolID, nil
 }
 
 func (s *PostgreSQLStore) UpdateScanStatus(scanID uuid.UUID, status string) error {
@@ -761,18 +579,13 @@ func GetToolResults[T results.IToolResult](s *PostgreSQLStore, scanID uuid.UUID)
 
 	toolName := string(toolResult.GetToolName())
 
-	toolID, err := s.GetToolIDByName(toolName)
-	if err != nil {
-		return toolResult, fmt.Errorf("failed to fetch %s tool_id: %w", string(toolName), err)
-	}
-
 	var toolResultBytes []byte
 	query := `
     SELECT result
     FROM scan_results
-    WHERE scan_id = $1 AND tool_id = $2
+    WHERE scan_id = $1 AND tool = $2
   `
-	if err := s.db.QueryRow(query, scanID, toolID).Scan(&toolResultBytes); err != nil {
+	if err := s.db.QueryRow(query, scanID, toolName).Scan(&toolResultBytes); err != nil {
 		return toolResult, fmt.Errorf("failed to fetch %s results: %w", string(toolName), err)
 	}
 
@@ -907,62 +720,4 @@ func boolToFloat(value bool) float64 {
 		return 1.0
 	}
 	return 0.0
-}
-
-func (s *PostgreSQLStore) CreateTrigger() error {
-	// SQL query to create the trigger
-	createTriggerQuery := `
-	CREATE OR REPLACE FUNCTION scan_status_changes()
-RETURNS TRIGGER
-LANGUAGE PLPGSQL
-AS
-$$
-DECLARE
-    quantityTools INT;
-    quantityScanResults INT;
-    currentStatus TEXT;
-BEGIN
-    -- Get the total number of tools
-    SELECT COUNT(*) INTO quantityTools FROM tools;
-    
-    -- Get the number of scan results for this scan
-    SELECT COUNT(*) INTO quantityScanResults FROM scan_results WHERE scan_id = NEW.scan_id;
-    
-    -- Get current scan status
-    SELECT status INTO currentStatus FROM scans WHERE id = NEW.scan_id;
-
-    -- If scan is already completed, do nothing
-    IF currentStatus = 'Completed' THEN
-        RETURN NEW;
-    END IF;
-
-    -- Update status to 'InProgress' if at least one result exists and it's not yet 'InProgress'
-    IF quantityScanResults > 0 AND currentStatus NOT IN ('InProgress', 'Completed') THEN
-        UPDATE scans SET status = 'InProgress' WHERE id = NEW.scan_id;
-    END IF;
-
-    -- If all expected results are present, mark as 'Completed'
-    IF quantityScanResults >= quantityTools THEN
-        UPDATE scans SET status = 'Completed', ended_at = now() WHERE id = NEW.scan_id;
-    END IF;
-
-    RETURN NEW;
-END;
-$$;
-
-	CREATE TRIGGER scan_update
-    AFTER INSERT ON scan_results
-    FOR EACH ROW
-    EXECUTE PROCEDURE scan_status_changes();
-	`
-
-	// Execute the query to create the trigger
-	_, err := s.db.Exec(createTriggerQuery)
-	if err != nil {
-		slog.Error("failed to create trigger", slog.Any("error", err))
-		return err
-	}
-
-	fmt.Println("Trigger created successfully.")
-	return nil
 }

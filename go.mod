@@ -10,16 +10,16 @@ require (
 require github.com/FusionAuth/go-client v0.0.0-20241126020005-1254a936741f
 
 require (
+	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
 	github.com/jpillora/go-tld v1.2.1
-	github.com/kptm-tools/common v1.4.3
+	github.com/kptm-tools/common v1.4.4
 	github.com/lmittmann/tint v1.0.6
 	github.com/nats-io/nats.go v1.38.0
 	github.com/prometheus-community/pro-bing v0.5.0
 )
 
 require (
-	github.com/golang-migrate/migrate/v4 v4.18.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
@@ -27,7 +27,6 @@ require (
 	github.com/likexian/whois-parser v1.24.20 // indirect
 	github.com/nats-io/nkeys v0.4.9 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect

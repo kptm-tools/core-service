@@ -10,59 +10,12 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func (s *PostgreSQLStore) CreateHostsTable() error {
-	query := `create table if not exists hosts (
-      id SERIAL PRIMARY KEY,
-      tenant_id UUID,
-      operator_id UUID,
-      domain VARCHAR(2048),
-      ip VARCHAR(15),
-      alias VARCHAR(2048) UNIQUE NOT NULL,
-      rapporteurs JSONB,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	queryEnablePgcrypto := `create extension if not exists pgcrypto;`
-	_, errPgCrypto := s.db.Query(queryEnablePgcrypto)
-	if errPgCrypto != nil {
-		return errPgCrypto
-	}
-
-	return nil
-
-}
-
-func (s *PostgreSQLStore) CreateCredentialsTable() error {
-	query := `create table if not exists credentials (
-      id SERIAL PRIMARY KEY,
-      host_id integer REFERENCES hosts (id) ON DELETE CASCADE,
-      username text  NOT NULL,
-      password text  NOT NULL
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
-
 func (s *PostgreSQLStore) ClearHostsTable() error {
 	query := `TRUNCATE TABLE hosts RESTART IDENTITY CASCADE`
 
 	_, err := s.db.Exec(query)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to clear hosts table: %w", err)
 	}
 
 	return nil
