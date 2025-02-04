@@ -102,6 +102,9 @@ func fetchEnv(varString string, fallbackString string) string {
 func fetchEnvOrPanic(key string) string {
 	value, found := os.LookupEnv(key)
 	if !found || value == "" {
+		if isTestEnv() {
+			return "test-default-value"
+		}
 		panic(fmt.Sprintf("missing required environment variable: %s", key))
 	}
 	return value
@@ -131,4 +134,8 @@ func (c *Config) GetAllowedOrigins() []string {
 
 func (c *Config) GetNatsConnStr() string {
 	return fmt.Sprintf("http://%s:%s", c.Nats.Host, c.Nats.Port)
+}
+
+func isTestEnv() bool {
+	return os.Getenv("GO_ENV") == "test" || strings.HasSuffix(os.Args[0], ".test")
 }

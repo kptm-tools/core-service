@@ -1,6 +1,6 @@
 # Change these variables as necessary
 main_package_path = ./cmd
-sample_package_path = ./cmd/sample-data.go
+sample_package_path = ./cmd/sample_data.go
 binary_name = core-service
 DATABASE_URL = 
 
