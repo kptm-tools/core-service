@@ -21,6 +21,7 @@ Welcome to **Core-Service**, the heart of the Kriptome-Tools project! This servi
 2. **Environment Variables**:
    - Configure the required environment variables in a `.env` file.
    - An example can be found in `.env.example` in the root directory
+   * You may set variables within the `Makefile` such as `DATABASE_URL` too.
 
 ### Steps
 1. Clone this repository:
@@ -52,6 +53,12 @@ Welcome to **Core-Service**, the heart of the Kriptome-Tools project! This servi
 | `make run/live`      | Run the application with live reload.        |
 | `make populate`      | Populate the database with sample data.      |
 | `make clear`         | Clear all database tables (requires confirm).|
+| `make migrate/create NAME=<name>`        | Create a new migration file. |
+| `make migrate/up`        | Apply all up migrations. |
+| `make migrate/down`        | Apply the latest down migration. |
+
+
+
 
 #### Quality Control
 | Command              | Description                                   |
