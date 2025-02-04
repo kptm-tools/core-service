@@ -1,6 +1,6 @@
 # Change these variables as necessary
-main_package_path = ./cmd/core-server
-sample_package_path = ./cmd/sample-data
+main_package_path = ./cmd
+sample_package_path = ./cmd/sample-data.go
 binary_name = core-service
 DATABASE_URL = 
 
@@ -58,17 +58,17 @@ migrate/create:
 		echo "Usage: make migrate/create NAME=<migration-name>"; \
 		exit 1; \
 	fi
-	migrate create -ext sql -dir migrations -seq $(NAME)
+	migrate create -ext sql -dir cmd/migrations -seq $(NAME)
 
 ## migrate/up: apply all up migrations
 .PHONY: migrate/up
 migrate/up:
-	migrate -database $(DATABASE_URL) -path migrations up
+	migrate -database $(DATABASE_URL) -path cmd/migrations up
 
 ## migrate/down: apply the latest down migration
 .PHONY: migrate/down
 migrate/down:
-	migrate -database $(DATABASE_URL) -path migrations down
+	migrate -database $(DATABASE_URL) -path cmd/migrations down
 
 ## migrate/force VERSION=<version>: force a specific miration version
 .PHONY: migrate/force
@@ -77,7 +77,7 @@ migrate/force:
 		echo "Usage: make migrate/force VERSION=<version>"; \
 		exit 1; \
 	fi
-	migrate -database $(DATABASE_URL) -path migrations force $(VERSION)
+	migrate -database $(DATABASE_URL) -path cmd/migrations force $(VERSION)
 
 ## populate: populate DB with sample data
 .PHONY: populate

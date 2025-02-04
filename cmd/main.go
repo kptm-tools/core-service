@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"log/slog"
 	"os"
 	"time"
@@ -15,6 +16,9 @@ import (
 	"github.com/lmittmann/tint"
 )
 
+//go:embed migrations/*.sql
+var migrations embed.FS
+
 func main() {
 	c := config.LoadConfig()
 
@@ -25,19 +29,7 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	rootStore, err := storage.NewPostgreSQLStore(c.PostgreSQLRootConnStr())
-	if err != nil {
-		logger.Error("Failed to create DB store", slog.Any("error", err))
-		os.Exit(1)
-	}
-	defer rootStore.Close()
-
-	if err := rootStore.Init(); err != nil {
-		logger.Error("Error initializing DB", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr())
+	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr(), migrations)
 	if err != nil {
 		logger.Error("Failed to create Core DB store", slog.Any("error", err))
 		os.Exit(1)
