@@ -3,21 +3,25 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
+	"log/slog"
 	"regexp"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/kptm-tools/core-service/pkg/config"
 	_ "github.com/lib/pq"
 )
 
 type PostgreSQLStore struct {
-	db *sql.DB
+	db         *sql.DB
+	migrations fs.FS
 }
 
-func NewPostgreSQLStore(connStr string) (*PostgreSQLStore, error) {
+func NewPostgreSQLStore(connStr string, migrations fs.FS) (*PostgreSQLStore, error) {
 
 	db, err := sql.Open("postgres", connStr)
 
@@ -35,7 +39,8 @@ func NewPostgreSQLStore(connStr string) (*PostgreSQLStore, error) {
 	}
 
 	return &PostgreSQLStore{
-		db: db,
+		db:         db,
+		migrations: migrations,
 	}, nil
 }
 
@@ -67,12 +72,15 @@ func (s *PostgreSQLStore) Close() error {
 
 func (s *PostgreSQLStore) Migrate() error {
 	cfg := config.LoadConfig()
-	driver, err := postgres.WithInstance(s.db, &postgres.Config{})
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		cfg.DatabaseName,
-		driver,
-	)
+	url := cfg.PostgreSQLDatabaseURL()
+
+	slog.Debug("Running migrations")
+	source, err := iofs.New(s.migrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create source: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", source, url)
 	if err != nil {
 		return fmt.Errorf("failed to initialize migrations: %w", err)
 	}

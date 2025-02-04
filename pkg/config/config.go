@@ -54,18 +54,17 @@ func LoadConfig() *Config {
 	return config
 }
 
-func (c *Config) PostgreSQLRootConnStr() string {
-	return fmt.Sprintf(
-		"host=%s user=%s dbname=%s password=%s sslmode=disable",
-		c.DatabaseHost, c.DatabaseUser, "postgres", c.DatabasePassword,
-	)
-
-}
-
 func (c *Config) PostgreSQLCoreConnStr() string {
 	return fmt.Sprintf(
 		"host=%s user=%s dbname=%s password=%s sslmode=disable",
 		c.DatabaseHost, c.DatabaseUser, c.DatabaseName, c.DatabasePassword,
+	)
+}
+
+func (c *Config) PostgreSQLDatabaseURL() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		c.DatabaseUser, c.DatabasePassword, c.DatabaseHost, c.DatabasePort, c.DatabaseName,
 	)
 }
 
