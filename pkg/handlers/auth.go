@@ -479,7 +479,7 @@ func setPublicKey(kid string) error {
 	c := config.LoadConfig()
 	// Retrieves the public key for JWT from FusionAuth
 	if middleware.VerifyKey == nil {
-		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuthHost, c.FusionAuthPort, kid)
+		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuth.Host, c.FusionAuth.Port, kid)
 		response, err := http.Get(url)
 		if err != nil {
 			return fmt.Errorf("problem connecting to FusionAuth: `%s`", err.Error())

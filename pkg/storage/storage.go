@@ -45,8 +45,9 @@ func NewPostgreSQLStore(connStr string, migrations fs.FS) (*PostgreSQLStore, err
 }
 
 func (s *PostgreSQLStore) Init() error {
-	dbName := config.LoadConfig().DatabaseName
+	cfg := config.LoadConfig()
 
+	dbName := cfg.Database.Name
 	exists, err := s.dbExists(dbName)
 
 	if err != nil {
