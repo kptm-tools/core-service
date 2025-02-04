@@ -12,7 +12,7 @@ BEGIN
     -- Get the total number of tools
     SELECT COUNT(enumlabel) INTO quantityTools
     FROM pg_enum
-    WHERE enumtypid = 'tool_enum'::regtpye;
+    WHERE enumtypid = 'tool_enum'::regtype;
     
     -- Get the number of distinct scan results (tools) for this scan
     SELECT COUNT(DISTINCT tool) INTO quantityScanResults
