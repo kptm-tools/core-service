@@ -13,6 +13,7 @@ import (
 	"github.com/kptm-tools/common/common/enums"
 	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/api"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 )
@@ -121,6 +122,10 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 	// 2. Update scan status and ended_at in our storage
 	if err := h.scanService.MarkScanAsCancelled(scanID); err != nil {
 		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
+		var alreadyFinishedErr *customerrors.ScanAlreadyFinishedError
+		if errors.As(err, &alreadyFinishedErr) {
+			return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: err.Error()})
+		}
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 

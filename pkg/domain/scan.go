@@ -102,3 +102,9 @@ func NewScanResult(scanID uuid.UUID, result results.ToolResult) *ScanResult {
 func (s *Scan) IsFailedOrCancelled() bool {
 	return s.Status == enums.StatusFailed.String() || s.Status == enums.StatusCancelled.String()
 }
+
+func (s *Scan) IsFinished() bool {
+	return s.Status == enums.StatusFailed.String() ||
+		s.Status == enums.StatusCancelled.String() ||
+		s.Status == enums.StatusCompleted.String()
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/kptm-tools/common/common/results"
 
 	"github.com/kptm-tools/common/common/enums"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -81,7 +82,16 @@ func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus
 }
 
 func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
-	err := s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusFailed.String(), time.Now().UTC())
+	scan, err := s.storage.GetScanByID(scanID)
+	if err != nil {
+		return fmt.Errorf("failed to get scan by ID: %w", err)
+	}
+
+	if scan.IsFinished() {
+		return customerrors.NewScanAlreadyFinishedError(scanID, scan.Status)
+	}
+
+	err = s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusFailed.String(), time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
@@ -89,7 +99,17 @@ func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
 }
 
 func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
-	err := s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusCancelled.String(), time.Now().UTC())
+
+	scan, err := s.storage.GetScanByID(scanID)
+	if err != nil {
+		return fmt.Errorf("failed to get scan by ID: %w", err)
+	}
+
+	if scan.IsFinished() {
+		return customerrors.NewScanAlreadyFinishedError(scanID, scan.Status)
+	}
+
+	err = s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusCancelled.String(), time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
