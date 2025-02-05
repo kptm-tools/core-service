@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -109,4 +110,9 @@ func (s *ScanService) GetScanByID(scanID uuid.UUID) (*domain.Scan, error) {
 		return nil, fmt.Errorf("failed to obtain scan by ID : %w", err)
 	}
 	return scan, nil
+}
+
+func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
+	slog.Info("Scan Service handling scan completion...")
+	return nil
 }
