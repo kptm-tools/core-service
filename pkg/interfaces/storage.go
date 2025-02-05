@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/results"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -27,4 +28,9 @@ type IStorage interface {
 	UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error
 	GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error)
 	GetProtectionScore(scanID uuid.UUID) (float64, error)
+	UpdateProtectionScore(scanID uuid.UUID, score float64) error
+	GetWhoisResult(scanID uuid.UUID) (*results.WhoIsResult, error)
+	GetDNSLookupResult(scanID uuid.UUID) (*results.DNSLookupResult, error)
+	GetHarvesterResult(scanID uuid.UUID) (*results.HarvesterResult, error)
+	GetNmapResult(scanID uuid.UUID) (*results.NmapResult, error)
 }
