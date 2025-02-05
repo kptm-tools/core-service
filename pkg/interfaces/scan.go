@@ -19,6 +19,7 @@ type IScanService interface {
 	GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
+	HandleScanCompletion(scanID uuid.UUID) error
 }
 
 type IScanHandlers interface {

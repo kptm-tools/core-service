@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -109,4 +110,45 @@ func (s *ScanService) GetScanByID(scanID uuid.UUID) (*domain.Scan, error) {
 		return nil, fmt.Errorf("failed to obtain scan by ID : %w", err)
 	}
 	return scan, nil
+}
+
+func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
+	slog.Info("Scan Service handling scan completion...")
+
+	whoIsResult, err := s.storage.GetWhoisResult(scanID)
+	if err != nil {
+		return fmt.Errorf("failed to get WhoisResult: %w", err)
+	}
+
+	dnsLookupResult, err := s.storage.GetDNSLookupResult(scanID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch DNSLookupResult: %w", err)
+	}
+
+	harvesterResult, err := s.storage.GetHarvesterResult(scanID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch HarvesterResult: %w", err)
+	}
+
+	nmapResult, err := s.storage.GetNmapResult(scanID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch NmapResult: %w", err)
+	}
+
+	protectionScore, err := results.CalculateProtectionScore(
+		*whoIsResult,
+		*dnsLookupResult,
+		*harvesterResult,
+		*nmapResult,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to calculate protection score: %w", err)
+	}
+
+	// Update protection score
+	if err := s.storage.UpdateProtectionScore(scanID, protectionScore); err != nil {
+		return fmt.Errorf("failed to update protection score on scan: %w", err)
+	}
+
+	return nil
 }

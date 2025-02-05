@@ -67,6 +67,13 @@ func main() {
 		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 
+	storageListener, err := storage.NewPostgresListener(c, scanService)
+	if err != nil {
+		logger.Error("Error creating db listener", slog.Any("error", err))
+		os.Exit(1)
+	}
+	defer storageListener.Close()
+
 	// Server
 	s := api.NewAPIServer(":8000", healthHandler, hostHandlers, tenantHandlers, authHandlers, scanHandlers)
 
