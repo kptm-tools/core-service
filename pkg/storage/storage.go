@@ -3,20 +3,31 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	"regexp"
+	"io/fs"
+	"log/slog"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/kptm-tools/core-service/pkg/config"
 	_ "github.com/lib/pq"
 )
 
 type PostgreSQLStore struct {
-	db *sql.DB
+	db         *sql.DB
+	migrations fs.FS
+	config     *config.Config
 }
 
-func NewPostgreSQLStore(connStr string) (*PostgreSQLStore, error) {
+func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore, error) {
 
-	db, err := sql.Open("postgres", connStr)
+	if err := createDatabaseIfNotExists(cfg); err != nil {
+		return nil, fmt.Errorf("failed to create database: %w", err)
+	}
+
+	db, err := sql.Open("postgres", cfg.PostgreSQLCoreDatabaseURL())
 
 	if err != nil {
 		return nil, err
@@ -32,64 +43,83 @@ func NewPostgreSQLStore(connStr string) (*PostgreSQLStore, error) {
 	}
 
 	return &PostgreSQLStore{
-		db: db,
+		db:         db,
+		migrations: migrations,
+		config:     cfg,
 	}, nil
 }
 
-func (s *PostgreSQLStore) Init() error {
-	dbName := config.LoadConfig().DatabaseName
+// createDatabaseIfNotExists handles database creation before main connection
+func createDatabaseIfNotExists(cfg *config.Config) error {
+	defaultConnStr := cfg.PostgreSQLDefaultDatabaseURL()
 
-	exists, err := s.dbExists(dbName)
-
+	db, err := sql.Open("postgres", defaultConnStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to default database: %w", err)
+	}
+	defer db.Close()
+
+	dbName := cfg.Database.Name
+	query := `SELECT EXISTS(SELECT FROM pg_database WHERE datname=$1)`
+	var exists bool
+	err = db.QueryRow(query, dbName).Scan(&exists)
+
+	// If the database doesn't exist, create it
+	if err != nil {
+		return fmt.Errorf("failed to check databse existence: %w", err)
 	}
 
 	if !exists {
-		// Attempt to Create Core DB
-		if err := s.CreateDB(dbName); err != nil {
-			return err
+		createQuery := fmt.Sprintf("CREATE DATABASE %s", dbName)
+		_, err = db.Exec(createQuery)
+		if err != nil {
+			return fmt.Errorf("failed to create database %s: %w", dbName, err)
 		}
+		slog.Info("Database created successfully", slog.String("name", dbName))
+
 	}
 
 	return nil
 }
 
-func (s *PostgreSQLStore) InitCoreDB() error {
+func (s *PostgreSQLStore) Close() error {
+	if s.db != nil {
+		return s.db.Close()
+	}
+	return nil
+}
 
-	// Attempt to create Hosts Table
-	if err := s.CreateHostsTable(); err != nil {
-		return err
-	}
-	if err := s.CreateCredentialsTable(); err != nil {
-		return err
-	}
-	// Attempt to create Tenants Table
-	if err := s.CreateTenantsTable(); err != nil {
-		return err
-	}
-	if err := s.CreateToolTable(); err != nil {
-		return err
+func (s *PostgreSQLStore) Migrate() error {
+	cfg := config.LoadConfig()
+	url := cfg.PostgreSQLCoreDatabaseURL()
+
+	slog.Debug("Running migrations")
+	source, err := iofs.New(s.migrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create source: %w", err)
 	}
 
-	if err := s.CreateScanTable(); err != nil {
-		return err
+	m, err := migrate.NewWithSourceInstance("iofs", source, url)
+	if err != nil {
+		return fmt.Errorf("failed to initialize migrations: %w", err)
 	}
-	if err := s.CreateScanVulnerabilityTable(); err != nil {
-		return err
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply up migrations: %w", err)
 	}
-	if err := s.CreateScanResultsTable(); err != nil {
-		return err
-	}
-	if err := s.InsertTools(); err != nil {
-		return err
-	}
-	if err := s.CreateTrigger(); err != nil {
-	}
+
 	return nil
 }
 
 func (s *PostgreSQLStore) ClearCoreDB() error {
+	if err := s.ClearScanVulnerabilitiesTable(); err != nil {
+		return err
+	}
+
+	if err := s.ClearScanVulnerabilitiesTable(); err != nil {
+		return err
+	}
+
 	// Attempt to clear Scans Table
 	if err := s.ClearScanTable(); err != nil {
 		return err
@@ -107,49 +137,6 @@ func (s *PostgreSQLStore) ClearCoreDB() error {
 	return nil
 }
 
-func (s *PostgreSQLStore) CreateDB(dbName string) error {
-
-	if !isValidDatabaseName(dbName) {
-		return fmt.Errorf("invalid database name: `%s`", dbName)
-	}
-
-	query := fmt.Sprintf("CREATE DATABASE %s;", dbName)
-	_, err := s.db.Exec(query)
-
-	if err != nil {
-		return fmt.Errorf("error creating Database: `%+v`", err)
-	}
-
-	return nil
-
-}
-
 func (s *PostgreSQLStore) Ping() error {
 	return s.db.Ping()
-}
-
-func (s *PostgreSQLStore) dbExists(dbName string) (bool, error) {
-
-	var exists bool
-
-	query := `
-    SELECT EXISTS (
-          SELECT FROM pg_database
-          WHERE datname=$1
-    )
-  `
-
-	err := s.db.QueryRow(query, dbName).Scan(&exists)
-
-	if err != nil {
-		return false, fmt.Errorf("error checking database existence: `%+v`", err)
-	}
-
-	return exists, nil
-
-}
-
-func isValidDatabaseName(name string) bool {
-	validName := regexp.MustCompile(`^[a-zA-Z0-9_]{1,62}$`)
-	return validName.MatchString(name)
 }

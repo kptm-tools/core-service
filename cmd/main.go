@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"embed"
 	"log/slog"
 	"os"
 	"time"
@@ -16,39 +16,37 @@ import (
 	"github.com/lmittmann/tint"
 )
 
+//go:embed migrations/*.sql
+var migrations embed.FS
+
 func main() {
 	c := config.LoadConfig()
 
 	// Configure logging
-	slog.SetDefault(slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+	logger := slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 		Level:      slog.LevelDebug,
 		TimeFormat: time.Stamp,
-	})))
+	}))
+	slog.SetDefault(logger)
 
-	rootStore, err := storage.NewPostgreSQLStore(c.PostgreSQLRootConnStr())
-
+	coreStore, err := storage.NewPostgreSQLStore(c, migrations)
 	if err != nil {
-		log.Fatal("Failed to create DB store ", err.Error())
+		logger.Error("Failed to create Core DB store", slog.Any("error", err))
+		os.Exit(1)
 	}
+	defer coreStore.Close()
 
-	if err := rootStore.Init(); err != nil {
-		log.Fatalf("Error initializing DB: `%+v`", err)
-	}
-
-	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr())
-
-	if err != nil {
-		log.Fatalf("Failed to create Core DB store: `%+v`", err)
-	}
-
-	if err := coreStore.InitCoreDB(); err != nil {
-		log.Fatalf("Error initializing Core DB: `%+v`", err)
+	if err := coreStore.Migrate(); err != nil {
+		logger.Error("Error running migrations", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	eventBus, err := cmmn.NewNatsEventBus(c.GetNatsConnStr())
 	if err != nil {
-		log.Fatalf("Error creating Event Bus: %s", err.Error())
+		logger.Error("Error creating Event Bus", slog.Any("error", err))
+		os.Exit(1)
 	}
+	defer eventBus.Close()
 
 	// Services
 	healthService := services.NewHealthcheckService(coreStore)
@@ -66,14 +64,14 @@ func main() {
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
-		log.Fatalf("Error setting up Event Bus: %s", err.Error())
+		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 
 	// Server
 	s := api.NewAPIServer(":8000", healthHandler, hostHandlers, tenantHandlers, authHandlers, scanHandlers)
 
 	if err := s.Init(); err != nil {
-		log.Fatalf("Failed to initialize APIServer: `%+v`", err)
+		slog.Error("Failed to initialize APIServer", slog.Any("error", err))
 	}
 
 }

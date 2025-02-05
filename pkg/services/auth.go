@@ -165,8 +165,7 @@ func (s *AuthService) GetUserByID(userID string, tenantID *string) (*domain.User
 func fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
 	c := config.LoadConfig()
 
-	// log.Println("Trying to fetch blueprint tenant with ID: ", c.BlueprintTenantID)
-	resp, faErr, err := client.RetrieveTenant(c.BlueprintTenantID)
+	resp, faErr, err := client.RetrieveTenant(c.FusionAuth.BlueprintTenantID)
 
 	if err != nil {
 		return nil, err
@@ -216,13 +215,12 @@ func registerTenant(t *fusionauth.Tenant, client *fusionauth.FusionAuthClient) e
 func fetchBlueprintApp(client *fusionauth.FusionAuthClient) (*fusionauth.Application, error) {
 	c := config.LoadConfig()
 
-	resp, err := client.RetrieveApplication(c.BlueprintApplicationID)
+	resp, err := client.RetrieveApplication(c.FusionAuth.BlueprintApplicationID)
 	if err != nil {
 		return nil, err
 	}
 
 	a := &resp.Application
-	// log.Printf("Got BlueprintAPP `%+v`\n", a)
 	return a, nil
 }
 
@@ -363,13 +361,13 @@ func scanIntoDomainUser(faUser fusionauth.User) (*domain.User, error) {
 func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error) {
 
 	c := config.LoadConfig()
-	host := fmt.Sprintf("http://%s:%s", c.FusionAuthHost, c.FusionAuthPort)
+	host := fmt.Sprintf("http://%s:%s", c.FusionAuth.Host, c.FusionAuth.Port)
 	baseURL, err := url.Parse(host)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating FusionAuthClient: `%s`", err.Error())
 	}
 
-	return fusionauth.NewClient(s.client, baseURL, c.FusionAuthAPIKey), nil
+	return fusionauth.NewClient(s.client, baseURL, c.FusionAuth.APIKey), nil
 }
 
 func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.ForgotPasswordResponse, error) {

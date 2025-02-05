@@ -8,7 +8,7 @@ import (
 func SampleTenants() []domain.Tenant {
 	c := config.LoadConfig()
 	return []domain.Tenant{
-		*domain.NewTenant(c.BlueprintTenantID, c.BlueprintApplicationID),
+		*domain.NewTenant(c.FusionAuth.BlueprintTenantID, c.FusionAuth.BlueprintApplicationID),
 		*domain.NewTenant("11111111-0000-0000-0000-000000000000", "00000000-1111-0000-0000-000000000000"),
 	}
 }

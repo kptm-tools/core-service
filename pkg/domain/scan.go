@@ -49,7 +49,7 @@ type ScanSummary struct {
 
 type ScanResult struct {
 	ScanID    uuid.UUID
-	ToolID    int
+	ToolName  string
 	Success   bool
 	Result    results.ToolResult
 	CreatedAt time.Time `json:"created_at,omitempty"`

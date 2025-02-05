@@ -11,7 +11,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/storage"
 )
 
-func main() {
+func sample() {
 
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: go run main.go [populate|clear]")
@@ -19,7 +19,7 @@ func main() {
 	}
 
 	c := config.LoadConfig()
-	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr())
+	coreStore, err := storage.NewPostgreSQLStore(c, migrations)
 	if err != nil {
 		panic(err)
 	}

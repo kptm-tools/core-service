@@ -2,70 +2,139 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	ApplicationID          string
-	AllowedOrigins         string
-	FusionAuthAPIKey       string
-	FusionAuthHost         string
-	FusionAuthPort         string
-	BlueprintTenantID      string
-	BlueprintApplicationID string
-	DatabaseUser           string
-	DatabasePassword       string
-	DatabaseName           string
-	DatabaseHost           string
-	DatabasePort           string
-	NatsHost               string
-	NatsPort               string
+	AllowedOrigins string
+
+	FusionAuth struct {
+		APIKey                 string
+		Host                   string
+		Port                   string
+		BlueprintTenantID      string
+		BlueprintApplicationID string
+		ApplicationID          string
+	}
+
+	Database struct {
+		User     string
+		Password string
+		Name     string
+		Host     string
+		Port     string
+	}
+
+	Nats struct {
+		Host string
+		Port string
+	}
+}
+
+func LoadConfig() *Config {
+
+	if os.Getenv("GO_ENV") != "production" {
+		err := godotenv.Load()
+		if err != nil {
+			slog.Warn("No .env file found, using system environment variables")
+		}
+	}
+
+	cfg := &Config{
+		AllowedOrigins: fetchEnv("ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:5173"),
+	}
+
+	cfg.FusionAuth = struct {
+		APIKey                 string
+		Host                   string
+		Port                   string
+		BlueprintTenantID      string
+		BlueprintApplicationID string
+		ApplicationID          string
+	}{
+		ApplicationID:          fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
+		APIKey:                 fetchEnvOrPanic("FUSIONAUTH_API_KEY"),
+		Host:                   fetchEnv("FUSIONAUTH_HOST", "localhost"),
+		Port:                   fetchEnv("FUSIONAUTH_PORT", "9011"),
+		BlueprintTenantID:      fetchEnv("FUSIONAUTH_BLUEPRINT_TENANTID", "79c9acd6-a590-4394-8f2c-fadb07b79113"),
+		BlueprintApplicationID: fetchEnv("FUSIONAUTH_BLUEPRINT_APPID", "c412a5bf-2524-46e9-85a6-08d1f1777295"),
+	}
+
+	cfg.Database = struct {
+		User     string
+		Password string
+		Name     string
+		Host     string
+		Port     string
+	}{
+		User:     fetchEnvOrPanic("DB_USER"),
+		Password: fetchEnvOrPanic("DB_PASSWORD"),
+		Name:     fetchEnvOrPanic("DB_NAME"),
+		Host:     fetchEnv("DB_HOST", "localhost"),
+		Port:     fetchEnv("DB_PORT", "5432"),
+	}
+
+	cfg.Nats = struct {
+		Host string
+		Port string
+	}{
+		Host: fetchEnv("NATS_HOST", "localhost"),
+		Port: fetchEnv("NATS_PORT", "4222"),
+	}
+
+	return cfg
 }
 
 func fetchEnv(varString string, fallbackString string) string {
-	env, found := os.LookupEnv(varString)
+	value, found := os.LookupEnv(varString)
 
 	if !found {
 		return fallbackString
 	}
 
-	return env
+	return value
 }
 
-func LoadConfig() *Config {
-	config := &Config{
-		ApplicationID:          fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
-		AllowedOrigins:         fetchEnv("ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:5173"),
-		FusionAuthAPIKey:       fetchEnv("FUSIONAUTH_API_KEY", "this_really_should_be_a_long_random_alphanumeric_value_but_this_still_works"),
-		FusionAuthHost:         fetchEnv("FUSIONAUTH_HOST", "localhost"),
-		FusionAuthPort:         fetchEnv("FUSIONAUTH_PORT", "9011"),
-		BlueprintTenantID:      fetchEnv("FUSIONAUTH_BLUEPRINT_TENANTID", "79c9acd6-a590-4394-8f2c-fadb07b79113"),
-		BlueprintApplicationID: fetchEnv("FUSIONAUTH_BLUEPRINT_APPID", "c412a5bf-2524-46e9-85a6-08d1f1777295"),
-		DatabaseUser:           fetchEnv("DB_USER", "postgres"),
-		DatabasePassword:       fetchEnv("DB_PASSWORD", "postgres"),
-		DatabaseName:           fetchEnv("CORE_DB_NAME", "core_service_db"),
-		DatabaseHost:           fetchEnv("DB_HOST", "localhost"),
-		DatabasePort:           fetchEnv("DB_PORT", "5432"),
-		NatsHost:               fetchEnv("NATS_HOST", "localhost"),
-		NatsPort:               fetchEnv("NATS_PORT", "4222"),
+func fetchEnvOrPanic(key string) string {
+	value, found := os.LookupEnv(key)
+	if !found || value == "" {
+		if isTestEnv() {
+			return "test-default-value"
+		}
+		panic(fmt.Sprintf("missing required environment variable: %s", key))
 	}
-
-	return config
-}
-
-func (c *Config) PostgreSQLRootConnStr() string {
-	return fmt.Sprintf(
-		"host=%s user=%s dbname=%s password=%s sslmode=disable",
-		c.DatabaseHost, c.DatabaseUser, "postgres", c.DatabasePassword,
-	)
-
+	return value
 }
 
 func (c *Config) PostgreSQLCoreConnStr() string {
 	return fmt.Sprintf(
 		"host=%s user=%s dbname=%s password=%s sslmode=disable",
-		c.DatabaseHost, c.DatabaseUser, c.DatabaseName, c.DatabasePassword,
+		c.Database.Host, c.Database.User, c.Database.Name, c.Database.Password,
+	)
+}
+
+func (c *Config) PostgreSQLDefaultDatabaseURL() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/postgres?sslmode=disable",
+		c.Database.User,
+		c.Database.Password,
+		c.Database.Host,
+		c.Database.Port,
+	)
+}
+
+func (c *Config) PostgreSQLCoreDatabaseURL() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		c.Database.User,
+		c.Database.Password,
+		c.Database.Host,
+		c.Database.Port,
+		c.Database.Name,
 	)
 }
 
@@ -74,5 +143,9 @@ func (c *Config) GetAllowedOrigins() []string {
 }
 
 func (c *Config) GetNatsConnStr() string {
-	return fmt.Sprintf("http://%s:%s", c.NatsHost, c.NatsPort)
+	return fmt.Sprintf("http://%s:%s", c.Nats.Host, c.Nats.Port)
+}
+
+func isTestEnv() bool {
+	return os.Getenv("GO_ENV") == "test" || strings.HasSuffix(os.Args[0], ".test")
 }
