@@ -1,3 +1,4 @@
+-- Migration: 000002_create_hosts_table.up.sql
 CREATE TABLE IF NOT EXISTS hosts(
   id SERIAL PRIMARY KEY,
   tenant_id UUID,

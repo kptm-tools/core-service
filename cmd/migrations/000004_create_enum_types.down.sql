@@ -1,3 +1,4 @@
+-- Migration: 000004_create_enum_types.down.sql
 -- Drop ENUM types 
 DROP TYPE IF EXISTS port_state_enum;
 DROP TYPE IF EXISTS scan_status;

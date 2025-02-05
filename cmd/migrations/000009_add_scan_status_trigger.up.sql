@@ -1,3 +1,4 @@
+-- Migration: 000009_add_scan_status_trigger.up.sql
 -- 000009_add_scan_status_trigger.up.sql
 CREATE OR REPLACE FUNCTION scan_status_changes()
 RETURNS TRIGGER

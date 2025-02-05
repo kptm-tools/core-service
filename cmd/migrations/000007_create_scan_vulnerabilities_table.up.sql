@@ -1,3 +1,4 @@
+-- Migration: 000007_create_scan_vulnerabilities_table.up.sql
 CREATE TABLE IF NOT EXISTS scan_vulnerabilities(
       id SERIAL PRIMARY KEY,
       vulnerability_id VARCHAR(100) NOT NULL,

@@ -1,3 +1,4 @@
+-- Migration: 000005_create_scans_table.up.sql
 CREATE TABLE IF NOT EXISTS scans(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       tenant_id UUID NOT NULL,
