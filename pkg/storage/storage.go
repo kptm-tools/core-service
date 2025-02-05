@@ -60,18 +60,23 @@ func createDatabaseIfNotExists(cfg *config.Config) error {
 	defer db.Close()
 
 	dbName := cfg.Database.Name
-	query := `SELECT 1 FROM pg_catalog_.pg_database WHERE datname = $1`
-	var exists int
+	query := `SELECT EXISTS(SELECT FROM pg_database WHERE datname=$1)`
+	var exists bool
 	err = db.QueryRow(query, dbName).Scan(&exists)
 
 	// If the database doesn't exist, create it
 	if err != nil {
+		return fmt.Errorf("failed to check databse existence: %w", err)
+	}
+
+	if !exists {
 		createQuery := fmt.Sprintf("CREATE DATABASE %s", dbName)
 		_, err = db.Exec(createQuery)
 		if err != nil {
 			return fmt.Errorf("failed to create database %s: %w", dbName, err)
 		}
 		slog.Info("Database created successfully", slog.String("name", dbName))
+
 	}
 
 	return nil
