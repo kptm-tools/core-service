@@ -19,7 +19,7 @@ func sample() {
 	}
 
 	c := config.LoadConfig()
-	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr(), migrations)
+	coreStore, err := storage.NewPostgreSQLStore(c, migrations)
 	if err != nil {
 		panic(err)
 	}

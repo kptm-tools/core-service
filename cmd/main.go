@@ -29,7 +29,7 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	coreStore, err := storage.NewPostgreSQLStore(c.PostgreSQLCoreConnStr(), migrations)
+	coreStore, err := storage.NewPostgreSQLStore(c, migrations)
 	if err != nil {
 		logger.Error("Failed to create Core DB store", slog.Any("error", err))
 		os.Exit(1)

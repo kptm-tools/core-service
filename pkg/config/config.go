@@ -73,7 +73,7 @@ func LoadConfig() *Config {
 	}{
 		User:     fetchEnvOrPanic("DB_USER"),
 		Password: fetchEnvOrPanic("DB_PASSWORD"),
-		Name:     fetchEnvOrPanic("CORE_DB_NAME"),
+		Name:     fetchEnvOrPanic("DB_NAME"),
 		Host:     fetchEnv("DB_HOST", "localhost"),
 		Port:     fetchEnv("DB_PORT", "5432"),
 	}
@@ -117,7 +117,17 @@ func (c *Config) PostgreSQLCoreConnStr() string {
 	)
 }
 
-func (c *Config) PostgreSQLDatabaseURL() string {
+func (c *Config) PostgreSQLDefaultDatabaseURL() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/postgres?sslmode=disable",
+		c.Database.User,
+		c.Database.Password,
+		c.Database.Host,
+		c.Database.Port,
+	)
+}
+
+func (c *Config) PostgreSQLCoreDatabaseURL() string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		c.Database.User,
