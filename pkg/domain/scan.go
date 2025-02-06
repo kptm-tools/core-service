@@ -4,8 +4,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/enums"
-	"github.com/kptm-tools/common/common/results"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/results"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 )
 
 type Metadata struct {
@@ -38,20 +39,20 @@ type Scan struct {
 }
 
 type ScanSummary struct {
-	ScanID          uuid.UUID              `json:"scan_id,omitempty"`
-	ScanDate        string                 `json:"scan_date,omitempty"`
-	Host            string                 `json:"host,omitempty"`
-	Vulnerabilities int                    `json:"vulnerabilities"`
-	Severities      results.SeverityCounts `json:"severities,omitempty"`
-	Duration        float64                `json:"duration,omitempty"`
-	Status          string                 `json:"status,omitempty"`
+	ScanID          uuid.UUID            `json:"scan_id,omitempty"`
+	ScanDate        string               `json:"scan_date,omitempty"`
+	Host            string               `json:"host,omitempty"`
+	Vulnerabilities int                  `json:"vulnerabilities"`
+	Severities      tools.SeverityCounts `json:"severities,omitempty"`
+	Duration        float64              `json:"duration,omitempty"`
+	Status          string               `json:"status,omitempty"`
 }
 
 type ScanResult struct {
 	ScanID    uuid.UUID
 	ToolName  string
 	Success   bool
-	Result    results.ToolResult
+	Result    tools.ToolResult
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
@@ -63,13 +64,13 @@ type Tool struct {
 }
 
 type ScanInsights struct {
-	ProtectionScore          float64                `json:"protection_score"`
-	SeverityCounts           results.SeverityCounts `json:"severity_counts"`
-	SeverityPerType          map[string]int         `json:"severity_per_type"`
-	TotalVulnerabilities     int                    `json:"total_vulnerabilities"`
-	VulnerabilityVariation   int                    `json:"vulnerability_variation"`
-	ProtectionScoreVariation float64                `json:"protection_score_variation"`
-	Metadata                 ScanInsightsMetadata   `json:"metadata"`
+	ProtectionScore          float64              `json:"protection_score"`
+	SeverityCounts           tools.SeverityCounts `json:"severity_counts"`
+	SeverityPerType          map[string]int       `json:"severity_per_type"`
+	TotalVulnerabilities     int                  `json:"total_vulnerabilities"`
+	VulnerabilityVariation   int                  `json:"vulnerability_variation"`
+	ProtectionScoreVariation float64              `json:"protection_score_variation"`
+	Metadata                 ScanInsightsMetadata `json:"metadata"`
 }
 
 type ScanInsightsMetadata struct {
@@ -88,7 +89,7 @@ func NewScan() *Scan {
 	}
 }
 
-func NewScanResult(scanID uuid.UUID, result results.ToolResult) *ScanResult {
+func NewScanResult(scanID uuid.UUID, result tools.ToolResult) *ScanResult {
 	success := result.Err == nil
 
 	return &ScanResult{

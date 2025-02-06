@@ -10,7 +10,7 @@ import (
 	"time"
 
 	tld "github.com/jpillora/go-tld"
-	cmmn "github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/common/common/pkg/utils/validation"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	probing "github.com/prometheus-community/pro-bing"
@@ -113,7 +113,7 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 func (s *HostService) ValidateHost(host string) error {
 
 	if IsValidHostValue(host) {
-		normalizedHost := cmmn.NormalizeURL(host)
+		normalizedHost := validation.NormalizeURL(host)
 		addr := strings.Split(normalizedHost, "//")[1]
 		pinger, err := probing.NewPinger(addr)
 		if err != nil {
@@ -138,9 +138,9 @@ func (s *HostService) ValidateHost(host string) error {
 
 func IsValidHostValue(value string) bool {
 
-	normalizedValue := cmmn.NormalizeURL(value)
-	if cmmn.IsURL(normalizedValue) {
-		domain, err := cmmn.ExtractDomain(normalizedValue)
+	normalizedValue := validation.NormalizeURL(value)
+	if validation.IsURL(normalizedValue) {
+		domain, err := validation.ExtractHostName(normalizedValue)
 		if err != nil {
 			log.Println("Invalid URL/Domain: ", normalizedValue)
 			return false
@@ -152,13 +152,13 @@ func IsValidHostValue(value string) bool {
 		}
 
 		// IP address with protocol prefix
-		if cmmn.IsValidIPv4(strings.Split(normalizedValue, "//")[1]) {
+		if validation.IsValidIPv4(strings.Split(normalizedValue, "//")[1]) {
 			return true
 		}
 	}
 
 	// IP address on its own
-	if cmmn.IsValidIPv4(value) {
+	if validation.IsValidIPv4(value) {
 		return true
 	}
 

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/lib/pq"

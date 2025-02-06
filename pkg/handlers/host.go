@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kptm-tools/common/common/enums"
-	cmmn "github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/utils/validation"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/services"
 
@@ -204,11 +204,11 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 	ipValue := ""
 	if createHostRequest.ValueType == string(enums.Domain) {
 		url := createHostRequest.Value
-		if !cmmn.IsURL(url) {
+		if !validation.IsURL(url) {
 			return "", "", fmt.Errorf("invalid url: %s", url)
 		}
 
-		domain, err := cmmn.ExtractDomain(url)
+		domain, err := validation.ExtractHostName(url)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to extract domain: %w", err)
 		}
@@ -226,7 +226,7 @@ func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (s
 	}
 
 	if createHostRequest.ValueType == string(enums.IP) {
-		normalizedURL := cmmn.NormalizeURL(createHostRequest.Value)
+		normalizedURL := validation.NormalizeURL(createHostRequest.Value)
 
 		ipValue = strings.Split(normalizedURL, "//")[1]
 		domainValue = h.hostService.GetHostname(ipValue + ":443")

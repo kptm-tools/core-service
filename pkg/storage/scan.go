@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/enums"
-	"github.com/kptm-tools/common/common/results"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -100,7 +100,7 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 		return nil
 	}
 
-	var nr results.NmapResult
+	var nr tools.NmapResult
 	resultBytes, err := json.Marshal(sr.Result.Result)
 	if err != nil {
 		return fmt.Errorf("failed to marshal nmap result: %w", err)
@@ -131,8 +131,8 @@ func (s *PostgreSQLStore) InsertScanVulnerability(
 	scanID uuid.UUID,
 	hostID int,
 	toolName enums.ToolName,
-	vuln results.Vulnerability,
-	port results.PortData,
+	vuln tools.Vulnerability,
+	port tools.PortData,
 ) error {
 	query := `
     INSERT INTO scan_vulnerabilities (
@@ -444,7 +444,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 		return n
 	}
 
-	insights.SeverityPerType = mapSeverities(severityPerType, results.MapCVSS)
+	insights.SeverityPerType = mapSeverities(severityPerType, tools.MapCVSS)
 
 	// 1. Calculate total_vulnerabilities variation since last scan
 	vulnerabilityVariation, err := s.GetTotalVulnerabilityVariationSinceLastScan(scanID)
@@ -573,7 +573,7 @@ func (s *PostgreSQLStore) GetPreviousScan(scanID uuid.UUID) (*domain.Scan, error
 
 // GetToolResults is a generic function that parses a ToolResult from the scan_results
 // result column. It uses generics to be extensible and ensure type safety.
-func GetToolResults[T results.IToolResult](s *PostgreSQLStore, scanID uuid.UUID) (T, error) {
+func GetToolResults[T tools.IToolResult](s *PostgreSQLStore, scanID uuid.UUID) (T, error) {
 	var toolResult T
 
 	toolName := string(toolResult.GetToolName())
@@ -600,20 +600,20 @@ func GetToolResults[T results.IToolResult](s *PostgreSQLStore, scanID uuid.UUID)
 	return toolResult, nil
 }
 
-func (s *PostgreSQLStore) GetWhoisResult(scanID uuid.UUID) (*results.WhoIsResult, error) {
-	return GetToolResults[*results.WhoIsResult](s, scanID)
+func (s *PostgreSQLStore) GetWhoisResult(scanID uuid.UUID) (*tools.WhoIsResult, error) {
+	return GetToolResults[*tools.WhoIsResult](s, scanID)
 }
 
-func (s *PostgreSQLStore) GetDNSLookupResult(scanID uuid.UUID) (*results.DNSLookupResult, error) {
-	return GetToolResults[*results.DNSLookupResult](s, scanID)
+func (s *PostgreSQLStore) GetDNSLookupResult(scanID uuid.UUID) (*tools.DNSLookupResult, error) {
+	return GetToolResults[*tools.DNSLookupResult](s, scanID)
 }
 
-func (s *PostgreSQLStore) GetHarvesterResult(scanID uuid.UUID) (*results.HarvesterResult, error) {
-	return GetToolResults[*results.HarvesterResult](s, scanID)
+func (s *PostgreSQLStore) GetHarvesterResult(scanID uuid.UUID) (*tools.HarvesterResult, error) {
+	return GetToolResults[*tools.HarvesterResult](s, scanID)
 }
 
-func (s *PostgreSQLStore) GetNmapResult(scanID uuid.UUID) (*results.NmapResult, error) {
-	return GetToolResults[*results.NmapResult](s, scanID)
+func (s *PostgreSQLStore) GetNmapResult(scanID uuid.UUID) (*tools.NmapResult, error) {
+	return GetToolResults[*tools.NmapResult](s, scanID)
 }
 
 func (s *PostgreSQLStore) GetProtectionScore(scanID uuid.UUID) (float64, error) {
