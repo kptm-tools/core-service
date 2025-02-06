@@ -178,7 +178,14 @@ func (h *HostHandlers) constructHostForDB(createHostRequest *CreateHostRequest, 
 	tenantID := req.Context().Value(middleware.ContextTenantID)
 	operatorID := req.Context().Value(middleware.ContextUserID)
 
-	host := domain.NewHost(result.Domain, result.IP, tenantID.(string), operatorID.(string), createHostRequest.Name, createHostRequest.Credentials, createHostRequest.Rapporteurs)
+	host := domain.NewHost(
+		result.Domain,
+		result.IP,
+		tenantID.(string),
+		operatorID.(string),
+		createHostRequest.Name,
+		createHostRequest.Credentials,
+		createHostRequest.Rapporteurs)
 	return host, nil
 }
 

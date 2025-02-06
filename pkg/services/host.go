@@ -177,7 +177,7 @@ func (s *HostService) GetDomainIPValues(value string) (*domain.DomainIPResult, e
 		return s.handleIPType(url)
 
 	default:
-		return nil, fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(enums.Domain), string(enums.IP))
+		return nil, fmt.Errorf("invalid host type: %s", classification.Type.String())
 	}
 }
 
