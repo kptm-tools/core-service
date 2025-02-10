@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/results"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -29,8 +29,8 @@ type IStorage interface {
 	GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error)
 	GetProtectionScore(scanID uuid.UUID) (float64, error)
 	UpdateProtectionScore(scanID uuid.UUID, score float64) error
-	GetWhoisResult(scanID uuid.UUID) (*results.WhoIsResult, error)
-	GetDNSLookupResult(scanID uuid.UUID) (*results.DNSLookupResult, error)
-	GetHarvesterResult(scanID uuid.UUID) (*results.HarvesterResult, error)
-	GetNmapResult(scanID uuid.UUID) (*results.NmapResult, error)
+	GetWhoisResult(scanID uuid.UUID) (*tools.WhoIsResult, error)
+	GetDNSLookupResult(scanID uuid.UUID) (*tools.DNSLookupResult, error)
+	GetHarvesterResult(scanID uuid.UUID) (*tools.HarvesterResult, error)
+	GetNmapResult(scanID uuid.UUID) (*tools.NmapResult, error)
 }

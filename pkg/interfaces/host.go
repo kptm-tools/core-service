@@ -10,7 +10,8 @@ type IHostService interface {
 	CreateHost(*domain.Host) (*domain.Host, error)
 	GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error)
 	GetHostByID(ID int) (*domain.Host, error)
-	GetHostname(string) string
+	GetHostNameFromIP(string) ([]string, error)
+	GetDomainIPValues(string) (*domain.DomainIPResult, error)
 	DeleteHostByID(ID int) (bool, error)
 	PatchHostByID(*domain.Host) (*domain.Host, error)
 	ValidateHost(string) error

@@ -41,6 +41,11 @@ type HostResponse struct {
 	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
+type DomainIPResult struct {
+	Domain string
+	IP     string
+}
+
 func NewHost(domain string, ip string, tenantID string, operatorID string, name string, credentials []Credential, rappporteurs []Rapporteur) *Host {
 	return &Host{
 		TenantID:    tenantID,

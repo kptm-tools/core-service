@@ -37,6 +37,7 @@ func NewFaError(status int, msg string) *FaError {
 type AuthService struct {
 	client  *http.Client
 	storage interfaces.IStorage
+	cfg     *config.Config
 }
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
@@ -47,11 +48,11 @@ func NewAuthService(storage interfaces.IStorage) *AuthService {
 			Timeout: 10 * time.Second,
 		},
 		storage: storage,
+		cfg:     config.LoadConfig(),
 	}
 }
 
 func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.LoginResponse, error) {
-
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
@@ -67,7 +68,6 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 
 	// Use FusionAuth Go client to log in the user
 	loginResponse, faErr, err := client.Login(loginReq)
-
 	if err != nil {
 		return nil, err
 	}
@@ -76,18 +76,16 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 	}
 
 	return loginResponse, nil
-
 }
 
 func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain.User, error) {
-
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Fetch blueprint tenant by it's ID
-	bpTenant, err := fetchBlueprintTenant(client)
+	bpTenant, err := s.fetchBlueprintTenant(client)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,7 +98,7 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain
 	}
 
 	// Fetch blueprint app
-	bpApp, err := fetchBlueprintApp(client)
+	bpApp, err := s.fetchBlueprintApp(client)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,7 +152,6 @@ func (s *AuthService) GetUserByID(userID string, tenantID *string) (*domain.User
 	}
 
 	u, err := scanIntoDomainUser(resp.User)
-
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +159,8 @@ func (s *AuthService) GetUserByID(userID string, tenantID *string) (*domain.User
 	return u, nil
 }
 
-func fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
-	c := config.LoadConfig()
-
-	resp, faErr, err := client.RetrieveTenant(c.FusionAuth.BlueprintTenantID)
-
+func (s *AuthService) fetchBlueprintTenant(client *fusionauth.FusionAuthClient) (*fusionauth.Tenant, error) {
+	resp, faErr, err := client.RetrieveTenant(s.cfg.FusionAuth.BlueprintTenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +195,6 @@ func createTenantFromBlueprint(tenantName string, bpTenant *fusionauth.Tenant, c
 func registerTenant(t *fusionauth.Tenant, client *fusionauth.FusionAuthClient) error {
 	tenantReq := fusionauth.TenantRequest{Tenant: *t}
 	resp, faErr, err := client.CreateTenant(t.Id, tenantReq)
-
 	if err != nil {
 		return err
 	}
@@ -212,10 +205,10 @@ func registerTenant(t *fusionauth.Tenant, client *fusionauth.FusionAuthClient) e
 	return nil
 }
 
-func fetchBlueprintApp(client *fusionauth.FusionAuthClient) (*fusionauth.Application, error) {
-	c := config.LoadConfig()
+func (s *AuthService) fetchBlueprintApp(client *fusionauth.FusionAuthClient) (*fusionauth.Application, error) {
+	bluePrintAppID := s.cfg.FusionAuth.BlueprintApplicationID
 
-	resp, err := client.RetrieveApplication(c.FusionAuth.BlueprintApplicationID)
+	resp, err := client.RetrieveApplication(bluePrintAppID)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +218,6 @@ func fetchBlueprintApp(client *fusionauth.FusionAuthClient) (*fusionauth.Applica
 }
 
 func createAppFromBlueprint(tenant *fusionauth.Tenant, bpApp *fusionauth.Application, client *fusionauth.FusionAuthClient) (*fusionauth.Application, error) {
-
 	appID := uuid.NewString()
 	var roles []fusionauth.ApplicationRole
 	for _, r := range bpApp.Roles {
@@ -271,7 +263,6 @@ func createAppFromBlueprint(tenant *fusionauth.Tenant, bpApp *fusionauth.Applica
 func registerApp(a *fusionauth.Application, client *fusionauth.FusionAuthClient) error {
 	req := fusionauth.ApplicationRequest{Application: *a}
 	resp, faErr, err := client.CreateApplication(a.Id, req)
-
 	if err != nil {
 		return err
 	}
@@ -292,7 +283,6 @@ func generateKey(tenant *fusionauth.Tenant, client *fusionauth.FusionAuthClient)
 	keyReq := fusionauth.KeyRequest{Key: key}
 
 	resp, faErr, err := client.GenerateKey(keyID, keyReq)
-
 	// 3.1.1 Handle key generation errors
 	if err != nil {
 		return nil, err
@@ -304,7 +294,6 @@ func generateKey(tenant *fusionauth.Tenant, client *fusionauth.FusionAuthClient)
 }
 
 func createInitialUser(appID string, client *fusionauth.FusionAuthClient) (*domain.User, error) {
-
 	email := "operator@example.com"
 	pass := uuid.NewString()
 	roles := []string{"operator"}
@@ -359,19 +348,18 @@ func scanIntoDomainUser(faUser fusionauth.User) (*domain.User, error) {
 }
 
 func (s *AuthService) NewFusionAuthClient() (*fusionauth.FusionAuthClient, error) {
-
-	c := config.LoadConfig()
-	host := fmt.Sprintf("http://%s:%s", c.FusionAuth.Host, c.FusionAuth.Port)
+	host := fmt.Sprintf(
+		"http://%s:%s",
+		s.cfg.FusionAuth.Host, s.cfg.FusionAuth.Port)
 	baseURL, err := url.Parse(host)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating FusionAuthClient: `%s`", err.Error())
 	}
 
-	return fusionauth.NewClient(s.client, baseURL, c.FusionAuth.APIKey), nil
+	return fusionauth.NewClient(s.client, baseURL, s.cfg.FusionAuth.APIKey), nil
 }
 
 func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.ForgotPasswordResponse, error) {
-
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
@@ -385,7 +373,6 @@ func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.F
 
 	// Use FusionAuth Go client to log in the user
 	forgotResponse, faErr, err := client.ForgotPassword(forgotReq)
-
 	if err != nil {
 		return nil, err
 	}
@@ -394,8 +381,8 @@ func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.F
 	}
 
 	return forgotResponse, nil
-
 }
+
 func (s *AuthService) RegisterUser(firstname, lastname, email, password, applicationID string, roles []string) (*fusionauth.RegistrationResponse, error) {
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
@@ -420,7 +407,6 @@ func (s *AuthService) RegisterUser(firstname, lastname, email, password, applica
 
 	// Use FusionAuth Go client to log in the user
 	registerResponse, faErr, err := client.Register(userID, registerReq)
-
 	if err != nil {
 		return nil, err
 	}
@@ -429,17 +415,15 @@ func (s *AuthService) RegisterUser(firstname, lastname, email, password, applica
 	}
 
 	return registerResponse, nil
-
 }
-func (s *AuthService) ChangePassword(changePasswordID, password, email, applicationID string) (*fusionauth.ChangePasswordResponse, error) {
 
+func (s *AuthService) ChangePassword(changePasswordID, password, email, applicationID string) (*fusionauth.ChangePasswordResponse, error) {
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
 
 	changePasswordReq := fusionauth.ChangePasswordRequest{
-
 		ApplicationId:    applicationID,
 		ChangePasswordId: changePasswordID,
 		LoginId:          email,
@@ -448,7 +432,6 @@ func (s *AuthService) ChangePassword(changePasswordID, password, email, applicat
 
 	// Use FusionAuth Go client to log in the user
 	changePasswordResponse, faErr, err := client.ChangePassword(changePasswordID, changePasswordReq)
-
 	if err != nil {
 		return nil, err
 	}
@@ -457,11 +440,9 @@ func (s *AuthService) ChangePassword(changePasswordID, password, email, applicat
 	}
 
 	return changePasswordResponse, nil
-
 }
 
 func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fusionauth.BaseHTTPResponse, error) {
-
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
@@ -469,7 +450,6 @@ func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fus
 	client.SetTenantId(tenantID)
 
 	userFusion, faErr, err := client.RetrieveUser(userID)
-
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +465,6 @@ func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fus
 
 	// Use FusionAuth Go client to log in the user
 	verificationResponse, faErr, err := client.VerifyUserRegistration(verifyEmailReq)
-
 	if err != nil {
 		return nil, err
 	}
@@ -494,5 +473,4 @@ func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fus
 	}
 
 	return verificationResponse, nil
-
 }

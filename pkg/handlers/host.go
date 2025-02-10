@@ -4,13 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"strconv"
-	"strings"
 
-	"github.com/kptm-tools/common/common/enums"
-	cmmn "github.com/kptm-tools/common/common/events"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/services"
 
@@ -45,7 +41,7 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 		}
 	}
 
-	host, err := constructHostForDB(createHostRequest, req, h)
+	host, err := h.constructHostForDB(createHostRequest, req)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
@@ -112,7 +108,7 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	hostToDB, err := constructHostForDB(createHostRequest, req, h)
+	hostToDB, err := h.constructHostForDB(createHostRequest, req)
 	if err != nil {
 		return err
 	}
@@ -174,15 +170,22 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
-func constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request, h *HostHandlers) (*domain.Host, error) {
-	domainVal, ipVal, err := getDomainIPValues(createHostRequest, h)
+func (h *HostHandlers) constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request) (*domain.Host, error) {
+	result, err := h.hostService.GetDomainIPValues(createHostRequest.Value)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get domain and IP values: %w", err)
 	}
 	tenantID := req.Context().Value(middleware.ContextTenantID)
 	operatorID := req.Context().Value(middleware.ContextUserID)
 
-	host := domain.NewHost(domainVal, ipVal, tenantID.(string), operatorID.(string), createHostRequest.Name, createHostRequest.Credentials, createHostRequest.Rapporteurs)
+	host := domain.NewHost(
+		result.Domain,
+		result.IP,
+		tenantID.(string),
+		operatorID.(string),
+		createHostRequest.Name,
+		createHostRequest.Credentials,
+		createHostRequest.Rapporteurs)
 	return host, nil
 }
 
@@ -197,43 +200,6 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 	hostResponse.Rapporteurs = host.Rapporteurs
 	hostResponse.Credentials = host.Credentials
 	return hostResponse
-}
-
-func getDomainIPValues(createHostRequest *CreateHostRequest, h *HostHandlers) (string, string, error) {
-	domainValue := ""
-	ipValue := ""
-	if createHostRequest.ValueType == string(enums.Domain) {
-		url := createHostRequest.Value
-		if !cmmn.IsURL(url) {
-			return "", "", fmt.Errorf("invalid url: %s", url)
-		}
-
-		domain, err := cmmn.ExtractDomain(url)
-		if err != nil {
-			return "", "", fmt.Errorf("failed to extract domain: %w", err)
-		}
-		ips, err := net.LookupIP(domain)
-		if err != nil {
-			return "", "", fmt.Errorf("error looking up IP of domain: %w", err)
-		}
-		for _, ip := range ips {
-			if ipv4 := ip.To4(); ipv4 != nil {
-				ipValue = ipv4.String()
-				break
-			}
-		}
-		return domain, ipValue, nil
-	}
-
-	if createHostRequest.ValueType == string(enums.IP) {
-		normalizedURL := cmmn.NormalizeURL(createHostRequest.Value)
-
-		ipValue = strings.Split(normalizedURL, "//")[1]
-		domainValue = h.hostService.GetHostname(ipValue + ":443")
-		return domainValue, ipValue, nil
-	}
-
-	return "", "", fmt.Errorf("invalid host type: must be one of `%s` or `%s`", string(enums.Domain), string(enums.IP))
 }
 
 func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) error {

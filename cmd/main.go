@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	cmmn "github.com/kptm-tools/common/common/events"
+	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/events"

@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/results"
+	"github.com/kptm-tools/common/common/pkg/results"
+	"github.com/kptm-tools/common/common/pkg/utils/validation"
 
-	"github.com/kptm-tools/common/common/enums"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -41,28 +42,35 @@ func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]
 			return nil, fmt.Errorf("failed to get host: %w", err)
 		}
 
-		dataScan.Target = createTarget(*host)
+		target, err := createTarget(*host)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create target: %w", err)
+		}
+		dataScan.Target = *target
 	}
 	return dataScans, nil
 }
 
-func createTarget(host domain.Host) results.Target {
+func createTarget(host domain.Host) (*results.Target, error) {
 	var hostValue string
 	var hostType enums.TargetType
 	if host.Domain == "" {
 		hostType = enums.IP
 		hostValue = host.IP
 	} else {
-		hostType = enums.Domain
+		classification, err := validation.ClassifyHostValue(host.Domain)
+		if err != nil {
+			return nil, fmt.Errorf("failed to classify host value: %w", err)
+		}
+		hostType = classification.Type
 		hostValue = host.Domain
 	}
 
-	target := results.Target{
+	return &results.Target{
 		Alias: host.Name,
 		Value: hostValue,
 		Type:  hostType,
-	}
-	return target
+	}, nil
 }
 
 func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
