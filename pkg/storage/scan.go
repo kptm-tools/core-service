@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -1036,4 +1037,49 @@ func (s *PostgreSQLStore) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCo
 	}
 
 	return &severityCounts, nil
+}
+
+func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, scheduledAt string, isRepeated bool) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+	fixedYear, cron, errParsing := obtainYearCron(scheduledAt)
+	if errParsing != nil {
+		return errParsing
+	}
+	query := `
+    INSERT INTO scan_scheduling (
+    scan_id, fixed_year, enabled, has_period, cron, created_at, updated_at
+    )
+    values ($1, $2, $3, $4, $5, $6, $7)`
+
+	if _, err := tx.Exec(query, scanID, fixedYear, true, isRepeated, cron, time.Now().UTC(), time.Now().UTC()); err != nil {
+		return fmt.Errorf("failed to insert scan scheduling: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
+func obtainYearCron(scheduledAt string) (string, string, error) {
+
+	dataCron := strings.Split(scheduledAt, "-")
+	if len(dataCron) == 0 {
+		return "", "", fmt.Errorf("failed to parse cron expression: %s", scheduledAt)
+	}
+	var fixedYear, cron string
+	var re = regexp.MustCompile(`^[0-9]+$`)
+	if len(dataCron[0]) == 4 && re.MatchString(dataCron[0]) && len(dataCron) == 6 {
+		fixedYear = dataCron[0]
+		cron = fmt.Sprintf("%s %s %s %s %s", dataCron[1], dataCron[2], dataCron[3], dataCron[4], dataCron[5])
+	} else if len(dataCron) == 5 {
+		cron = fmt.Sprintf("%s %s %s %s %s", dataCron[0], dataCron[1], dataCron[2], dataCron[3], dataCron[4])
+	} else {
+		return "", "", fmt.Errorf("failed to parse cron expression: %s", scheduledAt)
+	}
+	return fixedYear, cron, nil
 }

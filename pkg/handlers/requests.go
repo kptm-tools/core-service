@@ -64,5 +64,7 @@ type ServiceHost struct {
 	Host  string   `json:"host"`
 }
 type ScanRequest struct {
-	HostIds []string `json:"host_ids"`
+	HostIds    []string `json:"host_ids"`
+	ScheduleAt string   `json:"schedule_at"`
+	IsRepeat   bool     `json:"is_repeat"`
 }

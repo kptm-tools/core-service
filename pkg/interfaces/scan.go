@@ -27,6 +27,7 @@ type IScanService interface {
 	GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)
 	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
+	InsertScanScheduling(scans []*domain.Scan, scheduleAt string, isRepeated bool) error
 }
 
 type IScanHandlers interface {

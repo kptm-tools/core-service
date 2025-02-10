@@ -75,20 +75,29 @@ func (h *ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) err
 		slog.Error("Failed to create scans", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
-	for _, createdScan := range scans {
-		scanStartedPayload := &cmmn.ScanStartedEvent{
-			BaseEvent: cmmn.BaseEvent{
-				ScanID:    createdScan.ID,
-				Timestamp: createdScan.CreatedAt.UTC(),
-			},
-			Target: createdScan.Target,
-		}
-		scanStartedBytes, err := json.Marshal(scanStartedPayload)
-		if err != nil {
-			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
-		}
-		h.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
+	if len(strings.TrimSpace(scanRequest.ScheduleAt)) == 0 {
+		for _, createdScan := range scans {
+			scanStartedPayload := &cmmn.ScanStartedEvent{
+				BaseEvent: cmmn.BaseEvent{
+					ScanID:    createdScan.ID,
+					Timestamp: createdScan.CreatedAt.UTC(),
+				},
+				Target: createdScan.Target,
+			}
+			scanStartedBytes, err := json.Marshal(scanStartedPayload)
+			if err != nil {
+				return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+			}
+			h.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
+
+		}
+	} else {
+		errScanSchedule := h.scanService.InsertScanScheduling(scans, scanRequest.ScheduleAt, scanRequest.IsRepeat)
+		if errScanSchedule != nil {
+			msg := fmt.Sprintf("invalid scheduling: %s", scanRequest.ScheduleAt)
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: msg})
+		}
 	}
 
 	return api.WriteJSON(w, http.StatusCreated, scans)
