@@ -51,37 +51,32 @@ func NewPostgresListener(
 	go postgresListener.startListening()
 
 	return postgresListener, nil
-
 }
 
 func (pl *PostgresListener) startListening() {
 	for {
-		select {
-		case notification := <-pl.listener.Notify:
+		notification := <-pl.listener.Notify
 
-			slog.Debug("Received PostgresListener notification")
+		slog.Debug("Received PostgresListener notification")
 
-			// Parse the notification method
-			var scanCompletedEvent events.BaseEvent
-			if err := json.Unmarshal([]byte(notification.Extra), &scanCompletedEvent); err != nil {
-				slog.Error("Failed to parse scan completed event",
-					slog.Any("error", err),
-					slog.Any("payload", notification.Extra))
-				continue
-			}
+		// Parse the notification method
+		var scanCompletedEvent events.BaseEvent
+		if err := json.Unmarshal([]byte(notification.Extra), &scanCompletedEvent); err != nil {
+			slog.Error("Failed to parse scan completed event",
+				slog.Any("error", err),
+				slog.Any("payload", notification.Extra))
+			continue
+		}
 
-			slog.Debug("Parsed scan completed event", slog.String("scanID", scanCompletedEvent.ScanID.String()))
-			// Use scanService to handle scanCompleted
-			if err := pl.scanService.HandleScanCompletion(scanCompletedEvent.ScanID); err != nil {
-				slog.Error("Failed to handle scan completion",
-					slog.String("scanID", scanCompletedEvent.ScanID.String()),
-					slog.Any("error", err))
-			}
-
+		slog.Debug("Parsed scan completed event", slog.String("scanID", scanCompletedEvent.ScanID.String()))
+		// Use scanService to handle scanCompleted
+		if err := pl.scanService.HandleScanCompletion(scanCompletedEvent.ScanID); err != nil {
+			slog.Error("Failed to handle scan completion",
+				slog.String("scanID", scanCompletedEvent.ScanID.String()),
+				slog.Any("error", err))
 		}
 
 	}
-
 }
 
 func (pl *PostgresListener) Close() error {
