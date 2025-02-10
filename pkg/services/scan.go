@@ -28,27 +28,39 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 }
 
 func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error) {
-	scanDB := domain.NewScan()
-	scanDB.TenantID = tenantID
-	scanDB.OperatorID = operatorID
+	var createdScans []*domain.Scan
+	commonScanData := domain.NewScan()
+	commonScanData.TenantID = tenantID
+	commonScanData.OperatorID = operatorID
 
-	dataScans, err := s.storage.CreateScans(scanDB, hostIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scan: %w", err)
-	}
-	for _, dataScan := range dataScans {
-		host, err := s.storage.GetHostByID(dataScan.HostID)
+	for _, hostID := range hostIDs {
+		// 1. Create the scan in storage
+		scanToCreate := *commonScanData
+		scanToCreate.HostID = hostID
+		dataScan, err := s.storage.CreateScan(&scanToCreate)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create scan: %w", err)
+		}
+
+		// 2. Get host details
+		host, err := s.storage.GetHostByID(scanToCreate.HostID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get host: %w", err)
 		}
 
+		// 3. Add the target to the scan
 		target, err := createTarget(*host)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create target: %w", err)
 		}
+
 		dataScan.Target = *target
+
+		// 4. Append to results
+		createdScans = append(createdScans, dataScan)
 	}
-	return dataScans, nil
+
+	return createdScans, nil
 }
 
 func createTarget(host domain.Host) (*results.Target, error) {
@@ -107,7 +119,6 @@ func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
 }
 
 func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
-
 	scan, err := s.storage.GetScanByID(scanID)
 	if err != nil {
 		return fmt.Errorf("failed to get scan by ID: %w", err)

@@ -64,15 +64,16 @@ func (h *ScanHandlers) CreateScans(w http.ResponseWriter, req *http.Request) err
 			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 		}
 
+		slog.Error("Failed to create scans", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
-	for _, dataScan := range scans {
+	for _, createdScan := range scans {
 		scanStartedPayload := &cmmn.ScanStartedEvent{
 			BaseEvent: cmmn.BaseEvent{
-				ScanID:    dataScan.ID,
-				Timestamp: dataScan.CreatedAt.UTC(),
+				ScanID:    createdScan.ID,
+				Timestamp: createdScan.CreatedAt.UTC(),
 			},
-			Target: dataScan.Target,
+			Target: createdScan.Target,
 		}
 		scanStartedBytes, err := json.Marshal(scanStartedPayload)
 		if err != nil {
@@ -89,7 +90,6 @@ func (h ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
 	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
 	scans, err := h.scanService.GetScans(tenantID)
 	if err != nil {
-
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 	return api.WriteJSON(w, http.StatusCreated, scans)
@@ -130,7 +130,6 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 	}
 
 	return api.WriteJSON(w, http.StatusOK, "Scan was cancelled")
-
 }
 
 func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error {

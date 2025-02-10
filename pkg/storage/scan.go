@@ -48,34 +48,26 @@ func (s *PostgreSQLStore) ClearScanVulnerabilitiesTable() error {
 	return nil
 }
 
-func (s *PostgreSQLStore) CreateScans(sc *domain.Scan, hostIDs []int) ([]*domain.Scan, error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("failed to start transaction %w", err)
-	}
-	if len(hostIDs) == 0 {
-		return nil, fmt.Errorf("failed because no hostIDs were provided")
-	}
-	defer tx.Rollback()
-	scans := []*domain.Scan{}
+func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
+	var insertedScan domain.Scan
 	query := `
-    INSERT INTO scans (id, tenant_id, operator_id, host_id, status, started_at)
-                values ($1, $2, $3, $4, $5, $6)
+    INSERT INTO scans (tenant_id, operator_id, host_id, status, started_at)
+                values ($1, $2, $3, $4, $5)
     RETURNING id, tenant_id, operator_id, host_id, status, started_at`
 
-	for _, hostID := range hostIDs {
-		row := tx.QueryRow(query, sc.ID, sc.TenantID, sc.OperatorID, hostID, sc.Status, sc.StartedAt)
-		newScan := &domain.Scan{}
-		if err := scanIntoScan(row, newScan); err != nil {
-			return nil, fmt.Errorf("failed to insert scan: %w", err)
-		}
-		scans = append(scans, newScan)
+	err := s.db.QueryRow(query, sc.TenantID, sc.OperatorID, sc.HostID, sc.Status, sc.StartedAt).Scan(
+		&insertedScan.ID,
+		&insertedScan.TenantID,
+		&insertedScan.OperatorID,
+		&insertedScan.HostID,
+		&insertedScan.Status,
+		&insertedScan.StartedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert scan: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-	return scans, nil
+	return &insertedScan, nil
 }
 
 func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error {
@@ -183,8 +175,8 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 
 	return scanSum, nil
 }
-func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
 
+func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
 	query := `
   WITH aggregated_vulnerabilities AS (
     SELECT
@@ -286,7 +278,7 @@ func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
 	}
 	if err := json.Unmarshal(result, &scanRes.Result); err != nil {
 		log.Println("no results yet")
-		//return fmt.Errorf("failed to unmarshal result of scan_results: %w", err)
+		// return fmt.Errorf("failed to unmarshal result of scan_results: %w", err)
 	}
 	return nil
 }
@@ -485,7 +477,6 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 }
 
 func (s *PostgreSQLStore) GetTotalVulnerabilityVariationSinceLastScan(scanID uuid.UUID) (int, error) {
-
 	// 1. Get the HostID for the current scan
 	var hostID int
 	var currentScanCreatedAt time.Time
@@ -621,14 +612,13 @@ func (s *PostgreSQLStore) GetProtectionScore(scanID uuid.UUID) (float64, error) 
 	query := `SELECT protection_score FROM scans WHERE id=$1`
 	err := s.db.QueryRow(query, scanID).Scan(&protectionScore)
 	if err != nil {
-		return 0, fmt.Errorf("Error scanning into protectionScore: %w", err)
+		return 0, fmt.Errorf("error scanning into protectionScore: %w", err)
 	}
 
 	return protectionScore, nil
 }
 
 func (s *PostgreSQLStore) UpdateProtectionScore(scanID uuid.UUID, protectionScore float64) error {
-
 	query := `UPDATE scans SET protection_score=$1, updated_at=now() WHERE id=$2`
 	res, err := s.db.Exec(query, protectionScore, scanID)
 	if err != nil {
