@@ -21,6 +21,7 @@ import (
 
 type AuthHandlers struct {
 	authService interfaces.IAuthService
+	cfg         *config.Config
 }
 
 var _ interfaces.IAuthHandlers = (*AuthHandlers)(nil)
@@ -28,11 +29,11 @@ var _ interfaces.IAuthHandlers = (*AuthHandlers)(nil)
 func NewAuthHandlers(authService interfaces.IAuthService) *AuthHandlers {
 	return &AuthHandlers{
 		authService: authService,
+		cfg:         config.LoadConfig(),
 	}
 }
 
 func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
-
 	// Fetch parameters
 	loginRequest := new(LoginRequest)
 
@@ -47,7 +48,6 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 	}
 	// Write the response from the service
 	resp, err := h.authService.Login(loginRequest.LoginID, loginRequest.Password, loginRequest.ApplicationID)
-
 	if err != nil {
 		var fae *services.FaError
 
@@ -59,11 +59,9 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return api.WriteJSON(w, http.StatusOK, &resp)
-
 }
 
 func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) error {
-
 	registerTenantRequest := new(RegisterTenantRequest)
 
 	if err := decodeJSONBody(w, r, registerTenantRequest); err != nil {
@@ -77,7 +75,6 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 	}
 
 	t, u, err := h.authService.RegisterTenant(registerTenantRequest.Name)
-
 	if err != nil {
 		var fae *services.FaError
 
@@ -111,7 +108,6 @@ func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) error {
-
 	// Fetch parameters
 	forgotPasswordRequest := new(ForgotPasswordRequest)
 
@@ -139,7 +135,6 @@ func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) er
 }
 
 func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) error {
-
 	// Fetch parameters
 	registerUserRequest := new(RegisterUserRequest)
 
@@ -208,7 +203,6 @@ func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error
 }
 
 func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) error {
-
 	// Fetch parameters
 	changePasswordRequest := new(ChangePasswordRequest)
 
@@ -275,8 +269,8 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 		}
 
 		// Verify that said user exists
-		var tenantID = token.Claims.(jwt.MapClaims)["tid"]
-		var userID = token.Claims.(jwt.MapClaims)["sub"]
+		tenantID := token.Claims.(jwt.MapClaims)["tid"]
+		userID := token.Claims.(jwt.MapClaims)["sub"]
 
 		exists, err := h.ValidateUserWithFusionAuth(userID.(string), tenantID.(string))
 		if err != nil {
@@ -311,7 +305,6 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 		ctx := context.WithValue(r.Context(), middleware.ContextTenantID, tenantID)
 		ctx = context.WithValue(ctx, middleware.ContextUserID, userID)
 		endpoint(w, r.WithContext(ctx))
-
 	})
 }
 
@@ -329,7 +322,6 @@ func parseToken(r *http.Request) (*jwt.Token, error) {
 }
 
 func verifyTokenSignature(token *jwt.Token) (interface{}, error) {
-
 	if err := validateSigningMethod(token); err != nil {
 		return nil, err
 	}
@@ -355,7 +347,6 @@ func validateSigningMethod(token *jwt.Token) error {
 }
 
 func validateClaims(token *jwt.Token) error {
-
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || claims == nil || len(claims) == 0 {
 		msg := "Invalid token claims"
@@ -444,7 +435,7 @@ func getRequestToken(r *http.Request) (string, error) {
 }
 
 func checkTokenRoles(token *jwt.Token, functionName string) error {
-	var roles = token.Claims.(jwt.MapClaims)["roles"]
+	roles := token.Claims.(jwt.MapClaims)["roles"]
 	// Check if we have any roles in our claims
 	if len(roles.([]interface{})) == 0 {
 		msg := "Token has no roles"
@@ -475,11 +466,12 @@ func checkTokenRoles(token *jwt.Token, functionName string) error {
 	return nil
 }
 
-func setPublicKey(kid string) error {
-	c := config.LoadConfig()
+func (h *AuthHandlers) setPublicKey(kid string) error {
 	// Retrieves the public key for JWT from FusionAuth
 	if middleware.VerifyKey == nil {
-		url := fmt.Sprintf("http://%s:%s/api/jwt/public-key?kid=%s", c.FusionAuth.Host, c.FusionAuth.Port, kid)
+		url := fmt.Sprintf(
+			"http://%s:%s/api/jwt/public-key?kid=%s",
+			h.cfg.FusionAuth.Host, h.cfg.FusionAuth.Port, kid)
 		response, err := http.Get(url)
 		if err != nil {
 			return fmt.Errorf("problem connecting to FusionAuth: `%s`", err.Error())
@@ -496,11 +488,10 @@ func setPublicKey(kid string) error {
 			return fmt.Errorf("problem unmarshaling response: `%s`", err.Error())
 		}
 
-		var publicKeyPEM = publicKey["publicKey"].(string)
+		publicKeyPEM := publicKey["publicKey"].(string)
 
-		var verifyBytes = []byte(publicKeyPEM)
+		verifyBytes := []byte(publicKeyPEM)
 		middleware.VerifyKey, err = jwt.ParseRSAPublicKeyFromPEM(verifyBytes)
-
 		if err != nil {
 			return fmt.Errorf("problem retreiving public key: `%s`", err.Error())
 		}
@@ -509,7 +500,6 @@ func setPublicKey(kid string) error {
 }
 
 func (h *AuthHandlers) ValidateUserWithFusionAuth(userID, tenantID string) (bool, error) {
-
 	_, err := h.authService.GetUserByID(userID, &tenantID)
 	if err != nil {
 		var faErr *services.FaError

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/joho/godotenv"
 )
@@ -35,8 +36,19 @@ type Config struct {
 	}
 }
 
-func LoadConfig() *Config {
+var (
+	configInstance *Config
+	loadConfigOnce sync.Once
+)
 
+func LoadConfig() *Config {
+	loadConfigOnce.Do(func() {
+		configInstance = load() // Call the actual loading logic once
+	})
+	return configInstance
+}
+
+func load() *Config {
 	if os.Getenv("GO_ENV") != "production" {
 		err := godotenv.Load()
 		if err != nil {
