@@ -241,7 +241,7 @@ func WriteInternalServerError(w http.ResponseWriter) {
 
 func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := parseToken(r)
+		token, err := h.parseToken(r)
 		if err != nil {
 			if errors.Is(err, middleware.ErrInvalidToken) {
 				slog.Error(err.Error())
@@ -308,20 +308,20 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 	})
 }
 
-func parseToken(r *http.Request) (*jwt.Token, error) {
+func (h *AuthHandlers) parseToken(r *http.Request) (*jwt.Token, error) {
 	reqToken, err := getRequestToken(r)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := jwt.Parse(reqToken, verifyTokenSignature)
+	token, err := jwt.Parse(reqToken, h.verifyTokenSignature)
 	if err != nil {
 		return nil, err
 	}
 	return token, nil
 }
 
-func verifyTokenSignature(token *jwt.Token) (interface{}, error) {
+func (h *AuthHandlers) verifyTokenSignature(token *jwt.Token) (interface{}, error) {
 	if err := validateSigningMethod(token); err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func verifyTokenSignature(token *jwt.Token) (interface{}, error) {
 
 	// At this point we already validated we have a KID
 	kid := token.Header["kid"].(string)
-	if err := setPublicKey(kid); err != nil {
+	if err := h.setPublicKey(kid); err != nil {
 		return nil, fmt.Errorf("error setting public key: %w", err)
 	}
 	return middleware.VerifyKey, nil
