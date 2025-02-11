@@ -20,6 +20,7 @@ type IScanService interface {
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
 	HandleScanCompletion(scanID uuid.UUID) error
+	GetScanVulnerabilitySummaryByID(scanID uuid.UUID) (*domain.ScanVulnerabilitySummaryData, error)
 }
 
 type IScanHandlers interface {

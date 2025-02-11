@@ -153,8 +153,35 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("err", err))
 	}
-	var summary ScanVulnerabilitySummaryResponse
 
-	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
-	return api.WriteJSON(w, http.StatusOK, summary)
+	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID)
+	if err != nil {
+		slog.Error("failed to get scan vulnerabilities summary",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
+
+	if summaryData == nil {
+		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: "Scan summary not found"})
+	}
+
+	// Map from service layer struct to API response DTO
+	response := ScanVulnerabilitySummaryResponse{
+		ScanID: summaryData.ScanID.String(),
+		Domain: summaryData.Domain,
+		GeneralSummary: VulnerabilityGeneralSummary{
+			TotalVulnerabilities: summaryData.TotalVulnerabilities,
+			SeverityCounts:       summaryData.SeverityCounts,
+			VulnerabilitiesByCategory: VulnerabilitiesByCategory{
+				CategoryData: adaptCategoryData(summaryData.CategoryData),
+			},
+			VulnerabilityTrends: VulnerabilityTrends{
+				TimePeriods:               adaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
+				AverageVulnerabilityCount: summaryData.VulnerabilityTrends.AverageVulnerabilityCount,
+			},
+		},
+	}
+
+	return api.WriteJSON(w, http.StatusOK, response)
 }
