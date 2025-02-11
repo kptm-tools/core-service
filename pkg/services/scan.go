@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results"
-	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/common/common/pkg/utils/validation"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -194,29 +193,37 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 }
 
 func (s *ScanService) GetScanVulnerabilitySummaryByID(scanID uuid.UUID) (*domain.ScanVulnerabilitySummaryData, error) {
-	summaryData := &domain.ScanVulnerabilitySummaryData{
-		ScanID:               scanID,
-		Domain:               "example.com",
-		TotalVulnerabilities: 150,
-		SeverityCounts: tools.SeverityCounts{
-			Critical: 10,
-			High:     30,
-			Medium:   50,
-			Low:      40,
-		},
-		CategoryData: []domain.ServiceCategoryData{
-			{Category: "XSS", Count: 15},
-			{Category: "SQL Injection", Count: 20},
-			{Category: "CSRF", Count: 7},
-		},
-		VulnerabilityTrends: domain.ServiceVulnerabilityTrends{
-			TimePeriods: []domain.ServiceTimePeriod{
-				{TimePeriod: "Jan", VulnerabilityCount: 25},
-				{TimePeriod: "Feb", VulnerabilityCount: 30},
-				{TimePeriod: "Mar", VulnerabilityCount: 40},
-			},
-			AverageVulnerabilityCount: 65.4,
-		},
+	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
+
+	// summaryData := &domain.ScanVulnerabilitySummaryData{
+	// 	ScanID:               scanID,
+	// 	Domain:               "example.com",
+	// 	TotalVulnerabilities: 150,
+	// 	SeverityCounts: tools.SeverityCounts{
+	// 		Critical: 10,
+	// 		High:     30,
+	// 		Medium:   50,
+	// 		Low:      40,
+	// 	},
+	// 	CategoryData: []domain.ServiceCategoryData{
+	// 		{Category: "XSS", Count: 15},
+	// 		{Category: "SQL Injection", Count: 20},
+	// 		{Category: "CSRF", Count: 7},
+	// 	},
+	// 	VulnerabilityTrends: domain.ServiceVulnerabilityTrends{
+	// 		TimePeriods: []domain.ServiceTimePeriod{
+	// 			{TimePeriod: "Jan", VulnerabilityCount: 25},
+	// 			{TimePeriod: "Feb", VulnerabilityCount: 30},
+	// 			{TimePeriod: "Mar", VulnerabilityCount: 40},
+	// 		},
+	// 		AverageVulnerabilityCount: 65.4,
+	// 	},
+	// }
+	//
+
+	summaryData, err := s.storage.GetScanVulnerabilitiesSummary(scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch vulnerabilities summary: %w", err)
 	}
 
 	return summaryData, nil

@@ -635,3 +635,164 @@ func (s *PostgreSQLStore) UpdateProtectionScore(scanID uuid.UUID, protectionScor
 	}
 	return nil
 }
+
+func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*domain.ScanVulnerabilitySummaryData, error) {
+	// TODO: Add timePeriod filter logic
+	// TODO: Add severity filter logic
+	var summaryData domain.ScanVulnerabilitySummaryData
+	// 1. Get vulnerabilities
+	query := `
+    SELECT 
+      scans.id AS scan_id,
+      hosts.alias AS host_alias,
+      COUNT(sv.id) AS total_vulnerabilities,
+      SUM(CASE WHEN sv.cvss < 4.0 THEN 1 ELSE 0 END) AS low_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 4.0 AND sv.cvss < 7.0 THEN 1 ELSE 0 END) as medium_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 7.0 AND sv.cvss < 9.0 THEN 1 ELSE 0 END) as high_vulnerabilities,
+      SUM(CASE WHEN sv.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical_vulnerabilities
+  FROM
+    scans
+  INNER JOIN hosts ON scans.host_id = hosts.id
+  LEFT JOIN
+    scan_vulnerabilities sv ON scans.id = sv.scan_id
+  WHERE scans.id = $1
+  GROUP BY scans.id, hosts.alias;
+  `
+
+	err := s.db.QueryRow(query, scanID).Scan(
+		&summaryData.ScanID,
+		&summaryData.Domain,
+		&summaryData.TotalVulnerabilities,
+		&summaryData.SeverityCounts.Low,
+		&summaryData.SeverityCounts.Medium,
+		&summaryData.SeverityCounts.High,
+		&summaryData.SeverityCounts.Critical,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.Warn("No rows were found", slog.String("scan_id", scanID.String()))
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	// Handling Categories and Trends
+	// 1. Fetch category data
+	categoryQuery := `
+    SELECT
+      sv.type AS category,
+      COUNT(sv.type) AS cateogry_count
+    FROM 
+      scan_vulnerabilities sv
+    WHERE sv.scan_id = $1
+    GROUP BY sv.type;
+  `
+
+	categoryRows, err := s.db.Query(categoryQuery, scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query vulnerability categories: %w", err)
+	}
+	defer categoryRows.Close()
+
+	var categoryData []domain.ServiceCategoryData
+	for categoryRows.Next() {
+		var catData domain.ServiceCategoryData
+		if err := categoryRows.Scan(&catData.Category, &catData.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan into category data: %w", err)
+		}
+		categoryData = append(categoryData, catData)
+	}
+	if err := categoryRows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate category rows: %w", err)
+	}
+
+	summaryData.CategoryData = categoryData
+
+	// 2. Fetch trend data
+	// This query is kind of complicated, but what it does is fill out time_periods and labels,
+	// even when there is no data for said time_period. E.g: we only have data
+	// for February, but we want to have the counts for other months to be 0 too.
+	trendQuery := `
+  WITH TimePeriods as (
+  SELECT 
+        CASE 
+          WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
+          WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(date_series, 'Q')
+          WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+          ELSE 'Unknown Period'
+        END AS time_period_label,
+        CASE
+          WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'YYYY-MM')
+          WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
+          WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+          ELSE '1'
+        END AS ordering_period
+      FROM generate_series(
+        DATE_TRUNC('year', CURRENT_DATE),
+        DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
+        CASE
+          WHEN $2 = 'Month' THEN INTERVAL '1 month'
+          WHEN $2 = 'Quarter' THEN INTERVAL '3 month'
+          WHEN $2 = 'Semester' THEN INTERVAL '6 month'
+          ELSE INTERVAL '1 month'
+        END
+      ) AS date_series
+  ),
+  VulnerabilityCounts AS (
+  SELECT
+          CASE
+              WHEN $2 = 'Month' THEN TO_CHAR(sv.created_at, 'FMMonth')
+              WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(sv.created_at, 'Q')
+              WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(sv.created_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+              ELSE 'Unknown Period'
+          END AS time_period_label,
+          COUNT(sv.id) AS vulnerability_count
+      FROM scan_vulnerabilities sv
+      WHERE sv.scan_id = $1
+        AND EXTRACT(YEAR FROM sv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+      GROUP BY time_period_label
+  )
+  SELECT 
+    tp.time_period_label AS time_period,
+    COALESCE(vc.vulnerability_count, 0) AS vulnerability_count
+  FROM TimePeriods tp
+  LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
+  ORDER BY tp.ordering_period;
+`
+
+	// TODO: Change this for method filter
+	timePeriodMonth := "Month"
+
+	trendsRows, err := s.db.Query(trendQuery, scanID, timePeriodMonth)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query vulnerability trends: %w", err)
+	}
+	defer trendsRows.Close()
+
+	var vulnerabilityTrends domain.ServiceVulnerabilityTrends
+	var timePeriods []domain.ServiceTimePeriod
+	var totalVulnCountForAvg, periodCountForAvg float64
+	for trendsRows.Next() {
+		var timePeriodData domain.ServiceTimePeriod
+		if err := trendsRows.Scan(&timePeriodData.TimePeriod, &timePeriodData.VulnerabilityCount); err != nil {
+			return nil, fmt.Errorf("failed to scan into time period: %w", err)
+		}
+		timePeriods = append(timePeriods, timePeriodData)
+		totalVulnCountForAvg += float64(timePeriodData.VulnerabilityCount)
+		periodCountForAvg++
+	}
+	if err := trendsRows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate trend rows: %w", err)
+	}
+
+	vulnerabilityTrends.TimePeriods = timePeriods
+	if periodCountForAvg > 0 {
+		vulnerabilityTrends.AverageVulnerabilityCount = totalVulnCountForAvg / periodCountForAvg
+	} else {
+		vulnerabilityTrends.AverageVulnerabilityCount = 0.0
+	}
+
+	summaryData.VulnerabilityTrends = vulnerabilityTrends
+
+	return &summaryData, nil
+}
