@@ -5,7 +5,7 @@ LANGUAGE PLPGSQL
 AS
 $$
 BEGIN
-    SELECT cron.schedule(NEW.cron,'PERFORM pg_notify(''scan_cron'',
+    PERFORM cron.schedule(NEW.cron,'PERFORM pg_notify(''scan_cron'',
           json_build_object(
             ''scan_id'', NEW.scan_id,
             ''timestamp'', now(), ''period'', NEW.has_period

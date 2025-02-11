@@ -8,6 +8,7 @@ import (
 	"log"
 	"log/slog"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1065,21 +1066,22 @@ func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, scheduledAt str
 	return nil
 }
 
-func obtainYearCron(scheduledAt string) (string, string, error) {
+func obtainYearCron(scheduledAt string) (int, string, error) {
 
 	dataCron := strings.Split(scheduledAt, "-")
 	if len(dataCron) == 0 {
-		return "", "", fmt.Errorf("failed to parse cron expression: %s", scheduledAt)
+		return 0, "", fmt.Errorf("failed to parse cron expression: %s", scheduledAt)
 	}
-	var fixedYear, cron string
+	var fixedYear int
+	var cron string
 	var re = regexp.MustCompile(`^[0-9]+$`)
 	if len(dataCron[0]) == 4 && re.MatchString(dataCron[0]) && len(dataCron) == 6 {
-		fixedYear = dataCron[0]
+		fixedYear, _ = strconv.Atoi(dataCron[0])
 		cron = fmt.Sprintf("%s %s %s %s %s", dataCron[1], dataCron[2], dataCron[3], dataCron[4], dataCron[5])
 	} else if len(dataCron) == 5 {
 		cron = fmt.Sprintf("%s %s %s %s %s", dataCron[0], dataCron[1], dataCron[2], dataCron[3], dataCron[4])
 	} else {
-		return "", "", fmt.Errorf("failed to parse cron expression: %s", scheduledAt)
+		return 0, "", fmt.Errorf("failed to parse cron expression: %s", scheduledAt)
 	}
 	return fixedYear, cron, nil
 }

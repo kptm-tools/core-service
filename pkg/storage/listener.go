@@ -40,12 +40,12 @@ func NewPostgresListener(
 	if err := listener.Listen("scan_completed"); err != nil {
 		return nil, fmt.Errorf("failed to listen to scan_completed channel: %w", err)
 	}
+	slog.Info("PostgresListener started", slog.String("channel", "scan_completed"))
+
 	if err := listener.Listen("scan_cron"); err != nil {
 		return nil, fmt.Errorf("failed to listen to scan_cron channel: %w", err)
 	}
-
-	slog.Info("PostgresListener started", slog.String("channel", "scan_completed"))
-
+	slog.Info("PostgresListener started", slog.String("channel", "scan_cron"))
 	postgresListener := &PostgresListener{
 		listener:    listener,
 		scanService: scanService,
