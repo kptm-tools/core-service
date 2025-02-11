@@ -147,3 +147,14 @@ func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Reques
 
 	return api.WriteJSON(w, http.StatusOK, summary)
 }
+
+func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error {
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("failed to extract scanID", slog.Any("err", err))
+	}
+	var summary ScanVulnerabilitySummaryResponse
+
+	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
+	return api.WriteJSON(w, http.StatusOK, summary)
+}

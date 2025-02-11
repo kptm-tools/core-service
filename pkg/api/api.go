@@ -76,6 +76,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
+	router.HandleFunc("GET /api/scans/{id}/vulnerabilities/summary", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilitySummaryByID), "getScanVulnerabilitySummaryByID"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,
@@ -91,18 +92,15 @@ func (s *APIServer) Init() error {
 	log.Println("Server listening on port: ", s.listenAddr)
 
 	return server.ListenAndServe()
-
 }
 
 // This function wraps our APIFunc struct so we can handle errors gracefully
 func makeHTTPHandlerFunc(f APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := f(w, r)
-
 		if err != nil {
 			WriteJSON(w, http.StatusInternalServerError, APIError{Error: err.Error()})
 		}
-
 	}
 }
 
