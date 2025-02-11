@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -154,7 +155,33 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 		slog.Error("failed to extract scanID", slog.Any("err", err))
 	}
 
-	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID)
+	timePeriodFilter := r.URL.Query().Get("time_period")
+	validTimePeriods := map[string]bool{"Month": true, "Quarter": true, "Semester": true}
+	if !validTimePeriods[timePeriodFilter] {
+		slog.Warn("Invalid time_period filter",
+			slog.String("time_period_filter", timePeriodFilter))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid time_period filter Must be 'Month', 'Quarter', or 'Semester'"})
+	}
+
+	severityFilterStr := r.URL.Query().Get("severity")
+	var severityFilters []string
+	if severityFilterStr != "" {
+		severityFilters = strings.Split(severityFilterStr, ",")
+		validSeverities := map[string]bool{
+			"low":      true,
+			"medium":   true,
+			"high":     true,
+			"critical": true,
+		}
+		for i, severity := range severityFilters {
+			if !validSeverities[strings.ToLower(severity)] {
+				return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
+			}
+			severityFilters[i] = strings.ToLower(severity)
+		}
+	}
+
+	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID, timePeriodFilter, severityFilters)
 	if err != nil {
 		slog.Error("failed to get scan vulnerabilities summary",
 			slog.String("scan_id", scanID.String()),

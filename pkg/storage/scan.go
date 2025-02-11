@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -182,10 +183,10 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
     SELECT
       S.id AS scan_id,
       COUNT(V.id) AS total_vulnerabilities,
-      SUM(CASE WHEN V.cvss < 4.0 THEN 1 ELSE 0 END) AS low,
-      SUM(CASE WHEN V.cvss >= 4.0 AND V.cvss < 7.0 THEN 1 ELSE 0 END) as medium,
-      SUM(CASE WHEN V.cvss >= 7.0 AND V.cvss < 9.0 THEN 1 ELSE 0 END) as high,
-      SUM(CASE WHEN V.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical
+      SUM(CASE WHEN V.severity = 'Low' THEN 1 ELSE 0 END) AS low,
+      SUM(CASE WHEN V.severity = 'Medium' THEN 1 ELSE 0 END) as medium,
+      SUM(CASE WHEN V.severity = 'High' THEN 1 ELSE 0 END) as high,
+      SUM(CASE WHEN V.severity = 'Critical' THEN 1 ELSE 0 END) AS critical
     FROM scans S
     LEFT JOIN scan_vulnerabilities V ON S.id = V.scan_id
     WHERE S.tenant_id = $1
@@ -377,10 +378,10 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
       hosts.alias AS scan_alias,
       scans.started_at AS scan_date,
       COUNT(sv.id) AS total_vulnerabilities,
-      SUM(CASE WHEN sv.cvss < 4.0 THEN 1 ELSE 0 END) AS low_vulnerabilities,
-      SUM(CASE WHEN sv.cvss >= 4.0 AND sv.cvss < 7.0 THEN 1 ELSE 0 END) as medium_vulnerabilities,
-      SUM(CASE WHEN sv.cvss >= 7.0 AND sv.cvss < 9.0 THEN 1 ELSE 0 END) as high_vulnerabilities,
-      SUM(CASE WHEN sv.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'Low' THEN 1 ELSE 0 END) AS low_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'Medium' THEN 1 ELSE 0 END) as medium_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'High' THEN 1 ELSE 0 END) as high_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'Critical' THEN 1 ELSE 0 END) AS critical_vulnerabilities,
       (
         SELECT json_object_agg(
           vuln_type,
@@ -636,30 +637,40 @@ func (s *PostgreSQLStore) UpdateProtectionScore(scanID uuid.UUID, protectionScor
 	return nil
 }
 
-func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*domain.ScanVulnerabilitySummaryData, error) {
-	// TODO: Add timePeriod filter logic
-	// TODO: Add severity filter logic
+func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
+	scanID uuid.UUID,
+	timePeriodFilter string,
+	severityFilters []string,
+) (*domain.ScanVulnerabilitySummaryData, error) {
 	var summaryData domain.ScanVulnerabilitySummaryData
 	// 1. Get vulnerabilities
-	query := `
+	baseSummaryQuery := `
     SELECT 
       scans.id AS scan_id,
       hosts.alias AS host_alias,
       COUNT(sv.id) AS total_vulnerabilities,
-      SUM(CASE WHEN sv.cvss < 4.0 THEN 1 ELSE 0 END) AS low_vulnerabilities,
-      SUM(CASE WHEN sv.cvss >= 4.0 AND sv.cvss < 7.0 THEN 1 ELSE 0 END) as medium_vulnerabilities,
-      SUM(CASE WHEN sv.cvss >= 7.0 AND sv.cvss < 9.0 THEN 1 ELSE 0 END) as high_vulnerabilities,
-      SUM(CASE WHEN sv.cvss >= 9.0 THEN 1 ELSE 0 END) AS critical_vulnerabilities
+      SUM(CASE WHEN sv.severity = 'Low' THEN 1 ELSE 0 END) AS low_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'Medium' THEN 1 ELSE 0 END) as medium_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'High' THEN 1 ELSE 0 END) as high_vulnerabilities,
+      SUM(CASE WHEN sv.severity = 'Critical' THEN 1 ELSE 0 END) AS critical_vulnerabilities
   FROM
     scans
   INNER JOIN hosts ON scans.host_id = hosts.id
   LEFT JOIN
     scan_vulnerabilities sv ON scans.id = sv.scan_id
   WHERE scans.id = $1
+    -- Severity Filter Dynamic Condition goes here
+    %s
   GROUP BY scans.id, hosts.alias;
   `
 
-	err := s.db.QueryRow(query, scanID).Scan(
+	summaryQueryParams := []any{scanID}
+	summarySeverityWhereClause, summaryQueryParams := s.buildSeverityWhereClause(severityFilters, summaryQueryParams)
+	formattedSummaryQuery := fmt.Sprintf(baseSummaryQuery, summarySeverityWhereClause)
+	slog.Debug("Executing Summary Query",
+		slog.Any("query_params", summaryQueryParams))
+
+	err := s.db.QueryRow(formattedSummaryQuery, summaryQueryParams...).Scan(
 		&summaryData.ScanID,
 		&summaryData.Domain,
 		&summaryData.TotalVulnerabilities,
@@ -678,17 +689,25 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*doma
 
 	// Handling Categories and Trends
 	// 1. Fetch category data
-	categoryQuery := `
+	baseCategoryQuery := `
     SELECT
       sv.type AS category,
-      COUNT(sv.type) AS cateogry_count
+      COUNT(sv.type) AS category_count
     FROM 
       scan_vulnerabilities sv
     WHERE sv.scan_id = $1
+    -- Severity Filter Dynamic Condition goes here
+    %s
     GROUP BY sv.type;
   `
 
-	categoryRows, err := s.db.Query(categoryQuery, scanID)
+	categoryQueryParams := []any{scanID}
+	categorySeverityWhereClause, categoryQueryParams := s.buildSeverityWhereClause(severityFilters, categoryQueryParams)
+	formattedCategoryQuery := fmt.Sprintf(baseCategoryQuery, categorySeverityWhereClause)
+	slog.Debug("Executing Category Query",
+		slog.Any("query_params", categoryQueryParams))
+
+	categoryRows, err := s.db.Query(formattedCategoryQuery, categoryQueryParams...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query vulnerability categories: %w", err)
 	}
@@ -712,7 +731,7 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*doma
 	// This query is kind of complicated, but what it does is fill out time_periods and labels,
 	// even when there is no data for said time_period. E.g: we only have data
 	// for February, but we want to have the counts for other months to be 0 too.
-	trendQuery := `
+	baseTrendQuery := `
   WITH TimePeriods as (
   SELECT 
         CASE 
@@ -750,6 +769,8 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*doma
       FROM scan_vulnerabilities sv
       WHERE sv.scan_id = $1
         AND EXTRACT(YEAR FROM sv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+          -- Severity Filter Dynamic Condition goes here
+          %s
       GROUP BY time_period_label
   )
   SELECT 
@@ -760,10 +781,13 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*doma
   ORDER BY tp.ordering_period;
 `
 
-	// TODO: Change this for method filter
-	timePeriodMonth := "Month"
+	trendQueryParams := []any{scanID, timePeriodFilter}
+	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
+	formattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
+	slog.Debug("Executing Summary Query",
+		slog.Any("query_params", trendQueryParams))
 
-	trendsRows, err := s.db.Query(trendQuery, scanID, timePeriodMonth)
+	trendsRows, err := s.db.Query(formattedTrendQuery, trendQueryParams...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query vulnerability trends: %w", err)
 	}
@@ -795,4 +819,18 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(scanID uuid.UUID) (*doma
 	summaryData.VulnerabilityTrends = vulnerabilityTrends
 
 	return &summaryData, nil
+}
+
+func (s *PostgreSQLStore) buildSeverityWhereClause(severityFilters []string, queryParams []any) (string, []any) {
+	severityWhereClause := ""
+	if len(severityFilters) > 0 {
+		placeholders := make([]string, len(severityFilters))
+		for i, severity := range severityFilters {
+			placeholders[i] = fmt.Sprintf("$%d", len(queryParams)+1)
+			queryParams = append(queryParams, severity)
+		}
+		severityWhereClause = fmt.Sprintf("AND sv.severity ILIKE ANY(array[%s])", strings.Join(placeholders, ","))
+	}
+
+	return severityWhereClause, queryParams
 }
