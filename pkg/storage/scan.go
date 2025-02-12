@@ -643,6 +643,7 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	severityFilters []string,
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	var summaryData domain.ScanVulnerabilitySummaryData
+	summaryData.ScanID = scanID
 	// 1. Get vulnerabilities
 	baseSummaryQuery := `
     SELECT 
@@ -682,7 +683,7 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			slog.Warn("No rows were found", slog.String("scan_id", scanID.String()))
-			return nil, nil
+			return &summaryData, nil
 		}
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
