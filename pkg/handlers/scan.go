@@ -212,3 +212,28 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 
 	return api.WriteJSON(w, http.StatusOK, response)
 }
+
+func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error {
+	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+
+	reportItems, err := h.scanService.GetAllReportsForTenant(tenantID)
+	if err != nil {
+		slog.Error("Failed to get all reports for tenant",
+			slog.String("tenant_id", tenantID),
+			slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
+
+	reportResponses := make([]ReportsResponse, len(reportItems))
+	for i, item := range reportItems {
+		reportResponses[i] = ReportsResponse{
+			Domain:          item.HostName,
+			IP:              item.IP,
+			ScanDate:        item.ScanDate,
+			TotalSeverities: item.TotalSeverities,
+			CommentStatus:   item.CommentStatus.String(),
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, reportResponses)
+}

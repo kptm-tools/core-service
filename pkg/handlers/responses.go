@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"time"
+
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
@@ -62,4 +64,12 @@ func adaptTimePeriods(serviceTimePeriodData []domain.ServiceTimePeriod) []TimePe
 		}
 	}
 	return adaptedData
+}
+
+type ReportsResponse struct {
+	Domain          string    `json:"domain"`
+	IP              string    `json:"ip"`
+	ScanDate        time.Time `json:"scan_date"`
+	TotalSeverities int       `json:"total_severities"`
+	CommentStatus   string    `json:"comment_status"`
 }

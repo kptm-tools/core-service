@@ -206,3 +206,25 @@ func (s *ScanService) GetScanVulnerabilitySummaryByID(
 
 	return summaryData, nil
 }
+
+func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error) {
+	// Example dummy data (replace with actual data fetching logic)
+	sampleReports := []*domain.ReportItem{
+		{
+			HostName:        "Google.com",
+			IP:              "60908909",
+			ScanDate:        time.Now().UTC(),
+			TotalSeverities: 40,
+			CommentStatus:   domain.CommentStatusPending,
+		},
+		{
+			HostName:        "facebook.com",
+			IP:              "60908909",
+			ScanDate:        time.Now().UTC(),
+			TotalSeverities: 10,
+			CommentStatus:   domain.CommentStatusNewComment,
+		},
+	}
+
+	return sampleReports, nil
+}
