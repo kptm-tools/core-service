@@ -106,7 +106,7 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 	// Get all vulnerabilities and insert each one to our DB
 	for _, port := range nr.ScannedPorts {
 		for _, vuln := range port.Vulnerabilities {
-			if err := s.InsertScanVulnerability(tx, scan.ID, scan.HostID, sr.Result.Tool, vuln, port); err != nil {
+			if err := s.InsertScanVulnerability(tx, *sr, scan.HostID, vuln, port); err != nil {
 				return err
 			}
 		}
@@ -121,27 +121,40 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 
 func (s *PostgreSQLStore) InsertScanVulnerability(
 	tx *sql.Tx,
-	scanID uuid.UUID,
+	scanResult domain.ScanResult,
 	hostID int,
-	toolName enums.ToolName,
 	vuln tools.Vulnerability,
 	port tools.PortData,
 ) error {
 	query := `
     INSERT INTO scan_vulnerabilities (
       vulnerability_id, scan_id, host_id, tool, type, cvss, vuln_references, exploitable,
-      port, protocol, service_name, service_version, port_state
+      port, protocol, service_name, service_version, port_state, created_at, updated_at
     )
-    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 	referencesBytes, err := json.Marshal(vuln.References)
 	if err != nil {
 		return fmt.Errorf("failed to marshal vulnerability references: %w", err)
 	}
 
-	if _, err := tx.Exec(query,
-		vuln.ID, scanID, hostID, string(toolName), vuln.Type, vuln.CVSS, referencesBytes, vuln.Exploitable,
-		port.ID, port.Protocol, port.Service.Name, port.Service.Version, port.State,
+	if _, err := tx.Exec(
+		query,
+		vuln.ID,
+		scanResult.ScanID,
+		hostID,
+		scanResult.Result.Tool.String(),
+		vuln.Type,
+		vuln.CVSS,
+		referencesBytes,
+		vuln.Exploitable,
+		port.ID,
+		port.Protocol,
+		port.Service.Name,
+		port.Service.Version,
+		port.State,
+		scanResult.CreatedAt,
+		scanResult.CreatedAt,
 	); err != nil {
 		return fmt.Errorf("failed to insert vulnerability: %w", err)
 	}
