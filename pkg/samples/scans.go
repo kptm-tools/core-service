@@ -56,6 +56,26 @@ func SampleScans() []domain.Scan {
 			ID:         uuid.New(),
 			TenantID:   tenantID,
 			OperatorID: sampleOperatorID1,
+			HostID:     1,
+			HostsResults: []domain.ResultHost{
+				{Host: "example.com"},
+			},
+			Target: results.Target{
+				Alias: "example dot com",
+				Value: "example.com",
+				Type:  enums.Domain,
+			},
+			CreatedAt: time.Date(currentYear, month2, 1, 10, 0, 0, 0, time.UTC),
+			UpdatedAt: time.Date(currentYear, month2, 28, 12, 30, 0, 0, time.UTC),
+			StartedAt: time.Date(currentYear, month2, 1, 10, 0, 0, 0, time.UTC),
+			EndedAt:   &endedAt2,
+			Status:    enums.StatusCompleted.String(),
+		},
+
+		{
+			ID:         uuid.New(),
+			TenantID:   tenantID,
+			OperatorID: sampleOperatorID1,
 			HostID:     2,
 			HostsStatus: []domain.StatusHost{
 				{
