@@ -22,13 +22,11 @@ type PostgreSQLStore struct {
 }
 
 func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore, error) {
-
 	if err := createDatabaseIfNotExists(cfg); err != nil {
 		return nil, fmt.Errorf("failed to create database: %w", err)
 	}
 
 	db, err := sql.Open("postgres", cfg.PostgreSQLCoreDatabaseURL())
-
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +61,6 @@ func createDatabaseIfNotExists(cfg *config.Config) error {
 	query := `SELECT EXISTS(SELECT FROM pg_database WHERE datname=$1)`
 	var exists bool
 	err = db.QueryRow(query, dbName).Scan(&exists)
-
 	// If the database doesn't exist, create it
 	if err != nil {
 		return fmt.Errorf("failed to check databse existence: %w", err)
@@ -131,6 +128,14 @@ func (s *PostgreSQLStore) ClearCoreDB() error {
 	}
 	// Attempt to clear Tenants Table
 	if err := s.ClearTenantsTable(); err != nil {
+		return err
+	}
+	// Attempt to clear Scans Table
+	if err := s.ClearScanTable(); err != nil {
+		return err
+	}
+	// Attempt to clear Scan Results Table
+	if err := s.ClearScanResultsTable(); err != nil {
 		return err
 	}
 
