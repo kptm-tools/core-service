@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"os"
+	"time"
 
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/cmd/migrations"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -106,6 +109,25 @@ func populateScans(store interfaces.IStorage) error {
 		return fmt.Errorf("error populating results: %w", err)
 	}
 
+	// Mark scans as Completed and Update Protection Score
+	for _, scan := range sampleScans {
+		if err := store.UpdateScanStatusAndEndedAt(
+			nil,
+			scan.ID,
+			enums.StatusCompleted.String(),
+			scan.StartedAt.Add(time.Minute*5),
+		); err != nil {
+			return fmt.Errorf("error updating scan status and ended at: %w", err)
+		}
+
+		// Give the scan a random protection score
+		randScore := rand.Float64()
+		if err := store.UpdateProtectionScore(scan.ID, randScore); err != nil {
+			return fmt.Errorf("error updating protection score: %w", err)
+		}
+
+	}
+
 	return nil
 }
 
@@ -113,6 +135,7 @@ func populateScanResults(store interfaces.IStorage, sampleScans []domain.Scan) e
 	sampleInfoResults := samples.SampleInformationGatheringScanResults(sampleScans)
 	sampleVulnResults := samples.SampleVulnerabilityAnalysisScanResults(sampleScans)
 
+	// Insert Information Gathering results
 	for _, result := range sampleInfoResults {
 		if err := store.InsertScanResult(nil, &result); err != nil {
 			slog.Error("failed to insert scan result", slog.String("scan_id", result.ScanID.String()))
@@ -120,6 +143,7 @@ func populateScanResults(store interfaces.IStorage, sampleScans []domain.Scan) e
 		}
 	}
 
+	// Insert vulnerability Analysis results (and vulnerabilities)
 	for _, result := range sampleVulnResults {
 		if err := store.InsertVulnerabilityResult(&result); err != nil {
 			return fmt.Errorf("error populating vulnerability results: %w", err)
