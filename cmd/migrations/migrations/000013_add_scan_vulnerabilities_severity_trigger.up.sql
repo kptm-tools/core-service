@@ -15,7 +15,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 -- Trigger to execute the function on INSERT or UPDATE
-CREATE TRIGGER add_scan_vulnerabilities_severity_trigger
+CREATE TRIGGER scan_vulnerabilities_severity_trigger
 BEFORE INSERT OR UPDATE ON scan_vulnerabilities
 FOR EACH ROW
 EXECUTE FUNCTION calculate_scan_vulnerability_severity();
