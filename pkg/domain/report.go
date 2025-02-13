@@ -48,6 +48,8 @@ type ScoreCardTrendItem struct {
 	LatestScoreGrade *string
 }
 
+// calculateScoreGrade calculates the letter grade (A-F) based on the protection score.
+// It handles nil scores by returning an empty string as grade.
 func calculateScoreGrade(score *float64) *string {
 	if score == nil {
 		return nil

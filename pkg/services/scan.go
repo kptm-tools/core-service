@@ -1,6 +1,8 @@
 package services
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -222,15 +224,51 @@ func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportI
 }
 
 func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string) ([]*domain.ScoreCardTrendItem, error) {
-	score65 := 0.65
-	score75 := 0.75
-	var scoreNil *float64
-
-	sampleItems := []*domain.ScoreCardTrendItem{
-		domain.NewScoreCardTrendItem("Ovofinance 2", &score65, &score75),
-		domain.NewScoreCardTrendItem("Ovofinance 3", scoreNil, &score65),
-		domain.NewScoreCardTrendItem("boeing.com", scoreNil, scoreNil),
+	hosts, err := s.storage.GetHostsByTenantID(tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}
 
-	return sampleItems, nil
+	slog.Debug("Got hosts", slog.Any("hosts", hosts))
+
+	scoreCardItems := make([]*domain.ScoreCardTrendItem, 0, len(hosts))
+	for _, host := range hosts {
+		oldestScan, latestScan, err := s.getOldestLatestScans(host.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch oldest and latest scan: %w", err)
+		}
+
+		var oldestProtectionScore, latestProtectionScore *float64
+		if oldestScan != nil && latestScan != nil {
+			oldestProtectionScore = oldestScan.ProtectionScore
+			latestProtectionScore = latestScan.ProtectionScore
+		}
+		scoreCardItem := domain.NewScoreCardTrendItem(host.Name, oldestProtectionScore, latestProtectionScore)
+
+		scoreCardItems = append(scoreCardItems, scoreCardItem)
+	}
+
+	return scoreCardItems, nil
+}
+
+func (s *ScanService) getOldestLatestScans(hostID int) (*domain.Scan, *domain.Scan, error) {
+	oldestScan, err := s.storage.GetOldestScanByHostID(hostID, nil, nil)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, fmt.Errorf("failed to get oldest scan: %w", err)
+		}
+	}
+	latestScan, err := s.storage.GetLatestScanByHostID(hostID, nil, nil)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, fmt.Errorf("failed to get latest scan: %w", err)
+		}
+	}
+
+	slog.Debug("Got oldest and latest scan",
+		slog.Any("oldest_scan", oldestScan),
+		slog.Any("latest_scan", latestScan),
+	)
+
+	return oldestScan, latestScan, nil
 }

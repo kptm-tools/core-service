@@ -35,4 +35,6 @@ type IStorage interface {
 	GetNmapResult(scanID uuid.UUID) (*tools.NmapResult, error)
 	GetScanVulnerabilitiesSummary(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetReportsByTenantID(string) ([]*domain.ReportItem, error)
+	GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 }

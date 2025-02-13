@@ -252,6 +252,9 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 
 	scoreCardResponses := make([]ScoreCardTrendResponse, len(scoreCardTrendItems))
 	for i, item := range scoreCardTrendItems {
+		if item == nil {
+			continue
+		}
 		scoreCardResponses[i] = ScoreCardTrendResponse{
 			Alias:            item.Alias,
 			OldestScore:      item.OldestScore,
