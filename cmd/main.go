@@ -1,12 +1,12 @@
 package main
 
 import (
-	"embed"
 	"log/slog"
 	"os"
 	"time"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
+	"github.com/kptm-tools/core-service/cmd/migrations"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/events"
@@ -15,9 +15,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/storage"
 	"github.com/lmittmann/tint"
 )
-
-//go:embed migrations/*.sql
-var migrations embed.FS
 
 func main() {
 	c := config.LoadConfig()
@@ -29,7 +26,7 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	coreStore, err := storage.NewPostgreSQLStore(c, migrations)
+	coreStore, err := storage.NewPostgreSQLStore(c, migrations.Migrations)
 	if err != nil {
 		logger.Error("Failed to create Core DB store", slog.Any("error", err))
 		os.Exit(1)
@@ -80,5 +77,4 @@ func main() {
 	if err := s.Init(); err != nil {
 		slog.Error("Failed to initialize APIServer", slog.Any("error", err))
 	}
-
 }

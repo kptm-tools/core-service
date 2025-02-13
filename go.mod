@@ -14,6 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kptm-tools/common v1.5.1
+	github.com/likexian/whois-parser v1.24.20
 	github.com/lmittmann/tint v1.0.6
 	github.com/nats-io/nats.go v1.38.0
 	github.com/prometheus-community/pro-bing v0.5.0
@@ -24,7 +25,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/likexian/gokit v0.25.15 // indirect
-	github.com/likexian/whois-parser v1.24.20 // indirect
 	github.com/nats-io/nkeys v0.4.9 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
