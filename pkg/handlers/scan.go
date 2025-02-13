@@ -227,6 +227,7 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 	reportResponses := make([]ReportsResponse, len(reportItems))
 	for i, item := range reportItems {
 		reportResponses[i] = ReportsResponse{
+			ScanID:          item.ScanID.String(),
 			Domain:          item.HostName,
 			IP:              item.IP,
 			ScanDate:        item.ScanDate,

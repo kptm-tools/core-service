@@ -848,3 +848,68 @@ func (s *PostgreSQLStore) buildSeverityWhereClause(severityFilters []string, que
 
 	return severityWhereClause, queryParams
 }
+
+func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.ReportItem, error) {
+	query := `
+  SELECT
+    s.id AS scan_id,
+    h.domain AS host_name,
+    h.ip AS ip,
+    s.started_at as scan_date,
+    (SELECT COUNT(sv.id) FROM scan_vulnerabilities sv WHERE sv.scan_id = s.id) AS total_severities,
+    CASE
+      WHEN NOT EXISTS (
+        SELECT 1
+        FROM scan_vulnerabilities sv
+        WHERE sv.scan_id = s.id
+          AND sv.analyst_comment IS NOT NULL
+      ) THEN 'PENDING' -- CommentStatusPending: No commens on any vulnerability
+      WHEN EXISTS (
+        SELECT 1
+        FROM scan_vulnerabilities sv
+        WHERE sv.scan_id = s.id
+          AND sv.analyst_comment IS NOT NULL
+          AND sv.severity = 'Critical'
+      ) THEN 'CRITICAL' -- CommentStatusCritical: Comment on at least one Critical vulnerability
+      ELSE 'NEW COMMENT' -- CommentStatusNewComment: At least one comment, but no Critical Severity Comments
+    END AS comment_status
+  FROM scans s
+  INNER JOIN hosts h ON s.host_id = h.id
+  `
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No rows were found
+		}
+		return nil, fmt.Errorf("failed to fetch reports: %w", err)
+	}
+	defer rows.Close()
+
+	reportItems := []*domain.ReportItem{}
+	for rows.Next() {
+		var reportItem domain.ReportItem
+		var commentStatusString string
+		err := rows.Scan(
+			&reportItem.ScanID,
+			&reportItem.HostName,
+			&reportItem.IP,
+			&reportItem.ScanDate,
+			&reportItem.TotalSeverities,
+			&commentStatusString,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan into ReportItem: %w", err)
+		}
+
+		commentStatusEnum, err := domain.ParseCommentStatus(commentStatusString)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse comment status string: %w", err)
+		}
+		reportItem.CommentStatus = commentStatusEnum
+
+		reportItems = append(reportItems, &reportItem)
+	}
+
+	return reportItems, nil
+}
