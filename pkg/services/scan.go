@@ -191,3 +191,18 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 
 	return nil
 }
+
+func (s *ScanService) GetScanVulnerabilitySummaryByID(
+	scanID uuid.UUID,
+	timePeriodFilter string,
+	severityFilters []string,
+) (*domain.ScanVulnerabilitySummaryData, error) {
+	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
+
+	summaryData, err := s.storage.GetScanVulnerabilitiesSummary(scanID, timePeriodFilter, severityFilters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch vulnerabilities summary: %w", err)
+	}
+
+	return summaryData, nil
+}

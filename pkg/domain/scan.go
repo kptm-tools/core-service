@@ -79,6 +79,32 @@ type ScanInsightsMetadata struct {
 	ScanDate  time.Time `json:"scan_date"`
 }
 
+// ScanVulnerabilitySummaryData represents the vulnerability summary data
+// as returned by the service layer. This is distinct from the API response DTO.
+type ScanVulnerabilitySummaryData struct {
+	ScanID               uuid.UUID
+	Domain               string
+	TotalVulnerabilities int
+	SeverityCounts       tools.SeverityCounts
+	CategoryData         []ServiceCategoryData
+	VulnerabilityTrends  ServiceVulnerabilityTrends
+}
+
+type ServiceCategoryData struct {
+	Category string
+	Count    int
+}
+
+type ServiceVulnerabilityTrends struct {
+	TimePeriods               []ServiceTimePeriod
+	AverageVulnerabilityCount float64
+}
+
+type ServiceTimePeriod struct {
+	TimePeriod         string
+	VulnerabilityCount int
+}
+
 func NewScan() *Scan {
 	return &Scan{
 		ID:        uuid.New(),

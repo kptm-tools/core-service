@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -146,4 +147,68 @@ func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Reques
 	}
 
 	return api.WriteJSON(w, http.StatusOK, summary)
+}
+
+func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error {
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("failed to extract scanID", slog.Any("err", err))
+	}
+
+	timePeriodFilter := r.URL.Query().Get("time_period")
+	validTimePeriods := map[string]bool{"Month": true, "Quarter": true, "Semester": true}
+	if !validTimePeriods[timePeriodFilter] {
+		slog.Warn("Invalid time_period filter",
+			slog.String("time_period_filter", timePeriodFilter))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid time_period filter Must be 'Month', 'Quarter', or 'Semester'"})
+	}
+
+	severityFilterStr := r.URL.Query().Get("severity")
+	var severityFilters []string
+	if severityFilterStr != "" {
+		severityFilters = strings.Split(severityFilterStr, ",")
+		validSeverities := map[string]bool{
+			"low":      true,
+			"medium":   true,
+			"high":     true,
+			"critical": true,
+		}
+		for i, severity := range severityFilters {
+			if !validSeverities[strings.ToLower(severity)] {
+				return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
+			}
+			severityFilters[i] = strings.ToLower(severity)
+		}
+	}
+
+	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID, timePeriodFilter, severityFilters)
+	if err != nil {
+		slog.Error("failed to get scan vulnerabilities summary",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
+
+	if summaryData == nil {
+		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: "Scan summary not found"})
+	}
+
+	// Map from service layer struct to API response DTO
+	response := ScanVulnerabilitySummaryResponse{
+		ScanID: summaryData.ScanID.String(),
+		Domain: summaryData.Domain,
+		GeneralSummary: VulnerabilityGeneralSummary{
+			TotalVulnerabilities: summaryData.TotalVulnerabilities,
+			SeverityCounts:       summaryData.SeverityCounts,
+			VulnerabilitiesByCategory: VulnerabilitiesByCategory{
+				CategoryData: adaptCategoryData(summaryData.CategoryData),
+			},
+			VulnerabilityTrends: VulnerabilityTrends{
+				TimePeriods:               adaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
+				AverageVulnerabilityCount: summaryData.VulnerabilityTrends.AverageVulnerabilityCount,
+			},
+		},
+	}
+
+	return api.WriteJSON(w, http.StatusOK, response)
 }

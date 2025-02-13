@@ -33,4 +33,5 @@ type IStorage interface {
 	GetDNSLookupResult(scanID uuid.UUID) (*tools.DNSLookupResult, error)
 	GetHarvesterResult(scanID uuid.UUID) (*tools.HarvesterResult, error)
 	GetNmapResult(scanID uuid.UUID) (*tools.NmapResult, error)
+	GetScanVulnerabilitiesSummary(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 }

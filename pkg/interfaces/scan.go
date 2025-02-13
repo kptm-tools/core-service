@@ -20,6 +20,7 @@ type IScanService interface {
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
 	HandleScanCompletion(scanID uuid.UUID) error
+	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 }
 
 type IScanHandlers interface {
@@ -27,4 +28,5 @@ type IScanHandlers interface {
 	GetScans(writer http.ResponseWriter, request *http.Request) error
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
+	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error
 }
