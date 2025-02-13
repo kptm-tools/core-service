@@ -67,6 +67,7 @@ func adaptTimePeriods(serviceTimePeriodData []domain.ServiceTimePeriod) []TimePe
 }
 
 type ReportsResponse struct {
+	ScanID          string    `json:"scan_id"`
 	Domain          string    `json:"domain"`
 	IP              string    `json:"ip"`
 	ScanDate        time.Time `json:"scan_date"`

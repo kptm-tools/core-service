@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CommmentStatus string
 
@@ -15,6 +19,7 @@ func (cs CommmentStatus) String() string {
 }
 
 type ReportItem struct {
+	ScanID          uuid.UUID      `json:"scan_id"`
 	HostName        string         `json:"host_name"`
 	IP              string         `json:"ip"`
 	ScanDate        time.Time      `json:"scan_date"`
