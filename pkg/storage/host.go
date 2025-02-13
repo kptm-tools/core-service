@@ -22,7 +22,6 @@ func (s *PostgreSQLStore) ClearHostsTable() error {
 }
 
 func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
-
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction %w", err)
@@ -62,15 +61,14 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 	return newHost, nil
 }
 
-func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error) {
-
+func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
 	query := `
     SELECT *
     FROM hosts
-    WHERE tenant_id=$1 AND operator_id= $2
+    WHERE tenant_id=$1
   `
 
-	rows, err := s.db.Query(query, tenantID, userID)
+	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
 	}
@@ -93,7 +91,6 @@ func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID st
 }
 
 func (s *PostgreSQLStore) GetHostByID(ID int) (*domain.Host, error) {
-
 	query := `
     SELECT *
     FROM hosts
@@ -160,7 +157,6 @@ func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 }
 
 func (s *PostgreSQLStore) InsertCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
-
 	query := "INSERT INTO credentials (host_id, username, password) VALUES ($1, $2, pgp_sym_encrypt($3, 'MAMA', 'compress-algo=1, cipher-algo=aes256'))"
 	for _, cred := range credentials {
 		if _, err := tx.Exec(query, hostID, cred.Username, cred.Password); err != nil {
@@ -172,7 +168,6 @@ func (s *PostgreSQLStore) InsertCredentials(tx *sql.Tx, hostID int, credentials 
 }
 
 func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error) {
-
 	query := `
     SELECT id, host_id, username,password
     FROM credentials
@@ -216,7 +211,6 @@ func (s *PostgreSQLStore) UpdateCredentials(tx *sql.Tx, hostID int, credentials 
 }
 
 func (s *PostgreSQLStore) DeleteHostByID(ID int) (bool, error) {
-
 	query := `
     DELETE 
     FROM hosts
@@ -257,8 +251,8 @@ func scanIntoHostRow(row *sql.Row, host *domain.Host) error {
 
 	return nil
 }
-func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 
+func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 	credential := new(domain.Credential)
 	err := rows.Scan(
 		&credential.ID,
@@ -266,7 +260,6 @@ func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 		&credential.Username,
 		&credential.Password,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("error scanning Credential: %w", err)
 	}

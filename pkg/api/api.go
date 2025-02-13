@@ -66,7 +66,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.CreateHost), "newHost"))
 	router.HandleFunc("POST /api/hosts/validate-host", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateHost), "validateHost"))
 	router.HandleFunc("POST /api/hosts/validate-alias", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateAlias), "validateAlias"))
-	router.HandleFunc("GET /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantIDAndUserID), "getHostsByTenantAndUser"))
+	router.HandleFunc("GET /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHosts), "getHosts"))
 	router.HandleFunc("GET /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), "getHostByID"))
 	router.HandleFunc("DELETE /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
 	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), "patchHostByID"))

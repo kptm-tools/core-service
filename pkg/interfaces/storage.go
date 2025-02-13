@@ -11,7 +11,7 @@ import (
 
 type IStorage interface {
 	CreateHost(*domain.Host) (*domain.Host, error)
-	GetHostsByTenantIDAndUserID(string, string) ([]*domain.Host, error)
+	GetHostsByTenantID(string) ([]*domain.Host, error)
 	GetHostByID(int) (*domain.Host, error)
 	DeleteHostByID(int) (bool, error)
 	PatchHostByID(*domain.Host) (*domain.Host, error)
