@@ -238,3 +238,27 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 
 	return api.WriteJSON(w, http.StatusOK, reportResponses)
 }
+
+func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error {
+	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+
+	scoreCardTrendItems, err := h.scanService.GetScoreCardTrendsForTenant(tenantID)
+	if err != nil {
+		slog.Error("Failed to get ScoreCard trends for tenant",
+			slog.String("tenant_id", tenantID),
+			slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	}
+
+	scoreCardResponses := make([]ScoreCardTrendResponse, len(scoreCardTrendItems))
+	for i, item := range scoreCardTrendItems {
+		scoreCardResponses[i] = ScoreCardTrendResponse{
+			Alias:            item.Alias,
+			OldestScore:      item.OldestScore,
+			LatestScore:      item.LatestScore,
+			LatestScoreGrade: item.LatestScoreGrade,
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, scoreCardResponses)
+}

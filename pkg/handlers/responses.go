@@ -74,3 +74,11 @@ type ReportsResponse struct {
 	TotalSeverities int       `json:"total_severities"`
 	CommentStatus   string    `json:"comment_status"`
 }
+
+// ScoreCardTrendResponse is the DTO for the scorecard trend data for a single host
+type ScoreCardTrendResponse struct {
+	Alias            string   `json:"alias" example:"Ovofinance 2"`
+	OldestScore      *float64 `json:"oldest_score" example:"71.0"`
+	LatestScore      *float64 `json:"latest_score" example:"0.59"`
+	LatestScoreGrade *string  `json:"latest_score_grade"`
+}

@@ -220,3 +220,17 @@ func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportI
 
 	return reportItems, nil
 }
+
+func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string) ([]*domain.ScoreCardTrendItem, error) {
+	score65 := 0.65
+	score75 := 0.75
+	var scoreNil *float64
+
+	sampleItems := []*domain.ScoreCardTrendItem{
+		domain.NewScoreCardTrendItem("Ovofinance 2", &score65, &score75),
+		domain.NewScoreCardTrendItem("Ovofinance 3", scoreNil, &score65),
+		domain.NewScoreCardTrendItem("boeing.com", scoreNil, scoreNil),
+	}
+
+	return sampleItems, nil
+}

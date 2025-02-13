@@ -22,6 +22,7 @@ type IScanService interface {
 	HandleScanCompletion(scanID uuid.UUID) error
 	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
+	GetScoreCardTrendsForTenant(tenantID string) ([]*domain.ScoreCardTrendItem, error)
 }
 
 type IScanHandlers interface {
@@ -31,4 +32,5 @@ type IScanHandlers interface {
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error
 	GetReports(w http.ResponseWriter, r *http.Request) error
+	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 }
