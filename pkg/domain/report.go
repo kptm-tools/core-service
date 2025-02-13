@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,19 @@ const (
 
 func (cs CommmentStatus) String() string {
 	return string(cs)
+}
+
+func ParseCommentStatus(statusString string) (CommmentStatus, error) {
+	switch statusString {
+	case "PENDING":
+		return CommentStatusPending, nil
+	case "NEW COMMENT":
+		return CommentStatusNewComment, nil
+	case "CRITICAL":
+		return CommentStatusCritical, nil
+	default:
+		return "", fmt.Errorf("invalid comment status string: %s", statusString)
+	}
 }
 
 type ReportItem struct {
