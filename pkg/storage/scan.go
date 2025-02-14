@@ -875,9 +875,10 @@ func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.Repor
     END AS comment_status
   FROM scans s
   INNER JOIN hosts h ON s.host_id = h.id
+  WHERE s.tenant_id = $1
   `
 
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // No rows were found
