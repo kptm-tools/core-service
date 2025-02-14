@@ -206,3 +206,17 @@ func (s *ScanService) GetScanVulnerabilitySummaryByID(
 
 	return summaryData, nil
 }
+
+func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error) {
+	reportItems, err := s.storage.GetReportsByTenantID(tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch reports from storage: %w", err)
+	}
+
+	// If err is nil and reportItems is nil, it means sql.ErrNoRows was handled in storage
+	if reportItems == nil {
+		return []*domain.ReportItem{}, nil
+	}
+
+	return reportItems, nil
+}
