@@ -15,6 +15,7 @@ import (
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 )
@@ -242,7 +243,13 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error {
 	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
 
-	scoreCardTrendItems, err := h.scanService.GetScoreCardTrendsForTenant(tenantID)
+	fromDate, toDate, err := h.parseDateRange(w, r)
+	if err != nil {
+		return err
+	}
+
+	var scoreCardTrendItems []*domain.ScoreCardTrendItem
+	scoreCardTrendItems, err = h.scanService.GetScoreCardTrendsForTenant(tenantID, fromDate, toDate)
 	if err != nil {
 		slog.Error("Failed to get ScoreCard trends for tenant",
 			slog.String("tenant_id", tenantID),
@@ -264,4 +271,38 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 	}
 
 	return api.WriteJSON(w, http.StatusOK, scoreCardResponses)
+}
+
+func (h *ScanHandlers) parseDateRange(w http.ResponseWriter, r *http.Request) (fromDate *time.Time, toDate *time.Time, err error) {
+	fromDateStr := r.URL.Query().Get("from_date")
+	toDateStr := r.URL.Query().Get("to_date")
+
+	if fromDateStr != "" {
+		parsedFromDate, parseErr := time.Parse(time.DateOnly, fromDateStr)
+		if parseErr != nil {
+			slog.Error("Failed to parse from_date to DateOnly format",
+				slog.String("from_date_str", fromDateStr),
+				slog.Any("error", err))
+			err = api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+				Error: "Invalid from_date filter. Must follow DateOnly format e.g: '2006-01-02'",
+			})
+			return
+		}
+		fromDate = &parsedFromDate
+	}
+
+	if toDateStr != "" {
+		parsedToDate, parseErr := time.Parse(time.DateOnly, toDateStr)
+		if parseErr != nil {
+			slog.Error("Failed to parse to_date to DateOnly format",
+				slog.String("to_date_str", toDateStr),
+				slog.Any("error", err))
+			err = api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+				Error: "Invalid from_date filter. Must follow DateOnly format e.g: '2006-01-02'",
+			})
+			return
+		}
+		toDate = &parsedToDate
+	}
+	return
 }
