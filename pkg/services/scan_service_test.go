@@ -14,7 +14,7 @@ import (
 
 type MockStorage struct {
 	MockCreateHost                    func(*domain.Host) (*domain.Host, error)
-	MockGetHostsByTenantIDAndUserID   func(string, string) ([]*domain.Host, error)
+	MockGetHostsByTenantID            func(string) ([]*domain.Host, error)
 	MockGetHostByID                   func(int) (*domain.Host, error)
 	MockDeleteHostByID                func(int) (bool, error)
 	MockPatchHostByID                 func(*domain.Host) (*domain.Host, error)
@@ -38,6 +38,8 @@ type MockStorage struct {
 	MockGetNmapResult                 func(scanID uuid.UUID) (*tools.NmapResult, error)
 	MockGetScanVulnerabilitiesSummary func(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	MockGetReportsByTenantID          func(tenantID string) ([]*domain.ReportItem, error)
+	MockGetLatestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	MockGetOldestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -47,9 +49,9 @@ func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
 	return nil, nil // Default behavior if mock function not set
 }
 
-func (m *MockStorage) GetHostsByTenantIDAndUserID(arg0 string, arg1 string) ([]*domain.Host, error) {
-	if m.MockGetHostsByTenantIDAndUserID != nil {
-		return m.MockGetHostsByTenantIDAndUserID(arg0, arg1)
+func (m *MockStorage) GetHostsByTenantID(arg0 string) ([]*domain.Host, error) {
+	if m.MockGetHostsByTenantID != nil {
+		return m.MockGetHostsByTenantID(arg0)
 	}
 	return nil, nil // Default behavior if mock function not set
 }
@@ -213,6 +215,20 @@ func (m *MockStorage) GetReportsByTenantID(tenantID string) ([]*domain.ReportIte
 		return m.MockGetReportsByTenantID(tenantID)
 	}
 	return nil, nil // Default behaviour if mock function is not set
+}
+
+func (m *MockStorage) GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	if m.MockGetLatestScanByHostID != nil {
+		return m.MockGetLatestScanByHostID(hostID, fromDate, toDate)
+	}
+	return nil, nil
+}
+
+func (m *MockStorage) GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	if m.MockGetOldestScanByHostID != nil {
+		return m.MockGetOldestScanByHostID(hostID, fromDate, toDate)
+	}
+	return nil, nil
 }
 
 func Test_GetReportsByTenantID_NoReports(t *testing.T) {
