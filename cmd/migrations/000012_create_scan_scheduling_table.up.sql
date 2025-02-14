@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS scan_scheduling (
     enabled  BOOLEAN NOT NULL,
     has_period BOOLEAN NOT NULL,
     cron VARCHAR(20) NOT NULL,
+    cron_job_id BIGINT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )

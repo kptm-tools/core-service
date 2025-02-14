@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"github.com/kptm-tools/common/common/pkg/results"
 	"net/http"
 	"time"
 
@@ -28,6 +29,7 @@ type IScanService interface {
 	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)
 	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
 	InsertScanScheduling(scans []*domain.Scan, scheduleAt string, isRepeated bool) error
+	CreateTarget(host domain.Host) (*results.Target, error)
 }
 
 type IScanHandlers interface {

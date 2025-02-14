@@ -1085,3 +1085,13 @@ func obtainYearCron(scheduledAt string) (int, string, error) {
 	}
 	return fixedYear, cron, nil
 }
+
+func (s *PostgreSQLStore) ScanScheduleDisableJob(scanScheduleID int) error {
+	query := `SELECT unregister_cron( $1 )`
+	var result int
+	err := s.db.QueryRow(query, scanScheduleID).Scan(&result)
+	if err != nil || result == 0 {
+		return fmt.Errorf("failed to unregister job: %w", err)
+	}
+	return nil
+}

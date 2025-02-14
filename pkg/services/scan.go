@@ -52,7 +52,7 @@ func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]
 		}
 
 		// 3. Add the target to the scan
-		target, err := createTarget(*host)
+		target, err := s.CreateTarget(*host)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create target: %w", err)
 		}
@@ -66,7 +66,7 @@ func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]
 	return createdScans, nil
 }
 
-func createTarget(host domain.Host) (*results.Target, error) {
+func (s ScanService) CreateTarget(host domain.Host) (*results.Target, error) {
 	var hostValue string
 	var hostType enums.TargetType
 	if host.Domain == "" {
