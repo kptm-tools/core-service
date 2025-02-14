@@ -12,6 +12,7 @@ DECLARE
 BEGIN
     SELECT cron_job_id FROM scan_scheduling SC WHERE SC.id= scanScheduleID INTO JOB_ID;
     SELECT cron.unschedule(JOB_ID) :: int INTO RESULT_DATA;
+    UPDATE scan_scheduling SET enabled=false where id=scanScheduleID;
     RETURN RESULT_DATA;
 END;
 $$;

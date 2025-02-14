@@ -302,3 +302,7 @@ func (s ScanService) InsertScanScheduling(scans []*domain.Scan, scheduleAt strin
 	}
 	return nil
 }
+
+func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error {
+	return s.storage.UpdateScanScheduling(scanID, scanScheduleID)
+}

@@ -1095,3 +1095,12 @@ func (s *PostgreSQLStore) ScanScheduleDisableJob(scanScheduleID int) error {
 	}
 	return nil
 }
+
+func (s *PostgreSQLStore) UpdateScanScheduling(scanID uuid.UUID, scanScheduleID int) error {
+	query := `UPDATE scan_scheduling SET scan_id=$1, updated_at=now() WHERE id=$2`
+	_, err := s.db.Exec(query, scanID, scanScheduleID)
+	if err != nil {
+		return fmt.Errorf("failed to update scan scheduling: %w", err)
+	}
+	return nil
+}

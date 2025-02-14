@@ -44,4 +44,5 @@ type IStorage interface {
 	GetServiceByID(int) (*tools.PortData, error)
 	CreateScanScheduling(uuid.UUID, string, bool) error
 	ScanScheduleDisableJob(int) error
+	UpdateScanScheduling(uuid.UUID, int) error
 }

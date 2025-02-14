@@ -30,6 +30,7 @@ type IScanService interface {
 	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
 	InsertScanScheduling(scans []*domain.Scan, scheduleAt string, isRepeated bool) error
 	CreateTarget(host domain.Host) (*results.Target, error)
+	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
 }
 
 type IScanHandlers interface {

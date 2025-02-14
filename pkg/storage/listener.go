@@ -28,6 +28,8 @@ type ScanCron struct {
 	Timestamp      time.Time `json:"timestamp"`
 	HasPeriod      bool      `json:"has_period"`
 	ScanScheduleID int       `json:"scan_schedule_id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	OperatorID     uuid.UUID `json:"operator_id"`
 }
 
 func NewPostgresListener(
@@ -116,7 +118,7 @@ func (pl *PostgresListener) startListening() {
 				slog.Error("Failed to get host: %w", err)
 			}
 
-			// 3. Add the target to the scan
+			// Create the target
 			target, errTarget := pl.scanService.CreateTarget(*host)
 			if errTarget != nil {
 				slog.Error("Failed to create target: %w", err)
@@ -137,6 +139,17 @@ func (pl *PostgresListener) startListening() {
 				err := pl.storage.ScanScheduleDisableJob(scanCron.ScanScheduleID)
 				if err != nil {
 					slog.Error("Failed to marshal scan started event")
+				}
+			} else {
+				// 1. Create scan
+				scans, errCreationScan := pl.scanService.CreateScans([]int{scanCron.HostID}, scanCron.TenantID.String(), scanCron.OperatorID.String())
+				if errCreationScan != nil {
+					slog.Error("Failed to create scans", slog.Any("error", err))
+				}
+				// 2. Update scan scheduling with new scanID
+				errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scans[0].ID, scanCron.ScanScheduleID)
+				if errUpdateScanSchedule != nil {
+					slog.Error("Failed to update scan_scheduling", slog.Any("error", err))
 				}
 			}
 		}
