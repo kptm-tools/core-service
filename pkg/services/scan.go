@@ -239,10 +239,13 @@ func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string, fromDate, toD
 		}
 
 		var oldestProtectionScore, latestProtectionScore *float64
-		if oldestScan != nil && latestScan != nil {
+		if oldestScan != nil {
 			oldestProtectionScore = oldestScan.ProtectionScore
+		}
+		if latestScan != nil {
 			latestProtectionScore = latestScan.ProtectionScore
 		}
+
 		scoreCardItem := domain.NewScoreCardTrendItem(host.Name, oldestProtectionScore, latestProtectionScore)
 
 		scoreCardItems = append(scoreCardItems, scoreCardItem)
@@ -269,6 +272,13 @@ func (s *ScanService) getOldestLatestScans(hostID int, fromDate, toDate *time.Ti
 		slog.Any("oldest_scan", oldestScan),
 		slog.Any("latest_scan", latestScan),
 	)
+
+	// If the oldest scan and latest scan are the same, only return the latest scan
+	if oldestScan != nil && latestScan != nil {
+		if oldestScan.ID == latestScan.ID {
+			return nil, latestScan, nil
+		}
+	}
 
 	return oldestScan, latestScan, nil
 }
