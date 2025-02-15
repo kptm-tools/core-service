@@ -1,4 +1,4 @@
--- Migration: 000012_create_scan_scheduling_table.up.sql
+-- Migration: 000015_create_scan_scheduling_table.up.sql
 CREATE TABLE IF NOT EXISTS scan_scheduling (
     id SERIAL PRIMARY KEY,
     scan_id UUID NOT NULL REFERENCES scans (id) ON DELETE CASCADE,

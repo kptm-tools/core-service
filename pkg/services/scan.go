@@ -30,43 +30,38 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error) {
-	var createdScans []*domain.Scan
+func (s ScanService) CreateScan(hostID int, tenantID, operatorID string) (*domain.Scan, error) {
+
 	commonScanData := domain.NewScan()
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
 
-	for _, hostID := range hostIDs {
-		// 1. Create the scan in storage
-		scanToCreate := *commonScanData
-		scanToCreate.HostID = hostID
-		dataScan, err := s.storage.CreateScan(&scanToCreate)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create scan: %w", err)
-		}
-
-		// 2. Get host details
-		host, err := s.storage.GetHostByID(scanToCreate.HostID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get host: %w", err)
-		}
-
-		// 3. Add the target to the scan
-		target, err := s.CreateTarget(*host)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create target: %w", err)
-		}
-
-		dataScan.Target = *target
-
-		// 4. Append to results
-		createdScans = append(createdScans, dataScan)
+	// 1. Create the scan in storage
+	scanToCreate := *commonScanData
+	scanToCreate.HostID = hostID
+	dataScan, err := s.storage.CreateScan(&scanToCreate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scan: %w", err)
 	}
 
-	return createdScans, nil
+	// 3. Add the target to the scan
+	target, err := s.CreateTarget(scanToCreate.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target: %w", err)
+	}
+
+	dataScan.Target = *target
+
+	return dataScan, nil
 }
 
-func (s ScanService) CreateTarget(host domain.Host) (*results.Target, error) {
+func (s ScanService) CreateTarget(hostID int) (*results.Target, error) {
+	// 1. Get host details
+	host, err := s.storage.GetHostByID(hostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host: %w", err)
+	}
+	// 2. Construct the target
 	var hostValue string
 	var hostType enums.TargetType
 	if host.Domain == "" {
@@ -299,10 +294,14 @@ func (s ScanService) InsertScanScheduling(scans []*domain.Scan, scheduleAt strin
 		if err != nil {
 			return err
 		}
-	}
+
 	return nil
 }
 
 func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error {
 	return s.storage.UpdateScanScheduling(scanID, scanScheduleID)
+}
+
+func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
+	return s.storage.ScanScheduleDisableJob(scanScheduleID)
 }

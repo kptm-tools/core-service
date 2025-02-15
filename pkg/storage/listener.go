@@ -19,7 +19,6 @@ type PostgresListener struct {
 	listener    *pq.Listener
 	eventBus    cmmn.EventBus
 	scanService interfaces.IScanService
-	storage     interfaces.IStorage
 }
 
 type ScanCron struct {
@@ -35,7 +34,6 @@ type ScanCron struct {
 func NewPostgresListener(
 	cfg *config.Config,
 	scanService interfaces.IScanService,
-	storage interfaces.IStorage,
 	eventBus cmmn.EventBus,
 ) (*PostgresListener, error) {
 	connectionString := cfg.PostgreSQLCoreConnStr()
@@ -66,7 +64,6 @@ func NewPostgresListener(
 	postgresListener := &PostgresListener{
 		listener:    listener,
 		scanService: scanService,
-		storage:     storage,
 		eventBus:    eventBus,
 	}
 
@@ -105,23 +102,18 @@ func (pl *PostgresListener) startListening() {
 			// Parse the notification method
 			var scanCron ScanCron
 			if err := json.Unmarshal([]byte(notification.Extra), &scanCron); err != nil {
-				slog.Error("Failed to parse scan completed event",
+				slog.Error("Failed to parse scan cron event",
 					slog.Any("error", err),
 					slog.Any("payload", notification.Extra))
 				continue
 			}
 
-			slog.Debug("Parsed scan completed event", slog.String("scanID", scanCron.ScanID.String()))
-			// Use scanService to handle scanCompleted
-			host, err := pl.storage.GetHostByID(scanCron.HostID)
-			if err != nil {
-				slog.Error("Failed to get host: %w", err)
-			}
+			slog.Debug("Parsed scan cron event", slog.String("scanID", scanCron.ScanID.String()))
 
 			// Create the target
-			target, errTarget := pl.scanService.CreateTarget(*host)
+			target, errTarget := pl.scanService.CreateTarget(scanCron.HostID)
 			if errTarget != nil {
-				slog.Error("Failed to create target: %w", err)
+				slog.Error("Failed to create target: %w", errTarget)
 			}
 			scanStartedPayload := &cmmn.ScanStartedEvent{
 				BaseEvent: cmmn.BaseEvent{
@@ -135,19 +127,20 @@ func (pl *PostgresListener) startListening() {
 				slog.Error("Failed to marshal scan started event")
 			}
 			pl.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
+
 			if !scanCron.HasPeriod {
-				err := pl.storage.ScanScheduleDisableJob(scanCron.ScanScheduleID)
-				if err != nil {
-					slog.Error("Failed to marshal scan started event")
+				errDisable := pl.scanService.ScanScheduleDisableJob(scanCron.ScanScheduleID)
+				if errDisable != nil {
+					slog.Error("Failed to disable job of scan scheduling", slog.Any("error", errDisable))
 				}
 			} else {
 				// 1. Create scan
-				scans, errCreationScan := pl.scanService.CreateScans([]int{scanCron.HostID}, scanCron.TenantID.String(), scanCron.OperatorID.String())
+				scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String())
 				if errCreationScan != nil {
 					slog.Error("Failed to create scans", slog.Any("error", err))
 				}
 				// 2. Update scan scheduling with new scanID
-				errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scans[0].ID, scanCron.ScanScheduleID)
+				errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scan.ID, scanCron.ScanScheduleID)
 				if errUpdateScanSchedule != nil {
 					slog.Error("Failed to update scan_scheduling", slog.Any("error", err))
 				}

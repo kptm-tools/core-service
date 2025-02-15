@@ -1,4 +1,4 @@
--- Migration: 000014_add_scan_scheduling_trigger.up.sql
+-- Migration: 000017_add_scan_scheduling_trigger.up.sql
 CREATE OR REPLACE FUNCTION launch_notification(
        hasPeriod varchar(5),
        scanScheduleID int
@@ -10,13 +10,13 @@ $$
     DECLARE PHOST_ID int;
     DECLARE PTENANT_ID UUID;
     DECLARE POPERATOR_ID UUID;
-    DECLARE SCAN_ID UUID;
+    DECLARE PSCAN_ID UUID;
 BEGIN
-SELECT scan_id FROM scan_scheduling WHERE id=scanScheduleID INTO SCAN_ID;
-SELECT host_id,tenant_id, operator_id  FROM scans WHERE scans.id=SCAN_ID INTO PHOST_ID, PTENANT_ID, POPERATOR_ID;
+SELECT scan_id FROM scan_scheduling WHERE id=scanScheduleID INTO PSCAN_ID;
+SELECT host_id,tenant_id, operator_id  FROM scans WHERE scans.id=PSCAN_ID INTO PHOST_ID, PTENANT_ID, POPERATOR_ID;
 PERFORM pg_notify('scan_cron',
           json_build_object(
-            'scan_id', SCAN_ID,
+            'scan_id', PSCAN_ID,
             'has_period', cast(hasPeriod as boolean),
             'host_id', PHOST_ID,
             'scan_schedule_id', scanScheduleID,
