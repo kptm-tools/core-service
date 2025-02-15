@@ -39,7 +39,8 @@ type MockStorage struct {
 	MockGetReportsByTenantID          func(tenantID string) ([]*domain.ReportItem, error)
 	MockGetLatestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	MockGetOldestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
-	MockCreateScanScheduling
+	MockCreateScanScheduling          func(scanID uuid.UUID, scheduleAt string, isRepeat bool) error
+	MockScanScheduleDisableJob        func(scanScheduleID int) error
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -229,6 +230,9 @@ func (m *MockStorage) GetOldestScanByHostID(hostID int, fromDate, toDate *time.T
 		return m.MockGetOldestScanByHostID(hostID, fromDate, toDate)
 	}
 	return nil, nil
+func (m *MockStorage) UpdateScanScheduling(u uuid.UUID, i int) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func Test_GetReportsByTenantID_NoReports(t *testing.T) {
@@ -299,9 +303,16 @@ func Test_GetReportsByTenantID_Success(t *testing.T) {
 	assert.Equal(t, len(sampleReports), len(reports))
 }
 
-func (m *MockStorage) CreateScanScheduling(uuid.UUID, string, bool) error {
-	if m.MockGetScanVulnerabilitiesSummary != nil {
-		return m.MockGetScanVulnerabilitiesSummary(scanID, timePeriodFilter, severityFilters)
+func (m *MockStorage) CreateScanScheduling(scanID uuid.UUID, scheduleAt string, isRepeat bool) error {
+	if m.MockCreateScanScheduling != nil {
+		return m.MockCreateScanScheduling(scanID, scheduleAt, isRepeat)
+	}
+	return nil
+}
+
+func (m *MockStorage) ScanScheduleDisableJob(scanScheduleID int) error {
+	if m.MockScanScheduleDisableJob != nil {
+		return m.MockScanScheduleDisableJob(scanScheduleID)
 	}
 	return nil
 }

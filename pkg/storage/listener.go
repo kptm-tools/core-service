@@ -113,7 +113,7 @@ func (pl *PostgresListener) startListening() {
 			// Create the target
 			target, errTarget := pl.scanService.CreateTarget(scanCron.HostID)
 			if errTarget != nil {
-				slog.Error("Failed to create target: %w", errTarget)
+				slog.Error("Failed to create target", slog.Any("error", errTarget))
 			}
 			scanStartedPayload := &cmmn.ScanStartedEvent{
 				BaseEvent: cmmn.BaseEvent{

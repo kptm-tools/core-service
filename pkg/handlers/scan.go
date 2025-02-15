@@ -83,7 +83,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 	} else {
 		errScanSchedule := h.scanService.InsertScanScheduling(scan, *scanRequest.ScheduleAt, *scanRequest.IsRepeat)
 		if errScanSchedule != nil {
-			msg := fmt.Sprintf("invalid scheduling: %s", scanRequest.ScheduleAt)
+			msg := fmt.Sprintf("invalid scheduling: %s", *scanRequest.ScheduleAt)
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: msg})
 		}
 	}
