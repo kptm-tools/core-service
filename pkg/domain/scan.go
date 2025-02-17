@@ -24,18 +24,19 @@ type ResultHost struct {
 }
 
 type Scan struct {
-	ID           uuid.UUID      `json:"id,omitempty" db:"id"`
-	TenantID     string         `json:"tenant_id,omitempty"`
-	OperatorID   string         `json:"operator_id,omitempty"`
-	HostID       int            `json:"host_ids,omitempty"`
-	HostsStatus  []StatusHost   `json:"hosts_status,omitempty"`
-	HostsResults []ResultHost   `json:"hosts_results,omitempty"`
-	Target       results.Target `json:"targets,omitempty"`
-	CreatedAt    time.Time      `json:"created_at,omitempty"`
-	UpdatedAt    time.Time      `json:"updated_at,omitempty"`
-	StartedAt    time.Time      `json:"started_at"`
-	EndedAt      *time.Time     `json:"ended_at"`
-	Status       string         `json:"status,omitempty"`
+	ID              uuid.UUID      `json:"id,omitempty" db:"id"`
+	TenantID        string         `json:"tenant_id,omitempty"`
+	OperatorID      string         `json:"operator_id,omitempty"`
+	HostID          int            `json:"host_ids,omitempty"`
+	HostsStatus     []StatusHost   `json:"hosts_status,omitempty"`
+	HostsResults    []ResultHost   `json:"hosts_results,omitempty"`
+	Target          results.Target `json:"targets,omitempty"`
+	CreatedAt       time.Time      `json:"created_at,omitempty"`
+	UpdatedAt       time.Time      `json:"updated_at,omitempty"`
+	StartedAt       time.Time      `json:"started_at"`
+	EndedAt         *time.Time     `json:"ended_at"`
+	Status          string         `json:"status,omitempty"`
+	ProtectionScore *float64       `json:"protection_score"`
 }
 
 type ScanSummary struct {

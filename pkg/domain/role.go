@@ -51,7 +51,7 @@ func GetValidRoles(funcName string) ([]Role, error) {
 		"tenants":                         {RoleAdmin, RoleAnalyst},
 		"getUser":                         {RoleAdmin, RoleOperator, RoleAnalyst},
 		"newHost":                         {RoleOperator, RoleAnalyst},
-		"getHostsByTenantAndUser":         {RoleAdmin, RoleOperator, RoleAnalyst},
+		"getHosts":                        {RoleAdmin, RoleOperator, RoleAnalyst},
 		"getHostByID":                     {RoleAdmin, RoleOperator, RoleAnalyst},
 		"deleteHostByID":                  {RoleAdmin, RoleOperator},
 		"patchHostByID":                   {RoleAdmin, RoleOperator},
@@ -63,6 +63,7 @@ func GetValidRoles(funcName string) ([]Role, error) {
 		"getScanInsightsByID":             {RoleOperator, RoleAnalyst},
 		"getScanVulnerabilitySummaryByID": {RoleOperator, RoleAnalyst},
 		"getAllTenantReports":             {RoleOperator, RoleAnalyst},
+		"getScoreCardTrends":              {RoleOperator, RoleAnalyst},
 	}
 
 	v, ok := funcRoles[funcName]

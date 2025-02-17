@@ -35,14 +35,11 @@ func NewHostService(storage interfaces.IStorage) *HostService {
 }
 
 func (s *HostService) CreateHost(t *domain.Host) (*domain.Host, error) {
-
 	return s.storage.CreateHost(t)
 }
 
-func (s *HostService) GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error) {
-
-	hosts, err := s.storage.GetHostsByTenantIDAndUserID(tenantID, userID)
-
+func (s *HostService) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
+	hosts, err := s.storage.GetHostsByTenantID(tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +49,6 @@ func (s *HostService) GetHostsByTenantIDAndUserID(tenantID string, userID string
 
 func (s *HostService) GetHostByID(ID int) (*domain.Host, error) {
 	host, err := s.storage.GetHostByID(ID)
-
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +58,6 @@ func (s *HostService) GetHostByID(ID int) (*domain.Host, error) {
 
 func (s *HostService) DeleteHostByID(ID int) (bool, error) {
 	isDeleted, err := s.storage.DeleteHostByID(ID)
-
 	if err != nil {
 		return false, err
 	}
@@ -72,7 +67,6 @@ func (s *HostService) DeleteHostByID(ID int) (bool, error) {
 
 func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	host, err := s.storage.PatchHostByID(h)
-
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +118,6 @@ func (s *HostService) GetHostNameFromIPWithTimeout(ip string, timeout time.Durat
 }
 
 func (s *HostService) ValidateHost(host string) error {
-
 	classification, err := validation.ClassifyHostValue(host)
 	if err != nil {
 		slog.Error("Failed to classify host", slog.Any("error", err))
@@ -183,7 +176,6 @@ func (s *HostService) GetDomainIPValues(value string) (*domain.DomainIPResult, e
 
 // handleDomainType handles domain and subdomain cases
 func (s *HostService) handleDomainType(normalizedURL string) (*domain.DomainIPResult, error) {
-
 	if !validation.IsURL(normalizedURL) {
 		return nil, fmt.Errorf("invalid url: %s", normalizedURL)
 	}

@@ -28,7 +28,6 @@ func NewHostHandlers(hostService interfaces.IHostService) *HostHandlers {
 }
 
 func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) error {
-
 	createHostRequest := new(CreateHostRequest)
 
 	if err := decodeJSONBody(w, req, createHostRequest); err != nil {
@@ -54,13 +53,10 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 	return api.WriteJSON(w, http.StatusCreated, constructResponse(host))
 }
 
-func (h *HostHandlers) GetHostsByTenantIDAndUserID(w http.ResponseWriter, req *http.Request) error {
-
+func (h *HostHandlers) GetHosts(w http.ResponseWriter, req *http.Request) error {
 	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
-	userID := req.Context().Value(middleware.ContextUserID).(string)
 
-	hosts, err := h.hostService.GetHostsByTenantIDAndUserID(tenantID, userID)
-
+	hosts, err := h.hostService.GetHostsByTenantID(tenantID)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}

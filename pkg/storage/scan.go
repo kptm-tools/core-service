@@ -162,13 +162,6 @@ func (s *PostgreSQLStore) InsertScanVulnerability(
 	return nil
 }
 
-func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
-	if err := row.Scan(&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt); err != nil {
-		return fmt.Errorf("error scanning row: %w", err)
-	}
-	return nil
-}
-
 func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	scanSum := new(domain.ScanSummary)
 	err := rows.Scan(
@@ -913,4 +906,94 @@ func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.Repor
 	}
 
 	return reportItems, nil
+}
+
+func (s *PostgreSQLStore) GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	query := `
+    SELECT
+      id,
+      tenant_id,
+      operator_id,
+      host_id,
+      started_at,
+      created_at,
+      updated_at,
+      ended_at,
+      status,
+      protection_score
+    FROM
+      scans
+    WHERE
+      host_id = $1
+      AND started_at >= COALESCE($2, '1900-01-01'::DATE)
+      AND started_at <= COALESCE($3, NOW())
+    ORDER BY
+      started_at DESC
+    LIMIT 1;
+  `
+
+	var scan domain.Scan
+	row := s.db.QueryRow(query, hostID, fromDate, toDate)
+	if err := scanIntoScan(row, &scan); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan into scan: %w", err)
+	}
+
+	return &scan, nil
+}
+
+func (s *PostgreSQLStore) GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	query := `
+    SELECT
+      id,
+      tenant_id,
+      operator_id,
+      host_id,
+      started_at,
+      created_at,
+      updated_at,
+      ended_at,
+      status,
+      protection_score
+    FROM
+      scans
+    WHERE
+      host_id = $1
+      AND started_at >= COALESCE($2, '1900-01-01'::DATE)
+      AND started_at <= COALESCE($3, NOW())
+    ORDER BY
+      started_at ASC
+    LIMIT 1;
+  `
+
+	var scan domain.Scan
+	row := s.db.QueryRow(query, hostID, fromDate, toDate)
+	if err := scanIntoScan(row, &scan); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan into scan: %w", err)
+	}
+
+	return &scan, nil
+}
+
+func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
+	if err := row.Scan(
+		&scan.ID,
+		&scan.TenantID,
+		&scan.OperatorID,
+		&scan.HostID,
+		&scan.StartedAt,
+		&scan.CreatedAt,
+		&scan.UpdatedAt,
+		&scan.EndedAt,
+		&scan.Status,
+		&scan.ProtectionScore,
+	); err != nil {
+		return fmt.Errorf("error scanning row: %w", err)
+	}
+	return nil
 }
