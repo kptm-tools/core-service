@@ -875,7 +875,7 @@ func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.Repor
     END AS comment_status
   FROM scans s
   INNER JOIN hosts h ON s.host_id = h.id
-  WHERE s.tenant_id = $1
+  WHERE s.tenant_id = $1 AND s.status = 'Completed'
   `
 
 	rows, err := s.db.Query(query, tenantID)
