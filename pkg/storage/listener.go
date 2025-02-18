@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
-	"github.com/kptm-tools/common/common/pkg/events"
 	"log/slog"
 	"time"
 
@@ -82,7 +81,7 @@ func (pl *PostgresListener) startListening() {
 		case "scan_completed":
 			{
 				// Parse the notification method
-				var scanCompletedEvent events.BaseEvent
+				var scanCompletedEvent cmmn.BaseEvent
 				if err := json.Unmarshal([]byte(notification.Extra), &scanCompletedEvent); err != nil {
 					slog.Error("Failed to parse scan completed event",
 						slog.Any("error", err),

@@ -54,7 +54,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 		}
 	}
 
-	scan, err := h.scanService.CreateScan(scanRequest.HostId, tenantID, userID)
+	scan, err := h.scanService.CreateScan(scanRequest.HostID, tenantID, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
@@ -81,7 +81,15 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 		h.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
 	} else {
-		errScanSchedule := h.scanService.InsertScanScheduling(scan, *scanRequest.ScheduleAt, *scanRequest.IsRepeat)
+		dateSchedule, errParsingDate := time.Parse(time.DateTime, *scanRequest.ScheduleAt)
+		if errParsingDate != nil {
+			slog.Error("Failed to parse schedule_at to DateTime format",
+				slog.Any("error", err))
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+				Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2006-01-02 01:01:01'",
+			})
+		}
+		errScanSchedule := h.scanService.InsertScanScheduling(scan, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {
 			msg := fmt.Sprintf("invalid scheduling: %s", *scanRequest.ScheduleAt)
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: msg})

@@ -106,6 +106,11 @@ type ServiceTimePeriod struct {
 	VulnerabilityCount int
 }
 
+type RepeatSchedule struct {
+	Quantity        int    `json:"quantity"`
+	UnitOfFrequency string `json:"unit_of_frequency"`
+}
+
 func NewScan() *Scan {
 	return &Scan{
 		ID:        uuid.New(),

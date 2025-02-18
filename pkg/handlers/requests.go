@@ -1,6 +1,8 @@
 package handlers
 
-import "github.com/kptm-tools/core-service/pkg/domain"
+import (
+	"github.com/kptm-tools/core-service/pkg/domain"
+)
 
 type CreateHostRequest struct {
 	Value       string              `json:"value"`
@@ -64,7 +66,7 @@ type ServiceHost struct {
 	Host  string   `json:"host"`
 }
 type ScanRequest struct {
-	HostId     int     `json:"host_id"`
-	ScheduleAt *string `json:"schedule_at"`
-	IsRepeat   *bool   `json:"is_repeat"`
+	HostID     int                    `json:"host_id"`
+	ScheduleAt *string                `json:"schedule_at"`
+	Frequency  *domain.RepeatSchedule `json:"repeat_frequency"`
 }
