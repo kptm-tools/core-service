@@ -157,6 +157,10 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 	}
 
 	timePeriodFilter := r.URL.Query().Get("time_period")
+	if timePeriodFilter == "" {
+		timePeriodFilter = "Month"
+	}
+
 	validTimePeriods := map[string]bool{"Month": true, "Quarter": true, "Semester": true}
 	if !validTimePeriods[timePeriodFilter] {
 		slog.Warn("Invalid time_period filter",
