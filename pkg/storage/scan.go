@@ -650,6 +650,21 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	var summaryData domain.ScanVulnerabilitySummaryData
 	summaryData.ScanID = scanID
+
+	// 0. Get Host Alias
+	var hostAlias string
+	aliasQuery := `
+    SELECT hosts.alias
+    FROM hosts
+    INNER JOIN scans ON scans.host_id = hosts.id
+    WHERE scans.id = $1
+  `
+	err := s.db.QueryRow(aliasQuery, scanID).Scan(&hostAlias)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch host alias: %w", err)
+	}
+	summaryData.Domain = hostAlias
+
 	// 1. Get vulnerabilities
 	baseSummaryQuery := `
     SELECT 
@@ -677,7 +692,7 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	slog.Debug("Executing Summary Query",
 		slog.Any("query_params", summaryQueryParams))
 
-	err := s.db.QueryRow(formattedSummaryQuery, summaryQueryParams...).Scan(
+	err = s.db.QueryRow(formattedSummaryQuery, summaryQueryParams...).Scan(
 		&summaryData.ScanID,
 		&summaryData.Domain,
 		&summaryData.TotalVulnerabilities,
