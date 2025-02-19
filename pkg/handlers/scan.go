@@ -205,13 +205,13 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 		GeneralSummary: VulnerabilityGeneralSummary{
 			TotalVulnerabilities: summaryData.TotalVulnerabilities,
 			SeverityCounts:       summaryData.SeverityCounts,
-			VulnerabilitiesByCategory: VulnerabilitiesByCategory{
-				CategoryData: adaptCategoryData(summaryData.CategoryData),
-			},
-			VulnerabilityTrends: VulnerabilityTrends{
-				TimePeriods:               adaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
-				AverageVulnerabilityCount: summaryData.VulnerabilityTrends.AverageVulnerabilityCount,
-			},
+		},
+		VulnerabilitiesByCategory: VulnerabilitiesByCategory{
+			CategoryData: adaptCategoryData(summaryData.CategoryData),
+		},
+		VulnerabilityTrends: VulnerabilityTrends{
+			TimePeriods:               adaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
+			AverageVulnerabilityCount: summaryData.VulnerabilityTrends.AverageVulnerabilityCount,
 		},
 	}
 

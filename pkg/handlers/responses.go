@@ -13,16 +13,16 @@ type RegisterTenantResponse struct {
 }
 
 type ScanVulnerabilitySummaryResponse struct {
-	ScanID         string                      `json:"scan_id"`
-	Domain         string                      `json:"domain"`
-	GeneralSummary VulnerabilityGeneralSummary `json:"general_summary"`
+	ScanID                    string                      `json:"scan_id"`
+	Domain                    string                      `json:"domain"`
+	GeneralSummary            VulnerabilityGeneralSummary `json:"general_summary"`
+	VulnerabilitiesByCategory VulnerabilitiesByCategory   `json:"vulnerabilities_by_category"`
+	VulnerabilityTrends       VulnerabilityTrends         `json:"vulnerability_trends"`
 }
 
 type VulnerabilityGeneralSummary struct {
-	TotalVulnerabilities      int                       `json:"total_vulnerabilites"`
-	SeverityCounts            tools.SeverityCounts      `json:"severity_counts,omitempty"`
-	VulnerabilitiesByCategory VulnerabilitiesByCategory `json:"vulnerabilities_by_category"`
-	VulnerabilityTrends       VulnerabilityTrends       `json:"vulnerability_trends"`
+	TotalVulnerabilities int                  `json:"total_vulnerabilites"`
+	SeverityCounts       tools.SeverityCounts `json:"severity_counts,omitempty"`
 }
 
 type VulnerabilitiesByCategory struct {
