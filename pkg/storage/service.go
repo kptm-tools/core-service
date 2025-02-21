@@ -28,18 +28,17 @@ func (s *PostgreSQLStore) CreateService(
 
 	var serviceID int
 	var err error
-	var execer interface {
-		Exec(query string, args ...any) (sql.Result, error)
+	var querier interface {
 		QueryRow(query string, args ...any) *sql.Row
 	}
 
 	if tx != nil {
-		execer = tx
+		querier = tx
 	} else {
-		execer = s.db
+		querier = s.db
 	}
 
-	err = execer.QueryRow(
+	err = querier.QueryRow(
 		query,
 		hostID,
 		scanID,
