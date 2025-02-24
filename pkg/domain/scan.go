@@ -105,10 +105,21 @@ type ServiceTimePeriod struct {
 	TimePeriod         string
 	VulnerabilityCount int
 }
+type ScheduleFrequency string
+
+const (
+	Day ScheduleFrequency = "Day"
+
+	Month ScheduleFrequency = "Month"
+
+	Week ScheduleFrequency = "Week"
+
+	Year ScheduleFrequency = "Year"
+)
 
 type RepeatSchedule struct {
-	Quantity        int    `json:"quantity"`
-	UnitOfFrequency string `json:"unit_of_frequency"`
+	Quantity        int               `json:"quantity"`
+	UnitOfFrequency ScheduleFrequency `json:"unit_of_frequency"`
 }
 
 func NewScan() *Scan {

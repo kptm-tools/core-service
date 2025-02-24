@@ -2,7 +2,9 @@
 CREATE TABLE IF NOT EXISTS scan_scheduling (
     id SERIAL PRIMARY KEY,
     scan_id UUID NOT NULL REFERENCES scans (id) ON DELETE CASCADE,
-    fixed_year INT NOT NULL,
+    last_run_date TIMESTAMP,
+    period_name period_enum,
+    quantity_period INT,
     enabled  BOOLEAN NOT NULL,
     has_period BOOLEAN NOT NULL,
     cron VARCHAR(20) NOT NULL,

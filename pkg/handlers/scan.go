@@ -408,3 +408,33 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 
 	return api.WriteJSON(w, http.StatusOK, scanVulnersItemsResponse)
 }
+
+func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
+	id, err := GetID(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
+
+	isDeleted, err := h.scanService.DeleteScanScheduleByID(id)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
+
+	result := make(map[string]string)
+	if isDeleted {
+		result["deleted"] = "true"
+	} else {
+		result["deleted"] = "false"
+	}
+	return api.WriteJSON(w, http.StatusOK, result)
+}
+
+func (h *ScanHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.Request) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (h *ScanHandlers) GetScanSchedules(w http.ResponseWriter, r *http.Request) error {
+	//TODO implement me
+	panic("implement me")
+}

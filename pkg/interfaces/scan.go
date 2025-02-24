@@ -33,6 +33,7 @@ type IScanService interface {
 	CreateTarget(hostID int) (*results.Target, error)
 	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
 	ScanScheduleDisableJob(int) error
+	DeleteScanScheduleByID(int) (bool, error)
 }
 
 type IScanHandlers interface {
@@ -44,4 +45,7 @@ type IScanHandlers interface {
 	GetReports(w http.ResponseWriter, r *http.Request) error
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
+	DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error
+	PatchScanSchedule(w http.ResponseWriter, r *http.Request) error
+	GetScanSchedules(w http.ResponseWriter, r *http.Request) error
 }

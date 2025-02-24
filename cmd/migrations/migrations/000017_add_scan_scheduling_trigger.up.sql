@@ -11,10 +11,21 @@ $$
     DECLARE PTENANT_ID UUID;
     DECLARE POPERATOR_ID UUID;
     DECLARE PSCAN_ID UUID;
+    DECLARE PPERIOD_NAME period_enum;
+    DECLARE PPERIOD_QUANTITY int;
+    DECLARE PLAST_DATE int;
+    DECLARE DIFFERENCE_SECONDS int;
+    DECLARE LIMIT_SECONDS int;
 BEGIN
-SELECT scan_id FROM scan_scheduling WHERE id=scanScheduleID INTO PSCAN_ID;
+SELECT scan_id, period_name, period_quantity,last_run_date FROM scan_scheduling WHERE id=scanScheduleID INTO PSCAN_ID, PPERIOD_NAME, PPERIOD_QUANTITY, PLAST_DATE;
 SELECT host_id,tenant_id, operator_id  FROM scans WHERE scans.id=PSCAN_ID INTO PHOST_ID, PTENANT_ID, POPERATOR_ID;
-PERFORM pg_notify('scan_cron',
+SELECT EXTRACT(EPOCH FROM (PLAST_DATE-NOW())) INTO DIFFERENCE_SECONDS;
+SELECT CASE WHEN PPERIOD_NAME ='DAY'::period_enum THEN PPERIOD_QUANTITY  * 24 * 60 * 60
+            WHEN PPERIOD_NAME ='WEEK'::period_enum THEN PPERIOD_QUANTITY * 7 * 24 * 60 * 60
+            WHEN PPERIOD_NAME ='MONTH'::period_enum THEN PPERIOD_QUANTITY * 30 * 24 * 60 * 60
+            WHEN PPERIOD_NAME ='YEAR'::period_enum THEN PPERIOD_QUANTITY * 365 * 24 * 60 * 60 + 24*60*60 ELSE 0 END INTO LIMIT_SECONDS;
+IF DIFFERENCE_SECONDS >= LIMIT_SECONDS THEN
+    PERFORM pg_notify('scan_cron',
           json_build_object(
             'scan_id', PSCAN_ID,
             'has_period', cast(hasPeriod as boolean),
@@ -25,6 +36,7 @@ PERFORM pg_notify('scan_cron',
             'operator_id', POPERATOR_ID
           )::text
         );
+END IF;
 RETURN 1;
 END;
 $$;

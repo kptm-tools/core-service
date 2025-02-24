@@ -306,3 +306,13 @@ func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID i
 func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
 	return s.storage.ScanScheduleDisableJob(scanScheduleID)
 }
+
+func (s ScanService) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
+	isDeleted, err := s.storage.DeleteScanScheduleByID(scanScheduleID)
+
+	if err != nil {
+		return false, err
+	}
+
+	return isDeleted, nil
+}
