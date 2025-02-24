@@ -8,9 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 )
-
-var ErrServiceNotFound = errors.New("service not found")
 
 func (s *PostgreSQLStore) CreateService(
 	tx *sql.Tx,
@@ -53,7 +52,7 @@ func (s *PostgreSQLStore) CreateService(
 		portData.State,
 	).Scan(&serviceID)
 	if err != nil {
-		if errors.Is(err, ErrServiceNotFound) {
+		if errors.Is(err, customerrors.ErrServiceNotFound) {
 			// ON CONFLICT DO NOTHING happened, service already exists
 			// Fetch and return the existing service ID
 			slog.Debug("Service already exists for vuln, referencing existing service",
@@ -95,7 +94,7 @@ func (s *PostgreSQLStore) getServiceID(tx *sql.Tx, hostID int, port uint16, prot
 	err = querier.QueryRow(query, hostID, port, protocol).Scan(&serviceID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, fmt.Errorf("service not found for host_id: %d, port: %d, protocol: %s: %w", hostID, port, protocol, ErrServiceNotFound)
+			return 0, fmt.Errorf("service not found for host_id: %d, port: %d, protocol: %s: %w", hostID, port, protocol, customerrors.ErrServiceNotFound)
 		}
 		return 0, fmt.Errorf("failed to get service ID: %w", err)
 	}
@@ -127,7 +126,7 @@ func (s *PostgreSQLStore) GetServiceByID(serviceID int) (*tools.PortData, error)
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrServiceNotFound
+			return nil, customerrors.ErrServiceNotFound
 		}
 		return nil, fmt.Errorf("failed to query service: %w", err)
 	}

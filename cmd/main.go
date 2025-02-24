@@ -57,7 +57,7 @@ func main() {
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
-	scanHandlers := handlers.NewScanHandlers(scanService, eventBus)
+	scanHandlers := handlers.NewScanHandlers(scanService, hostService, eventBus)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {

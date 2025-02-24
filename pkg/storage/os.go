@@ -7,9 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 )
-
-var ErrOSNotFound = errors.New("operating system not found")
 
 func (s *PostgreSQLStore) CreateOS(
 	tx *sql.Tx,
@@ -71,7 +70,7 @@ func (s *PostgreSQLStore) GetOSByID(osID int) (*tools.OSData, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrOSNotFound
+			return nil, customerrors.ErrOSNotFound
 		}
 		return nil, fmt.Errorf("failed to query operating system: %w", err)
 	}

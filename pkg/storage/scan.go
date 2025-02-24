@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -232,6 +233,9 @@ func (s *PostgreSQLStore) GetScanByID(UUID uuid.UUID) (*domain.Scan, error) {
 		&scan.CreatedAt,
 		&scan.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrScanNotFound
+		}
 		return nil, fmt.Errorf("error scanning scan: %w", err)
 	}
 
