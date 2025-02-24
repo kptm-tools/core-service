@@ -16,25 +16,27 @@ func (s *PostgreSQLStore) CreateOS(
 	hostID int,
 	scanID uuid.UUID,
 	osData tools.OSData,
-) error {
+) (int, error) {
 	query := `
     INSERT INTO operating_systems (
       host_id, scan_id, os_name, family, os_type, fingerprint, cpe, accuracy
   )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  RETURNING id
   `
 
-	var execer interface {
-		Exec(query string, args ...any) (sql.Result, error)
+	var querier interface {
+		QueryRow(query string, args ...any) *sql.Row
 	}
 
 	if tx != nil {
-		execer = tx
+		querier = tx
 	} else {
-		execer = s.db
+		querier = s.db
 	}
 
-	_, err := execer.Exec(
+	var operatingSystemID int
+	err := querier.QueryRow(
 		query,
 		hostID,
 		scanID,
@@ -44,11 +46,11 @@ func (s *PostgreSQLStore) CreateOS(
 		osData.FingerPrint,
 		osData.CPE,
 		osData.Accuracy,
-	)
+	).Scan(&operatingSystemID)
 	if err != nil {
-		return fmt.Errorf("failed to insert service: %w", err)
+		return 0, fmt.Errorf("failed to insert operating system: %w", err)
 	}
-	return nil
+	return operatingSystemID, nil
 }
 
 func (s *PostgreSQLStore) GetOSByID(osID int) (*tools.OSData, error) {
