@@ -21,7 +21,8 @@ DROP COLUMN port_state,
 DROP COLUMN protocol,
 DROP COLUMN service_name,
 DROP COLUMN service_version,
-DROP COLUMN exploitable;
+DROP COLUMN exploitable,
+DROP COLUMN tool;
 
 CREATE INDEX idx_scan_vulnerabilities_os_id ON scan_vulnerabilities (operating_system_id);
 CREATE INDEX idx_scan_vulnerabilities_service_id ON scan_vulnerabilities (service_id);

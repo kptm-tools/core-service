@@ -21,7 +21,8 @@ ADD COLUMN port_state port_state_enum NOT NULL,
 ADD COLUMN protocol VARCHAR(10),
 ADD COLUMN service_name VARCHAR(255),
 ADD COLUMN service_version VARCHAR(255),
-ADD COLUMN exploitable BOOL;
+ADD COLUMN exploitable BOOL,
+ADD COLUMN tool tool_enum NOT NULL;
 
 DROP INDEX idx_scan_vulnerabilities_os_id;
 DROP INDEX idx_scan_vulnerabilities_service_id;
