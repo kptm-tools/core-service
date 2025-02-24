@@ -404,9 +404,13 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			Result: tools.ToolResult{
 				Tool: enums.ToolNmap,
 				Result: &tools.NmapResult{
-					HostName:     "example.com",
-					HostAddress:  "192.0.2.1", // Corrected IP to match DNSLookup results
-					MostLikelyOS: "Linux 3.x kernel",
+					HostName:    "example.com",
+					HostAddress: "192.0.2.1", // Corrected IP to match DNSLookup results
+					MostLikelyOS: tools.OSData{
+						Name:     "Linux 3.x kernel",
+						Accuracy: 7,
+						CPE:      "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
+					},
 					ScannedPorts: []tools.PortData{
 						{
 							ID:       80,
@@ -420,11 +424,14 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Product: "Apache httpd",
 							Vulnerabilities: []tools.Vulnerability{
 								{
-									ID:          "CVE-2017-15715",
-									Type:        "cve",
-									CVSS:        9.8,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
-									Exploitable: true,
+									ID:            "CVE-2017-15715",
+									Type:          "cve",
+									BaseCVSSScore: 9.8,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
+									Exploit: tools.Exploit{
+										Score:          9.8,
+										Exploitability: enums.ExploitabilityTypeHigh,
+									},
 								},
 							},
 						},
@@ -466,9 +473,13 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			Result: tools.ToolResult{
 				Tool: enums.ToolNmap,
 				Result: &tools.NmapResult{
-					HostName:     "example.com",
-					HostAddress:  "192.0.2.1", // IP consistent
-					MostLikelyOS: "Linux 3.x kernel",
+					HostName:    "example.com",
+					HostAddress: "192.0.2.1", // IP consistent
+					MostLikelyOS: tools.OSData{
+						Name:     "Linux 3.x kernel",
+						Accuracy: 7,
+						CPE:      "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
+					},
 					ScannedPorts: []tools.PortData{
 						{
 							ID:       80,
@@ -482,11 +493,14 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Product: "Apache httpd",
 							Vulnerabilities: []tools.Vulnerability{ // Vulnerability still present
 								{
-									ID:          "CVE-2017-15715",
-									Type:        "cve",
-									CVSS:        9.8,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
-									Exploitable: true,
+									ID:            "CVE-2017-15715",
+									Type:          "cve",
+									BaseCVSSScore: 9.8,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
+									Exploit: tools.Exploit{
+										Score:          0.8,
+										Exploitability: enums.ExploitabilityTypeUnproven,
+									},
 								},
 							},
 						},
@@ -502,18 +516,24 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Product: "nginx",
 							Vulnerabilities: []tools.Vulnerability{ // New vulnerabilities on HTTPS
 								{
-									ID:          "CVE-2021-34527", // Example CVE for nginx
-									Type:        "cve",
-									CVSS:        7.5,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
-									Exploitable: true,
+									ID:            "CVE-2021-34527", // Example CVE for nginx
+									Type:          "cve",
+									BaseCVSSScore: 7.5,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
+									Exploit: tools.Exploit{
+										Score:          0.8,
+										Exploitability: enums.ExploitabilityTypeUnproven,
+									},
 								},
 								{
-									ID:          "CVE-2021-34528", // Another example CVE for nginx
-									Type:        "cve",
-									CVSS:        6.5,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
-									Exploitable: false, // Example of not always exploitable
+									ID:            "CVE-2021-34528", // Another example CVE for nginx
+									Type:          "cve",
+									BaseCVSSScore: 6.5,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
+									Exploit: tools.Exploit{
+										Score:          0.0,
+										Exploitability: enums.ExploitabilityTypeProofOfConcept,
+									},
 								},
 							},
 						},
@@ -543,9 +563,13 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			Result: tools.ToolResult{
 				Tool: enums.ToolNmap,
 				Result: &tools.NmapResult{
-					HostName:     "anothersample.net",
-					HostAddress:  "203.0.113.10",        // Corrected IP to match DNSLookup
-					MostLikelyOS: "Windows Server 2019", // Different OS example
+					HostName:    "anothersample.net",
+					HostAddress: "203.0.113.10", // Corrected IP to match DNSLookup
+					MostLikelyOS: tools.OSData{
+						Name:     "Windows Server 2019",
+						CPE:      "cpe:2.3:o:microsoft:windows_server_2019:-:*:*:*:datacenter:*:x86:*",
+						Accuracy: 10,
+					},
 					ScannedPorts: []tools.PortData{
 						{
 							ID:       80,
@@ -571,11 +595,14 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Product: "Microsoft IIS",
 							Vulnerabilities: []tools.Vulnerability{ // Different vulnerabilities
 								{
-									ID:          "CVE-2020-0601", // Example CVE for IIS
-									Type:        "cve",
-									CVSS:        8.8,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2020-0601"},
-									Exploitable: true,
+									ID:            "CVE-2020-0601", // Example CVE for IIS
+									Type:          "cve",
+									BaseCVSSScore: 8.8,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2020-0601"},
+									Exploit: tools.Exploit{
+										Score:          9.9,
+										Exploitability: enums.ExploitabilityTypeHigh,
+									},
 								},
 							},
 						},
@@ -605,9 +632,13 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			Result: tools.ToolResult{
 				Tool: enums.ToolNmap,
 				Result: &tools.NmapResult{
-					HostName:     "test-host.org",
-					HostAddress:  "10.0.0.5",       // Private IP consistent with DNS
-					MostLikelyOS: "Embedded Linux", // Example of embedded system OS
+					HostName:    "test-host.org",
+					HostAddress: "10.0.0.5", // Private IP consistent with DNS
+					MostLikelyOS: tools.OSData{
+						Name:     "Embedded Linux",
+						CPE:      "cpe:2.3:o:nvidia:jetson_linux:32.2:*:*:*:*:*:*:*",
+						Accuracy: 10,
+					},
 					ScannedPorts: []tools.PortData{ // Minimal open ports
 						{
 							ID:       8080, // Example of non-standard HTTP port
@@ -647,9 +678,13 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			Result: tools.ToolResult{
 				Tool: enums.ToolNmap,
 				Result: &tools.NmapResult{
-					HostName:     "subdomain.example.com",
-					HostAddress:  "192.0.2.50",       // IP from DNS lookup
-					MostLikelyOS: "Linux 3.x kernel", // Assume same OS family
+					HostName:    "subdomain.example.com",
+					HostAddress: "192.0.2.50", // IP from DNS lookup
+					MostLikelyOS: tools.OSData{
+						Name:     "Linux 3.x kernel",
+						CPE:      "cpe:2.3:o:linux:linux_kernel:3.10.0:*:*:*:*:*:arm64:*",
+						Accuracy: 10,
+					},
 					ScannedPorts: []tools.PortData{ // Subdomain might have different open ports
 						{
 							ID:       443,
@@ -663,18 +698,24 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Product: "nginx",
 							Vulnerabilities: []tools.Vulnerability{ // Could inherit same vulns
 								{
-									ID:          "CVE-2021-34527",
-									Type:        "cve",
-									CVSS:        7.5,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
-									Exploitable: true,
+									ID:            "CVE-2021-34527",
+									Type:          "cve",
+									BaseCVSSScore: 7.5,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
+									Exploit: tools.Exploit{
+										Score:          9.9,
+										Exploitability: enums.ExploitabilityTypeHigh,
+									},
 								},
 								{
-									ID:          "CVE-2021-34528",
-									Type:        "cve",
-									CVSS:        6.5,
-									References:  []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
-									Exploitable: false,
+									ID:            "CVE-2021-34528",
+									Type:          "cve",
+									BaseCVSSScore: 6.5,
+									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
+									Exploit: tools.Exploit{
+										Score:          5.0,
+										Exploitability: enums.ExploitabilityTypeFunctional,
+									},
 								},
 							},
 						},
@@ -704,9 +745,13 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			Result: tools.ToolResult{
 				Tool: enums.ToolNmap,
 				Result: &tools.NmapResult{
-					HostName:     "printer.local",   // PTR from DNSLookup result
-					HostAddress:  "192.168.1.1",     // IP target
-					MostLikelyOS: "Embedded Device", // Example for IP target
+					HostName:    "printer.local", // PTR from DNSLookup result
+					HostAddress: "192.168.1.1",   // IP target
+					MostLikelyOS: tools.OSData{
+						Name:     "Windows XP Embedded",
+						CPE:      "cpe:2.3:o:microsoft:windows_xp:-:sp3:*:*:embedded:*:x64:*",
+						Accuracy: 10,
+					},
 					ScannedPorts: []tools.PortData{ // Different ports for a device
 						{
 							ID:       9100, // Printer port
@@ -732,11 +777,14 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Product: "Embedded HTTP Server",
 							Vulnerabilities: []tools.Vulnerability{
 								{
-									ID:          "CVE-2023-XXXXX", // Placeholder CVE for embedded device
-									Type:        "cve",
-									CVSS:        6.0,
-									References:  []string{"https://example.com/embedded-cve"}, // Placeholder URL
-									Exploitable: true,
+									ID:            "CVE-2023-XXXXX", // Placeholder CVE for embedded device
+									Type:          "cve",
+									BaseCVSSScore: 6.0,
+									References:    []string{"https://example.com/embedded-cve"}, // Placeholder URL
+									Exploit: tools.Exploit{
+										Score:          5.0,
+										Exploitability: enums.ExploitabilityTypeProofOfConcept,
+									},
 								},
 							},
 						},

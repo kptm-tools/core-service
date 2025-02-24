@@ -93,6 +93,7 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 		return nil
 	}
 
+	// 2. Unmarshal the result to a tools.NmapResult variable
 	var nr tools.NmapResult
 	resultBytes, err := json.Marshal(sr.Result.Result)
 	if err != nil {
@@ -103,60 +104,39 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 		return fmt.Errorf("failed to unmarshal nmap result: %w", err)
 	}
 
-	// Get all vulnerabilities and insert each one to our DB
-	for _, port := range nr.ScannedPorts {
-		for _, vuln := range port.Vulnerabilities {
-			if err := s.InsertScanVulnerability(tx, *sr, scan.HostID, vuln, port); err != nil {
-				return err
+	// 3. Store OS (if OS data is present in scanResult)
+	// If not present, will just store empty values
+	operatingSystemID, err := s.CreateOS(tx, scan.HostID, scan.ID, nr.MostLikelyOS)
+	if err != nil {
+		return fmt.Errorf("failed to store OS data: %w", err)
+	}
+
+	// 3.1 Store OS vulners (if present)
+	for _, vuln := range nr.MostLikelyOS.Vulnerabilities {
+		err := s.CreateOSVulnerability(tx, scan.ID, scan.HostID, operatingSystemID, vuln)
+		if err != nil {
+			return fmt.Errorf("failed to create OS vulnerability: %w", err)
+		}
+	}
+
+	// 4. Loop through detected services (PortData)
+	for _, portData := range nr.ScannedPorts {
+		// 4.1 Store detected Service
+		serviceID, err := s.CreateService(tx, scan.HostID, scan.ID, portData)
+		if err != nil {
+			return fmt.Errorf("failed to create service: %w", err)
+		}
+		// 4.2 Store that Service's vulners
+		for _, vuln := range portData.Vulnerabilities {
+			err := s.CreateServiceVulnerability(tx, scan.ID, scan.HostID, serviceID, vuln)
+			if err != nil {
+				return fmt.Errorf("failed to create Service vulnerabiliy: %w", err)
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-func (s *PostgreSQLStore) InsertScanVulnerability(
-	tx *sql.Tx,
-	scanResult domain.ScanResult,
-	hostID int,
-	vuln tools.Vulnerability,
-	port tools.PortData,
-) error {
-	query := `
-    INSERT INTO scan_vulnerabilities (
-      vulnerability_id, scan_id, host_id, tool, type, cvss, vuln_references, exploitable,
-      port, protocol, service_name, service_version, port_state, created_at, updated_at
-    )
-    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
-
-	referencesBytes, err := json.Marshal(vuln.References)
-	if err != nil {
-		return fmt.Errorf("failed to marshal vulnerability references: %w", err)
-	}
-
-	if _, err := tx.Exec(
-		query,
-		vuln.ID,
-		scanResult.ScanID,
-		hostID,
-		scanResult.Result.Tool.String(),
-		vuln.Type,
-		vuln.CVSS,
-		referencesBytes,
-		vuln.Exploitable,
-		port.ID,
-		port.Protocol,
-		port.Service.Name,
-		port.Service.Version,
-		port.State,
-		scanResult.CreatedAt,
-		scanResult.CreatedAt,
-	); err != nil {
-		return fmt.Errorf("failed to insert vulnerability: %w", err)
 	}
 
 	return nil
@@ -372,6 +352,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
       SELECT
         sv.type AS vuln_type,
         MAX(sv.cvss) AS max_cvss
+        sv.severity AS vuln_severity
       FROM
         scan_vulnerabilities sv
       WHERE
@@ -391,7 +372,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
       (
         SELECT json_object_agg(
           vuln_type,
-          max_cvss
+          vuln_severity
         )
         FROM severity_per_type
       ) AS severity_per_type_map
@@ -426,7 +407,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 	}
 
 	// Parse JSON severity_per_type into the desired map if there are vulnerabilities
-	var severityPerType map[string]float64
+	var severityPerType map[string]string
 
 	if insights.TotalVulnerabilities > 0 {
 		if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
@@ -435,7 +416,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 	}
 
 	// Map max cvss values into enums.Severity
-	mapSeverities := func(a map[string]float64, f func(float64) int) map[string]int {
+	mapSeverities := func(a map[string]string, f func(string) int) map[string]int {
 		n := make(map[string]int, len(a))
 		for k, v := range a {
 			n[k] = f(v)
@@ -443,7 +424,9 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 		return n
 	}
 
-	insights.SeverityPerType = mapSeverities(severityPerType, tools.MapCVSS)
+	insights.SeverityPerType = mapSeverities(severityPerType, func(s string) int {
+		return enums.StringToSeverityType(s).Int()
+	})
 
 	// 1. Calculate total_vulnerabilities variation since last scan
 	vulnerabilityVariation, err := s.GetTotalVulnerabilityVariationSinceLastScan(scanID)
