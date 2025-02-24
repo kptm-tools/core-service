@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
@@ -16,7 +17,7 @@ func (s *PostgreSQLStore) CreateService(
 	hostID int,
 	scanID uuid.UUID,
 	portData tools.PortData,
-) error {
+) (int, error) {
 	query := `
     INSERT INTO services (
       host_id, scan_id, port, protocol, sv_name, sv_version, confidence, cpe, product, port_state
@@ -52,18 +53,24 @@ func (s *PostgreSQLStore) CreateService(
 		portData.State,
 	).Scan(&serviceID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, ErrServiceNotFound) {
 			// ON CONFLICT DO NOTHING happened, service already exists
-			// Fetch the existing service ID
+			// Fetch and return the existing service ID
+			slog.Debug("Service already exists for vuln, referencing existing service",
+				slog.String("scan_id", scanID.String()),
+				slog.Int("host_id", hostID),
+				slog.Int("port_id", int(portData.ID)),
+				slog.String("service_name", portData.Service.Name),
+			)
 			existingServiceID, err := s.getServiceID(tx, hostID, portData.ID, portData.Protocol)
 			if err != nil {
-				return fmt.Errorf("failed to get existing service ID: %w", err)
+				return 0, fmt.Errorf("failed to get existing service ID: %w", err)
 			}
-			serviceID = existingServiceID
+			return existingServiceID, nil
 		}
-		return fmt.Errorf("failed to insert service: %w", err)
+		return 0, fmt.Errorf("failed to insert service: %w", err)
 	}
-	return nil
+	return serviceID, nil
 }
 
 func (s *PostgreSQLStore) getServiceID(tx *sql.Tx, hostID int, port uint16, protocol string) (int, error) {
@@ -88,7 +95,7 @@ func (s *PostgreSQLStore) getServiceID(tx *sql.Tx, hostID int, port uint16, prot
 	err = querier.QueryRow(query, hostID, port, protocol).Scan(&serviceID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, fmt.Errorf("service not found for host_id: %d, port: %d, protocol: %s: %w", hostID, port, protocol)
+			return 0, fmt.Errorf("service not found for host_id: %d, port: %d, protocol: %s: %w", hostID, port, protocol, ErrServiceNotFound)
 		}
 		return 0, fmt.Errorf("failed to get service ID: %w", err)
 	}
