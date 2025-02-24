@@ -37,4 +37,6 @@ type IStorage interface {
 	GetReportsByTenantID(string) ([]*domain.ReportItem, error)
 	GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	GetScanVulnerabilities(uuid.UUID) ([]*domain.Vulnerability, error)
+	GetSeverityCounts(uuid.UUID) (*tools.SeverityCounts, error)
 }

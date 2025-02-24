@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/common/common/pkg/utils/validation"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -281,4 +282,12 @@ func (s *ScanService) getOldestLatestScans(hostID int, fromDate, toDate *time.Ti
 	}
 
 	return oldestScan, latestScan, nil
+}
+
+func (s *ScanService) GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error) {
+	return s.storage.GetScanVulnerabilities(scanID)
+}
+
+func (s *ScanService) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error) {
+	return s.storage.GetSeverityCounts(scanID)
 }

@@ -310,3 +310,64 @@ func (h *ScanHandlers) parseDateRange(w http.ResponseWriter, r *http.Request) (f
 	}
 	return
 }
+
+func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error {
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("failed to extract scanID", slog.Any("error", err))
+	}
+
+	vulners, err := h.scanService.GetScanVulnerabilities(scanID)
+	if err != nil {
+		slog.Error("failed to fetch scan vulnerabilities",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	severityCounts, err := h.scanService.GetSeverityCounts(scanID)
+	if err != nil {
+		slog.Error("failed to fetch severity counts",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	var scanVulnersItemsResponse ScanVulnerabilityItemsResponse
+
+	// Parse vulners
+	scanVulnerItems := make([]ScanVulnerabilityItem, len(vulners))
+	for i, vuln := range vulners {
+		var analystComment string
+		if vuln.AnalystComment == nil {
+			analystComment = ""
+		}
+
+		scanVulnerItems[i] = ScanVulnerabilityItem{
+			ID:              vuln.ID,
+			Name:            vuln.VulnerabilityID,
+			Severity:        vuln.BaseSeverity.String(),
+			MaxCVSS:         vuln.BaseCVSSScore,
+			RiskScore:       vuln.RiskScore,
+			Likelihood:      vuln.Likelihood.String(),
+			Access:          vuln.AccessType.String(),
+			Complexity:      vuln.Complexity.String(),
+			Privileges:      vuln.PrivilegesRequired.String(),
+			IntegrityImpact: vuln.IntegrityImpact.String(),
+			Comment:         analystComment,
+			References:      vuln.References,
+		}
+	}
+
+	// Associate vulners
+	scanVulnersItemsResponse.Vulnerabilities = scanVulnerItems
+	scanVulnersItemsResponse.TotalVulnerabilities = len(scanVulnersItemsResponse.Vulnerabilities)
+	// Associate SeverityCounts
+	if severityCounts != nil {
+		scanVulnersItemsResponse.SeverityCounts = *severityCounts
+	}
+
+	return api.WriteJSON(w, http.StatusOK, scanVulnersItemsResponse)
+}

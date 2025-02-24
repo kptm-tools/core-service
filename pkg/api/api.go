@@ -76,6 +76,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
+	router.HandleFunc("GET /api/scans/{id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilities), "getScanVulnerabilities"))
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities/summary", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilitySummaryByID), "getScanVulnerabilitySummaryByID"))
 
 	router.HandleFunc("GET /api/scorecard-trends", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScoreCardTrends), "getScoreCardTrends"))
