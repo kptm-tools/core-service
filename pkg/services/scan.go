@@ -316,3 +316,26 @@ func (s ScanService) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
 
 	return isDeleted, nil
 }
+
+func (s ScanService) InsertScanScheduling(scan *domain.Scan, scheduleAt time.Time, frequency *domain.RepeatSchedule) error {
+	var isRepeated bool
+	var cronExpr string
+	var periodName string
+	var periodQuantity int
+	if frequency != nil {
+		isRepeated = true
+		periodName = string(frequency.UnitOfFrequency)
+		periodQuantity = frequency.Quantity
+	}
+	if !isRepeated {
+		cronExpr = fmt.Sprintf("%d %d %d %d *", scheduleAt.Minute(), scheduleAt.Hour(), scheduleAt.Day(), scheduleAt.Month())
+	} else {
+		cronExpr = fmt.Sprintf("%d %d * * *", scheduleAt.Minute(), scheduleAt.Hour())
+	}
+
+	err := s.storage.CreateScanScheduling(scan.ID, cronExpr, isRepeated, periodName, periodQuantity)
+	if err != nil {
+		return err
+	}
+	return nil
+}
