@@ -130,6 +130,7 @@ type ScanVulnerabilityDetailResponse struct {
 	Privileges     string   `json:"privileges"`
 	Exploitability string   `json:"exploitability"`
 	Comment        string   `json:"comment"`
+	Recommendation string   `json:"recommendation"`
 	References     []string `json:"references"`
 
 	DateInfo   DateInfo   `json:"date"`
@@ -181,4 +182,62 @@ type RiskInfo struct {
 	IntegrityImpact    string   `json:"integrity_impact"`
 	CVSSV3Base         *float64 `json:"cvss_v3_base"`  // Can be nullable
 	CVSSV30Vector      *string  `json:"cvss_v3_vecto"` // Can be nullable
+}
+
+func adaptDomainPortItem(domainPortItem *domain.PortItem) *PortItem {
+	if domainPortItem == nil {
+		return nil
+	}
+
+	return &PortItem{
+		ID:       domainPortItem.ID,
+		Protocol: domainPortItem.Protocol,
+	}
+}
+
+func adaptDomainOSItem(domainOSItem *domain.OSItem) *OSItem {
+	if domainOSItem == nil {
+		return nil
+	}
+
+	return &OSItem{
+		Name: domainOSItem.Name,
+		Type: domainOSItem.Type,
+	}
+}
+
+func adaptDomainDateInfo(domainDateInfo domain.DateInfo) DateInfo {
+	return DateInfo{
+		Published:   domainDateInfo.Published,
+		LastUpdated: domainDateInfo.LastUpdated,
+	}
+}
+
+func adaptDomainPluginInfo(domainPluginInfo domain.PluginInfo) PluginInfo {
+	return PluginInfo{
+		CPE:      domainPluginInfo.CPE,
+		Severity: domainPluginInfo.Severity,
+		Version:  domainPluginInfo.Version,
+		Type:     domainPluginInfo.Type,
+		Family:   domainPluginInfo.Family,
+	}
+}
+
+func adaptDomainVPRKeyInfo(domainVPRKeyInfo domain.VPRKeyInfo) VPRKeyInfo {
+	return VPRKeyInfo{
+		ThreatIntensity: domainVPRKeyInfo.ThreatIntensity,
+		ExploitMaturity: domainVPRKeyInfo.ExploitMaturity,
+		VulnAge:         domainVPRKeyInfo.VulnAge,
+		ProductCoverage: domainVPRKeyInfo.ProductCoverage,
+	}
+}
+
+func adaptDomainRiskInfo(domainRiskInfo domain.RiskInfo) RiskInfo {
+	return RiskInfo{
+		RiskScore:          domainRiskInfo.RiskScore,
+		AvailabilityImpact: domainRiskInfo.AvailabilityImpact,
+		IntegrityImpact:    domainRiskInfo.IntegrityImpact,
+		CVSSV3Base:         &domainRiskInfo.CVSSV3Base,
+		CVSSV30Vector:      &domainRiskInfo.CVSSV30Vector,
+	}
 }

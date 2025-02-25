@@ -20,6 +20,7 @@ type APIServer struct {
 	authHandlers   interfaces.IAuthHandlers
 	tenantHandlers interfaces.ITenantHandlers
 	scanHandlers   interfaces.IScanHandlers
+	vulnHandlers   interfaces.IVulnerabilityHandlers
 }
 
 type APIError struct {
@@ -35,6 +36,7 @@ func NewAPIServer(
 	teHandlers interfaces.ITenantHandlers,
 	aHandlers interfaces.IAuthHandlers,
 	sHandlers interfaces.IScanHandlers,
+	vHandlers interfaces.IVulnerabilityHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
@@ -44,6 +46,7 @@ func NewAPIServer(
 		authHandlers:   aHandlers,
 		tenantHandlers: teHandlers,
 		scanHandlers:   sHandlers,
+		vulnHandlers:   vHandlers,
 	}
 }
 
@@ -82,6 +85,8 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/scorecard-trends", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScoreCardTrends), "getScoreCardTrends"))
 
 	router.HandleFunc("GET /api/reports", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetReports), "getAllTenantReports"))
+
+	router.HandleFunc("GET /api/vulnerabilities/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetVulnerability), "getVulnerability"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,

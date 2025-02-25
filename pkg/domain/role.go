@@ -65,6 +65,7 @@ func GetValidRoles(funcName string) ([]Role, error) {
 		"getAllTenantReports":             {RoleOperator, RoleAnalyst},
 		"getScoreCardTrends":              {RoleOperator, RoleAnalyst},
 		"getScanVulnerabilities":          {RoleOperator, RoleAnalyst},
+		"getVulnerability":                {RoleOperator, RoleAnalyst},
 	}
 
 	v, ok := funcRoles[funcName]
