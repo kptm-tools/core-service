@@ -108,3 +108,77 @@ type ScanVulnerabilityItem struct {
 	Comment        string   `json:"comment"`
 	References     []string `json:"references"`
 }
+
+// ScanVulnerabilityDetailResponse is the DTO with the details for a particular
+// scan's vulenrability.
+type ScanVulnerabilityDetailResponse struct {
+	ID       int       `json:"id"`
+	ScanDate time.Time `json:"scan_date"`
+
+	Host HostItem  `json:"host"`
+	Port *PortItem `json:"port,omitempty"`
+	OS   *OSItem   `json:"operating_system,omitempty"`
+
+	Name           string   `json:"name"`
+	Severity       string   `json:"severity"`
+	MaxCVSS        float64  `json:"max_cvss"`
+	RiskScore      float64  `json:"risk_score"`
+	ImpactScore    float64  `json:"impact_score"`
+	Likelihood     string   `json:"likelihood"`
+	Access         string   `json:"access"`
+	Complexity     string   `json:"complexity"`
+	Privileges     string   `json:"privileges"`
+	Exploitability string   `json:"exploitability"`
+	Comment        string   `json:"comment"`
+	References     []string `json:"references"`
+
+	DateInfo   DateInfo   `json:"date"`
+	PluginInfo PluginInfo `json:"plugin"`
+	VPRKeyD    VPRKeyInfo `json:"vpr_key_d"`
+	RiskInfo   RiskInfo   `json:"risk"`
+}
+
+type HostItem struct {
+	Alias     string `json:"alias"`
+	IPAddress string `json:"ip_address"`
+}
+
+type PortItem struct {
+	ID       uint16 `json:"id"`
+	Protocol string `json:"protocol"`
+}
+
+type OSItem struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type DateInfo struct {
+	Published   time.Time `json:"published"`
+	LastUpdated time.Time `json:"last_updated"`
+}
+
+// PluginInfo refers to info about the service/operating system
+// associated with the vulnerability
+type PluginInfo struct {
+	CPE      string `json:"cpe"` // CPE
+	Severity string `json:"severity"`
+	Version  string `json:"version"`
+	Type     string `json:"type"`   // AccessType
+	Family   string `json:"family"` // OS = family, Sevice = Product
+}
+
+type VPRKeyInfo struct {
+	ThreatIntensity string `json:"threat_intensity"`
+	ExploitMaturity string `json:"exploit_code_maturity"`
+	VulnAge         int    `json:"age_of_vuln"`
+	ProductCoverage string `json:"product_coverage"` // Availability impact
+}
+
+type RiskInfo struct {
+	RiskScore          float64  `json:"risk_score"`
+	AvailabilityImpact string   `json:"availability_impact"`
+	IntegrityImpact    string   `json:"integrity_impact"`
+	CVSSV3Base         *float64 `json:"cvss_v3_base"`  // Can be nullable
+	CVSSV30Vector      *string  `json:"cvss_v3_vecto"` // Can be nullable
+}
