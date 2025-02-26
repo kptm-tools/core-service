@@ -91,6 +91,11 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 				Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2006-01-02 01:01:01'",
 			})
 		}
+		if time.Now().After(dateSchedule) || time.Now().Equal(dateSchedule) {
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+				Error: "Invalid schedule_at field. Must be greater than now",
+			})
+		}
 		errScanSchedule := h.scanScheduleService.InsertScanScheduling(scan.ID, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {
 			msg := fmt.Sprintf("invalid scheduling: %s", *scanRequest.ScheduleAt)

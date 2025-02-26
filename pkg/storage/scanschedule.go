@@ -48,9 +48,9 @@ func (s *PostgreSQLStore) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanSc
 			WHEN SS.has_period=true THEN 'Every' ELSE 'Once' AS frequency,
     	SS.scheduled_date
 	FROM scan_scheduling SS 
-		INNER JOIN  scans S ON SS.scan_id=S.id 
+		INNER JOIN (SELECT * FROM scans WHERE tenant_id=$1 ) S ON SS.scan_id=S.id 
 		INNER JOIN hosts H ON S.host_id=H.id 
-	WHERE SS.tenant_id=$1`
+	`
 	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
