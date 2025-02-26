@@ -40,6 +40,8 @@ type MockStorage struct {
 	MockGetReportsByTenantID          func(tenantID string) ([]*domain.ReportItem, error)
 	MockGetLatestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	MockGetOldestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	MockGetScanVulnerabilities        func(uuid.UUID) ([]*domain.Vulnerability, error)
+	MockGetSeverityCounts             func(uuid.UUID) (*tools.SeverityCounts, error)
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -227,6 +229,20 @@ func (m *MockStorage) GetLatestScanByHostID(hostID int, fromDate, toDate *time.T
 func (m *MockStorage) GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
 	if m.MockGetOldestScanByHostID != nil {
 		return m.MockGetOldestScanByHostID(hostID, fromDate, toDate)
+	}
+	return nil, nil
+}
+
+func (m *MockStorage) GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error) {
+	if m.MockGetScanVulnerabilities != nil {
+		return m.MockGetScanVulnerabilities(scanID)
+	}
+	return nil, nil
+}
+
+func (m *MockStorage) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error) {
+	if m.MockGetSeverityCounts != nil {
+		return m.MockGetSeverityCounts(scanID)
 	}
 	return nil, nil
 }

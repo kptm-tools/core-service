@@ -90,28 +90,45 @@ func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, e
 	return hosts, nil
 }
 
-func (s *PostgreSQLStore) GetHostByID(ID int) (*domain.Host, error) {
+func (s *PostgreSQLStore) GetHostByID(hostID int) (*domain.Host, error) {
 	query := `
-    SELECT *
-    FROM hosts
-    WHERE id=$1
+  SELECT 
+    id,
+    tenant_id,
+    operator_id,
+    "domain",
+    ip,
+    alias,
+    rapporteurs,
+    created_at,
+    updated_at
+  FROM hosts
+  WHERE id=$1;
   `
-
-	row := s.db.QueryRow(query, ID)
-	host := &domain.Host{}
-	var err error
-
-	if err = scanIntoHostRow(row, host); err != nil {
-		return nil, fmt.Errorf("failed to fetch host: %w", err)
+	var host domain.Host
+	var rapporteursBytes []byte
+	err := s.db.QueryRow(query, hostID).Scan(
+		&host.ID,
+		&host.TenantID,
+		&host.OperatorID,
+		&host.Domain,
+		&host.IP,
+		&host.Name,
+		&rapporteursBytes,
+		&host.CreatedAt,
+		&host.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan into host: %w", err)
 	}
 
-	credentials, err := s.GetCredentials(ID)
+	credentials, err := s.GetCredentials(hostID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
 	}
 	host.Credentials = credentials
 
-	return host, nil
+	return &host, nil
 }
 
 func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
@@ -180,13 +197,17 @@ func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error
 	}
 	defer rows.Close()
 
-	credentials := []domain.Credential{}
+	var credentials []domain.Credential
 	for rows.Next() {
 		credential, err := scanIntoCredential(rows)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan credential: %w", err)
 		}
 		credentials = append(credentials, *credential)
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("error iterating sql rows: %w", err)
 	}
 	return credentials, nil
 }

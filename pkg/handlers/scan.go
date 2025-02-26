@@ -22,14 +22,20 @@ import (
 
 type ScanHandlers struct {
 	scanService interfaces.IScanService
+	hostService interfaces.IHostService
 	eventBus    cmmn.EventBus
 }
 
 var _ interfaces.IScanHandlers = (*ScanHandlers)(nil)
 
-func NewScanHandlers(scanService interfaces.IScanService, bus cmmn.EventBus) *ScanHandlers {
+func NewScanHandlers(
+	scanService interfaces.IScanService,
+	hostService interfaces.IHostService,
+	bus cmmn.EventBus,
+) *ScanHandlers {
 	return &ScanHandlers{
 		scanService: scanService,
+		hostService: hostService,
 		eventBus:    bus,
 	}
 }
@@ -309,4 +315,90 @@ func (h *ScanHandlers) parseDateRange(w http.ResponseWriter, r *http.Request) (f
 		toDate = &parsedToDate
 	}
 	return
+}
+
+func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error {
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("failed to extract scanID", slog.Any("error", err))
+	}
+
+	scan, err := h.scanService.GetScanByID(scanID)
+	if err != nil {
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	slog.Debug(
+		"Attempting to GetHostByID",
+		slog.String("scan_id", scanID.String()),
+		slog.Int("host_id", scan.HostID),
+	)
+	host, err := h.hostService.GetHostByID(scan.HostID)
+	if err != nil {
+		if errors.Is(err, customerrors.ErrHostNotFound) {
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("No host found for scan %s", scanID.String())})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	vulners, err := h.scanService.GetScanVulnerabilities(scanID)
+	if err != nil {
+		slog.Error("failed to fetch scan vulnerabilities",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	severityCounts, err := h.scanService.GetSeverityCounts(scanID)
+	if err != nil {
+		slog.Error("failed to fetch severity counts",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	var scanVulnersItemsResponse ScanVulnerabilityItemsResponse
+
+	// Parse vulners
+	scanVulnerItems := make([]ScanVulnerabilityItem, len(vulners))
+	for i, vuln := range vulners {
+		var analystComment string
+		if vuln.AnalystComment == nil {
+			analystComment = ""
+		}
+
+		scanVulnerItems[i] = ScanVulnerabilityItem{
+			ID:             vuln.ID,
+			Name:           vuln.VulnerabilityID,
+			Severity:       vuln.BaseSeverity.String(),
+			MaxCVSS:        vuln.BaseCVSSScore,
+			RiskScore:      vuln.RiskScore,
+			ImpactScore:    vuln.ImpactScore,
+			Likelihood:     vuln.Likelihood.String(),
+			Access:         vuln.AccessType.String(),
+			Complexity:     vuln.Complexity.String(),
+			Privileges:     vuln.PrivilegesRequired.String(),
+			Exploitability: vuln.Exploit.Exploitability.String(),
+			Comment:        analystComment,
+			References:     vuln.References,
+		}
+	}
+
+	// Associate scan and host alias
+	scanVulnersItemsResponse.ScanDate = scan.StartedAt
+	scanVulnersItemsResponse.Alias = host.Name
+	// Associate vulners
+	scanVulnersItemsResponse.Vulnerabilities = scanVulnerItems
+	scanVulnersItemsResponse.TotalVulnerabilities = len(scanVulnersItemsResponse.Vulnerabilities)
+	// Associate SeverityCounts
+	if severityCounts != nil {
+		scanVulnersItemsResponse.SeverityCounts = *severityCounts
+	}
+
+	return api.WriteJSON(w, http.StatusOK, scanVulnersItemsResponse)
 }

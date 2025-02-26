@@ -1,10 +1,13 @@
 package customerrors
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 )
+
+var ErrScanNotFound = errors.New("scan not found")
 
 type ScanAlreadyFinishedError struct {
 	ScanID uuid.UUID

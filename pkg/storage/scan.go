@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -232,6 +233,9 @@ func (s *PostgreSQLStore) GetScanByID(UUID uuid.UUID) (*domain.Scan, error) {
 		&scan.CreatedAt,
 		&scan.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrScanNotFound
+		}
 		return nil, fmt.Errorf("error scanning scan: %w", err)
 	}
 
@@ -994,4 +998,41 @@ func scanIntoScan(row *sql.Row, scan *domain.Scan) error {
 		return fmt.Errorf("error scanning row: %w", err)
 	}
 	return nil
+}
+
+func (s *PostgreSQLStore) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error) {
+	query := `
+    SELECT
+      COALESCE(SUM(CASE WHEN sv.base_severity = 'Unknown' THEN 1 ELSE 0 END), 0) AS unknown_vulnerabilities,
+      COALESCE(SUM(CASE WHEN sv.base_severity = 'None' THEN 1 ELSE 0 END), 0) AS none_vulnerabilities,
+      COALESCE(SUM(CASE WHEN sv.base_severity = 'Low' THEN 1 ELSE 0 END), 0) AS low_vulnerabilities,
+      COALESCE(SUM(CASE WHEN sv.base_severity = 'Medium' THEN 1 ELSE 0 END), 0) as medium_vulnerabilities,
+      COALESCE(SUM(CASE WHEN sv.base_severity = 'High' THEN 1 ELSE 0 END), 0) as high_vulnerabilities,
+      COALESCE(SUM(CASE WHEN sv.base_severity = 'Critical' THEN 1 ELSE 0 END), 0) AS critical_vulnerabilities
+    FROM
+      scans
+    LEFT JOIN
+      scan_vulnerabilities sv ON scans.id = sv.scan_id
+    WHERE scans.id = $1
+  `
+
+	var severityCounts tools.SeverityCounts
+
+	err := s.db.QueryRow(query, scanID).Scan(
+		&severityCounts.Unknown,
+		&severityCounts.None,
+		&severityCounts.Low,
+		&severityCounts.Medium,
+		&severityCounts.High,
+		&severityCounts.Critical,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Scan was not found
+			return nil, fmt.Errorf("scan not found: %s: %w", scanID.String(), err)
+		}
+		return nil, fmt.Errorf("failed to run query: %w", err)
+	}
+
+	return &severityCounts, nil
 }

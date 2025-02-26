@@ -47,13 +47,8 @@ func (s *HostService) GetHostsByTenantID(tenantID string) ([]*domain.Host, error
 	return hosts, nil
 }
 
-func (s *HostService) GetHostByID(ID int) (*domain.Host, error) {
-	host, err := s.storage.GetHostByID(ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return host, nil
+func (s *HostService) GetHostByID(HostID int) (*domain.Host, error) {
+	return s.storage.GetHostByID(HostID)
 }
 
 func (s *HostService) DeleteHostByID(ID int) (bool, error) {
