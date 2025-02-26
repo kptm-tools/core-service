@@ -1,4 +1,4 @@
--- Migration: 000019_unschedule_job_trigger.up.sql
+-- Migration: 000022_unschedule_job_trigger.up.sql
 CREATE OR REPLACE FUNCTION when_delete_schedule()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL

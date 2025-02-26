@@ -22,7 +22,8 @@ import (
 type ScanHandlers struct {
 	scanService interfaces.IScanService
 	hostService interfaces.IHostService
-	eventBus    cmmn.EventBus
+	scanScheduleService interfaces.IScanScheduleService
+	eventBus            cmmn.EventBus
 }
 
 var _ interfaces.IScanHandlers = (*ScanHandlers)(nil)
@@ -35,7 +36,8 @@ func NewScanHandlers(
 	return &ScanHandlers{
 		scanService: scanService,
 		hostService: hostService,
-		eventBus:    bus,
+		scanScheduleService: scanScheduleService,
+		eventBus:            bus,
 	}
 }
 
@@ -89,7 +91,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 				Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2006-01-02 01:01:01'",
 			})
 		}
-		errScanSchedule := h.scanService.InsertScanScheduling(scan, dateSchedule, scanRequest.Frequency)
+		errScanSchedule := h.scanScheduleService.InsertScanScheduling(scan.ID, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {
 			msg := fmt.Sprintf("invalid scheduling: %s", *scanRequest.ScheduleAt)
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: msg})

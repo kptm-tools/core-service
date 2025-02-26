@@ -52,6 +52,7 @@ func main() {
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore)
 	vulnService := services.NewVulnerabilityService(coreStore)
+	scanScheduleService := services.NewScanScheduleService(coreStore)
 
 	// Handlers
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
@@ -60,6 +61,8 @@ func main() {
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
 	scanHandlers := handlers.NewScanHandlers(scanService, hostService, eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
+	scanHandlers := handlers.NewScanHandlers(scanService, scanScheduleService, eventBus)
+	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -83,6 +86,7 @@ func main() {
 		scanHandlers,
 		vulnHandlers,
 	)
+	s := api.NewAPIServer(":8000", healthHandler, hostHandlers, tenantHandlers, authHandlers, scanHandlers, scanScheduleHandlers)
 
 	if err := s.Init(); err != nil {
 		slog.Error("Failed to initialize APIServer", slog.Any("error", err))

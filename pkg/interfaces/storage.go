@@ -43,7 +43,10 @@ type IStorage interface {
 	GetOSByID(int) (*tools.OSData, error)
 	GetServiceByID(int) (*tools.PortData, error)
 	CreateScanScheduling(uuid.UUID, string, bool, string, int) error
+	CreateScanScheduling(uuid.UUID, string, bool, string, int, time.Time) error
 	ScanScheduleDisableJob(int) error
 	UpdateScanScheduling(uuid.UUID, int) error
 	DeleteScanScheduleByID(int) (bool, error)
+	GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error)
+	PatchScanScheduleByID(int, domain.RepeatSchedule, time.Time) error
 }

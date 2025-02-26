@@ -32,7 +32,6 @@ type IScanService interface {
 	CreateTarget(hostID int) (*results.Target, error)
 	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
 	ScanScheduleDisableJob(int) error
-	DeleteScanScheduleByID(int) (bool, error)
 }
 
 type IScanHandlers interface {

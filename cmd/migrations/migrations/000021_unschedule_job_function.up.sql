@@ -1,4 +1,4 @@
--- Migration: 000018_unschedule_job_function.up.sql
+-- Migration: 000021_unschedule_job_function.up.sql
 CREATE OR REPLACE FUNCTION unregister_cron(
     scanScheduleID int
 )

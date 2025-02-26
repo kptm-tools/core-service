@@ -1,8 +1,10 @@
--- Migration: 000015_create_scan_scheduling_table.up.sql
+-- Migration: 000018_create_scan_scheduling_table.up.sql
 CREATE TABLE IF NOT EXISTS scan_scheduling (
     id SERIAL PRIMARY KEY,
     scan_id UUID NOT NULL REFERENCES scans (id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL,
     last_run_date TIMESTAMP,
+    scheduled_date TIMESTAMP,
     period_name period_enum,
     quantity_period INT,
     enabled  BOOLEAN NOT NULL,

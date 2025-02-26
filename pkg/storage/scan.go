@@ -1038,7 +1038,7 @@ func (s *PostgreSQLStore) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCo
 	return &severityCounts, nil
 }
 
-func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression string, isRepeated bool, periodName string, periodQuantity int) error {
+func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression string, isRepeated bool, periodName string, periodQuantity int, scheduledDate time.Time) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
@@ -1048,21 +1048,21 @@ func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression 
 	if isRepeated {
 		query := `
 		INSERT INTO scan_scheduling (
-		scan_id, period_name,quantity_period, enabled, has_period, cron, created_at, updated_at
+		scan_id, period_name,quantity_period, enabled, has_period, cron, scheduled_date, created_at, updated_at
 		)
-		values ($1, $2, $3, $4, $5, $6, $7, $8)`
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-		if _, err := tx.Exec(query, scanID, periodName, periodQuantity, true, isRepeated, cronExpression, time.Now().UTC(), time.Now().UTC()); err != nil {
+		if _, err := tx.Exec(query, scanID, periodName, periodQuantity, true, isRepeated, cronExpression, scheduledDate, time.Now().UTC(), time.Now().UTC()); err != nil {
 			return fmt.Errorf("failed to insert scan scheduling: %w", err)
 		}
 	} else {
 		query := `
 		INSERT INTO scan_scheduling (
-		scan_id, enabled, has_period, cron, created_at, updated_at
+		scan_id, enabled, has_period, cron,scheduled_date, created_at, updated_at
 		)
 		values ($1, $2, $3, $4, $5, $6)`
 
-		if _, err := tx.Exec(query, scanID, true, isRepeated, cronExpression, time.Now().UTC(), time.Now().UTC()); err != nil {
+		if _, err := tx.Exec(query, scanID, true, isRepeated, cronExpression, scheduledDate, time.Now().UTC(), time.Now().UTC()); err != nil {
 			return fmt.Errorf("failed to insert scan scheduling: %w", err)
 		}
 	}
@@ -1090,20 +1090,4 @@ func (s *PostgreSQLStore) UpdateScanScheduling(scanID uuid.UUID, scanScheduleID 
 		return fmt.Errorf("failed to update scan scheduling: %w", err)
 	}
 	return nil
-}
-
-func (s *PostgreSQLStore) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
-	query := `
-    DELETE 
-    FROM scan_scheduling WHERE id=$1`
-
-	res, err := s.db.Exec(query, scanScheduleID)
-
-	switch err {
-	case nil:
-		count, _ := res.RowsAffected()
-		return count == 1, nil
-	default:
-		return false, err
-	}
 }
