@@ -180,8 +180,8 @@ type RiskInfo struct {
 	RiskScore          float64  `json:"risk_score"`
 	AvailabilityImpact string   `json:"availability_impact"`
 	IntegrityImpact    string   `json:"integrity_impact"`
-	CVSSV3Base         *float64 `json:"cvss_v3_base"`  // Can be nullable
-	CVSSV30Vector      *string  `json:"cvss_v3_vecto"` // Can be nullable
+	CVSSV3Base         *float64 `json:"cvss_v3_base"`   // Can be nullable
+	CVSSV30Vector      *string  `json:"cvss_v3_vector"` // Can be nullable
 }
 
 func adaptDomainPortItem(domainPortItem *domain.PortItem) *PortItem {
