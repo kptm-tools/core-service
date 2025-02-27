@@ -83,15 +83,16 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 		h.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
 	} else {
-		dateSchedule, errParsingDate := time.Parse(time.DateTime, *scanRequest.ScheduleAt)
+		dateSchedule, errParsingDate := time.Parse("2006-01-02T15:04:05.000Z", *scanRequest.ScheduleAt)
 		if errParsingDate != nil {
 			slog.Error("Failed to parse schedule_at to DateTime format",
 				slog.Any("error", err))
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-				Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2006-01-02 01:01:01'",
+				Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2025-02-26T20:57:51.000Z'",
 			})
 		}
-		if time.Now().After(dateSchedule) || time.Now().Equal(dateSchedule) {
+		now := time.Now().UTC()
+		if now.After(dateSchedule) || now.Equal(dateSchedule) {
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 				Error: "Invalid schedule_at field. Must be greater than now",
 			})

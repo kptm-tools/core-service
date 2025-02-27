@@ -1048,7 +1048,7 @@ func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression 
 	if isRepeated {
 		query := `
 		INSERT INTO scan_scheduling (
-		scan_id, period_name,quantity_period, enabled, has_period, cron, scheduled_date, created_at, updated_at
+		scan_id, period_name,period_quantity, enabled, has_period, cron, scheduled_date, created_at, updated_at
 		)
 		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 

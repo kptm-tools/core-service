@@ -62,13 +62,13 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	parsedToDate, parseErr := time.Parse(time.DateOnly, *updateScanScheduleRequest.ScheduleAt)
+	parsedToDate, parseErr := time.Parse("2006-01-02T15:04:05.000Z", *updateScanScheduleRequest.ScheduleAt)
 	if parseErr != nil {
 		slog.Error("Failed to parse schedule_at to DateOnly format",
 			slog.String("schedule_at", *updateScanScheduleRequest.ScheduleAt),
 			slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-			Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2006-01-02'",
+			Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2025-02-26T20:57:51.000Z'",
 		})
 	}
 	if time.Now().After(parsedToDate) || time.Now().Equal(parsedToDate) {

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS scan_scheduling (
     last_run_date TIMESTAMP,
     scheduled_date TIMESTAMP,
     period_name period_enum,
-    quantity_period INT,
+    period_quantity INT,
     enabled  BOOLEAN NOT NULL,
     has_period BOOLEAN NOT NULL,
     cron VARCHAR(20) NOT NULL,

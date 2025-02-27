@@ -32,7 +32,7 @@ func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scheduleProg
 	defer tx.Rollback()
 	query := `
     UPDATE 
-    scan_scheduling SET period_name=$2, quantity_period=$3, has_period=$4, scheduled_date=$5 WHERE id=$1`
+    scan_scheduling SET period_name=$2, period_quantity=$3, has_period=$4, scheduled_date=$5, last_run_date=NULL WHERE id=$1`
 
 	tx.QueryRow(query, scanScheduleID, scheduleProgram.UnitOfFrequency, scheduleProgram.Quantity, true, scheduleDate)
 
@@ -45,7 +45,7 @@ func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scheduleProg
 func (s *PostgreSQLStore) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error) {
 	query := `SELECT SS.id, SS.created_at, H.alias, 
        	CASE SS.has_period
-			WHEN SS.has_period=true THEN 'Every' ELSE 'Once' AS frequency,
+			WHEN SS.has_period=true THEN CONCAT('Every ',SS.period_quantity, ' ', SS.period_name) ELSE 'Once' END AS frequency,
     	SS.scheduled_date
 	FROM scan_scheduling SS 
 		INNER JOIN (SELECT * FROM scans WHERE tenant_id=$1 ) S ON SS.scan_id=S.id 
