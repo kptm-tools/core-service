@@ -52,7 +52,7 @@ func (s *PostgreSQLStore) CreateService(
 		portData.State,
 	).Scan(&serviceID)
 	if err != nil {
-		if errors.Is(err, customerrors.ErrServiceNotFound) {
+		if errors.Is(err, sql.ErrNoRows) {
 			// ON CONFLICT DO NOTHING happened, service already exists
 			// Fetch and return the existing service ID
 			slog.Debug("Service already exists for vuln, referencing existing service",
