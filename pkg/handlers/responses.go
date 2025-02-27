@@ -21,7 +21,7 @@ type ScanVulnerabilitySummaryResponse struct {
 }
 
 type VulnerabilityGeneralSummary struct {
-	TotalVulnerabilities int                  `json:"total_vulnerabilites"`
+	TotalVulnerabilities int                  `json:"total_vulnerabilities"`
 	SeverityCounts       tools.SeverityCounts `json:"severity_counts,omitempty"`
 }
 
@@ -36,7 +36,7 @@ type CategoryData struct {
 
 type VulnerabilityTrends struct {
 	TimePeriods               []TimePeriod `json:"time_periods"`
-	AverageVulnerabilityCount float64      `json:"average_vlnearbility_count"`
+	AverageVulnerabilityCount float64      `json:"average_vulnerability_count"`
 }
 
 type TimePeriod struct {
