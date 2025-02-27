@@ -55,20 +55,19 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-
-	scan, err := h.scanService.CreateScan(scanRequest.HostID, tenantID, userID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			statusCode := http.StatusNotFound
-			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
-		}
-
-		slog.Error("Failed to create scans", slog.Any("error", err))
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
-	}
-
+	var scan *domain.Scan
+	var err error
 	if scanRequest.ScheduleAt == nil {
+		scan, err = h.scanService.CreateScan(scanRequest.HostID, tenantID, userID, nil)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				statusCode := http.StatusNotFound
+				return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+			}
 
+			slog.Error("Failed to create scans", slog.Any("error", err))
+			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		}
 		scanStartedPayload := &cmmn.ScanStartedEvent{
 			BaseEvent: cmmn.BaseEvent{
 				ScanID:    scan.ID,
@@ -86,7 +85,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 		dateSchedule, errParsingDate := time.Parse("2006-01-02T15:04:05.000Z", *scanRequest.ScheduleAt)
 		if errParsingDate != nil {
 			slog.Error("Failed to parse schedule_at to DateTime format",
-				slog.Any("error", err))
+				slog.Any("error", errParsingDate))
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 				Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2025-02-26T20:57:51.000Z'",
 			})
@@ -96,6 +95,16 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 				Error: "Invalid schedule_at field. Must be greater than now",
 			})
+		}
+		scan, err = h.scanService.CreateScan(scanRequest.HostID, tenantID, userID, &dateSchedule)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				statusCode := http.StatusNotFound
+				return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+			}
+
+			slog.Error("Failed to create scans", slog.Any("error", err))
+			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		}
 		errScanSchedule := h.scanScheduleService.InsertScanScheduling(scan.ID, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {

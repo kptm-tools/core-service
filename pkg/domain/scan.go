@@ -130,11 +130,11 @@ type ScanScheduleSummary struct {
 	ScheduledDate time.Time `json:"scheduled_date"`
 }
 
-func NewScan() *Scan {
+func NewScan(startedAt time.Time) *Scan {
 	return &Scan{
 		ID:        uuid.New(),
 		Status:    enums.StatusPending.String(),
-		StartedAt: time.Now().UTC(),
+		StartedAt: startedAt,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

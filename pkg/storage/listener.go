@@ -28,6 +28,7 @@ type ScanCron struct {
 	ScanScheduleID int       `json:"scan_schedule_id"`
 	TenantID       uuid.UUID `json:"tenant_id"`
 	OperatorID     uuid.UUID `json:"operator_id"`
+	NextSchedule   string    `json:"next_schedule"`
 }
 
 func NewPostgresListener(
@@ -134,7 +135,7 @@ func (pl *PostgresListener) startListening() {
 				}
 			} else {
 				// 1. Create scan
-				scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String())
+				scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String(), &scanCron.NextSchedule)
 				if errCreationScan != nil {
 					slog.Error("Failed to create scans", slog.Any("error", err))
 				}

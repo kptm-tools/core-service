@@ -35,7 +35,8 @@ IF NOW()>PSCHEDULED_DATE and (DIFFERENCE_SECONDS=0 OR DIFFERENCE_SECONDS >= LIMI
             'scan_schedule_id', scanScheduleID,
             'timestamp', now(),
             'tenant_id', PTENANT_ID,
-            'operator_id', POPERATOR_ID
+            'operator_id', POPERATOR_ID,
+            'next_schedule', PSCHEDULED_DATE + make_interval(secs => LIMIT_SECONDS)
           )::text
         );
     UPDATE scan_scheduling SET last_run_date=now(), scheduled_date=scheduled_date + make_interval(secs => LIMIT_SECONDS) WHERE id=scanScheduleID;
@@ -55,7 +56,7 @@ DECLARE
     JOB_ID BIGINT;
 BEGIN
     SELECT NEW.cron INTO CRON_EXP;
-    SELECT concat('select launch_notification(''',NEW.has_period,''',''',NEW.id,''')') INTO SCAN_LAUNCH;
+    SELECT concat('select launch_notification(''',NEW.has_period,''',',NEW.id,')') INTO SCAN_LAUNCH;
     SELECT cron.schedule(CRON_EXP,SCAN_LAUNCH) INTO JOB_ID;
     UPDATE scan_scheduling SET cron_job_id=JOB_ID WHERE id= NEW.id;
     RETURN NEW;

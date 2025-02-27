@@ -30,9 +30,14 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScan(hostID int, tenantID, operatorID string) (*domain.Scan, error) {
-
-	commonScanData := domain.NewScan()
+func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error) {
+	var startScanDate time.Time
+	if startedAt == nil {
+		startScanDate = time.Now().UTC()
+	} else {
+		startScanDate = *startedAt
+	}
+	commonScanData := domain.NewScan(startScanDate)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
 
