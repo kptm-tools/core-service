@@ -355,14 +355,15 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
     WITH severity_per_type AS (
       SELECT
         sv.type AS vuln_type,
-        MAX(sv.cvss) AS max_cvss
+        MAX(sv.cvss) AS max_cvss,
         sv.severity AS vuln_severity
       FROM
         scan_vulnerabilities sv
       WHERE
         sv.scan_id = $1
       GROUP BY
-        sv.type
+        sv.type,
+        vuln_severity
   )
     SELECT
       scans.id AS scan_id,
