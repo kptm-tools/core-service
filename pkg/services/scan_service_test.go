@@ -230,6 +230,7 @@ func (m *MockStorage) GetOldestScanByHostID(hostID int, fromDate, toDate *time.T
 		return m.MockGetOldestScanByHostID(hostID, fromDate, toDate)
 	}
 	return nil, nil
+}
 func (m *MockStorage) UpdateScanScheduling(u uuid.UUID, i int) error {
 	//TODO implement me
 	panic("implement me")

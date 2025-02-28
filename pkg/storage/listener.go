@@ -28,7 +28,7 @@ type ScanCron struct {
 	ScanScheduleID int       `json:"scan_schedule_id"`
 	TenantID       uuid.UUID `json:"tenant_id"`
 	OperatorID     uuid.UUID `json:"operator_id"`
-	NextSchedule   string    `json:"next_schedule"`
+	NextSchedule   time.Time `json:"next_schedule"`
 }
 
 func NewPostgresListener(

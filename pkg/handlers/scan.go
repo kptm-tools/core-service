@@ -91,9 +91,10 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 			})
 		}
 		now := time.Now().UTC()
-		if now.After(dateSchedule) || now.Equal(dateSchedule) {
+		twoMinuteLater := now.Add(2 * time.Minute)
+		if !dateSchedule.After(twoMinuteLater) {
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-				Error: "Invalid schedule_at field. Must be greater than now",
+				Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 			})
 		}
 		scan, err = h.scanService.CreateScan(scanRequest.HostID, tenantID, userID, &dateSchedule)
