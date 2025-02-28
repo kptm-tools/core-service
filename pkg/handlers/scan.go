@@ -384,6 +384,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 			Complexity:     vuln.Complexity.String(),
 			Privileges:     vuln.PrivilegesRequired.String(),
 			Exploitability: vuln.Exploit.Exploitability.String(),
+			Description:    vuln.Description,
 			Comment:        analystComment,
 			References:     vuln.References,
 		}

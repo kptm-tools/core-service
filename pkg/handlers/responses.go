@@ -105,6 +105,7 @@ type ScanVulnerabilityItem struct {
 	Complexity     string   `json:"complexity"`
 	Privileges     string   `json:"privileges"`
 	Exploitability string   `json:"exploitability"`
+	Description    string   `json:"description"`
 	Comment        string   `json:"comment"`
 	References     []string `json:"references"`
 }
@@ -119,16 +120,18 @@ type ScanVulnerabilityDetailResponse struct {
 	Port *PortItem `json:"port,omitempty"`
 	OS   *OSItem   `json:"operating_system,omitempty"`
 
-	Name           string   `json:"name"`
-	Severity       string   `json:"severity"`
-	MaxCVSS        float64  `json:"max_cvss"`
-	RiskScore      float64  `json:"risk_score"`
-	ImpactScore    float64  `json:"impact_score"`
-	Likelihood     string   `json:"likelihood"`
-	Access         string   `json:"access"`
-	Complexity     string   `json:"complexity"`
-	Privileges     string   `json:"privileges"`
-	Exploitability string   `json:"exploitability"`
+	Name           string  `json:"name"`
+	Severity       string  `json:"severity"`
+	MaxCVSS        float64 `json:"max_cvss"`
+	RiskScore      float64 `json:"risk_score"`
+	ImpactScore    float64 `json:"impact_score"`
+	Likelihood     string  `json:"likelihood"`
+	Access         string  `json:"access"`
+	Complexity     string  `json:"complexity"`
+	Privileges     string  `json:"privileges"`
+	Exploitability string  `json:"exploitability"`
+
+	Description    string   `json:"description"`
 	Comment        string   `json:"comment"`
 	Recommendation string   `json:"recommendation"`
 	References     []string `json:"references"`
