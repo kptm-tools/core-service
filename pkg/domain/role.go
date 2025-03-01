@@ -15,7 +15,7 @@ func (r Role) String() string {
 }
 
 func ParseRole(s string) (Role, error) {
-	var stringToRole = map[string]Role{
+	stringToRole := map[string]Role{
 		"operator": RoleOperator,
 		"analyst":  RoleAnalyst,
 		"admin":    RoleAdmin,
@@ -34,7 +34,6 @@ func GetRolesFromStringSlice(strSlice []string) ([]Role, error) {
 	var res []Role
 	for _, s := range strSlice {
 		v, err := ParseRole(s)
-
 		if err != nil {
 			return nil, err
 		}
@@ -46,23 +45,27 @@ func GetRolesFromStringSlice(strSlice []string) ([]Role, error) {
 }
 
 func GetValidRoles(funcName string) ([]Role, error) {
-
 	funcRoles := map[string][]Role{
-		"handleHealthcheck-fm":    {RoleAdmin},
-		"targets":                 {RoleAdmin, RoleOperator, RoleAnalyst},
-		"tenants":                 {RoleAdmin, RoleAnalyst},
-		"getUser":                 {RoleAdmin, RoleOperator, RoleAnalyst},
-		"newHost":                 {RoleOperator, RoleAnalyst},
-		"getHostsByTenantAndUser": {RoleAdmin, RoleOperator, RoleAnalyst},
-		"getHostByID":             {RoleAdmin, RoleOperator, RoleAnalyst},
-		"deleteHostByID":          {RoleAdmin, RoleOperator},
-		"patchHostByID":           {RoleAdmin, RoleOperator},
-		"validateHost":            {RoleOperator, RoleAnalyst},
-		"validateAlias":           {RoleOperator, RoleAnalyst},
-		"createScans":             {RoleOperator},
-		"getScans":                {RoleOperator, RoleAnalyst},
-		"cancelScanByID":          {RoleOperator},
-		"getScanInsightsByID":     {RoleOperator, RoleAnalyst},
+		"handleHealthcheck-fm":            {RoleAdmin},
+		"targets":                         {RoleAdmin, RoleOperator, RoleAnalyst},
+		"tenants":                         {RoleAdmin, RoleAnalyst},
+		"getUser":                         {RoleAdmin, RoleOperator, RoleAnalyst},
+		"newHost":                         {RoleOperator, RoleAnalyst},
+		"getHosts":                        {RoleAdmin, RoleOperator, RoleAnalyst},
+		"getHostByID":                     {RoleAdmin, RoleOperator, RoleAnalyst},
+		"deleteHostByID":                  {RoleAdmin, RoleOperator},
+		"patchHostByID":                   {RoleAdmin, RoleOperator},
+		"validateHost":                    {RoleOperator, RoleAnalyst},
+		"validateAlias":                   {RoleOperator, RoleAnalyst},
+		"createScans":                     {RoleOperator},
+		"getScans":                        {RoleOperator, RoleAnalyst},
+		"cancelScanByID":                  {RoleOperator},
+		"getScanInsightsByID":             {RoleOperator, RoleAnalyst},
+		"getScanVulnerabilitySummaryByID": {RoleOperator, RoleAnalyst},
+		"getAllTenantReports":             {RoleOperator, RoleAnalyst},
+		"getScoreCardTrends":              {RoleOperator, RoleAnalyst},
+		"getScanVulnerabilities":          {RoleOperator, RoleAnalyst},
+		"getVulnerability":                {RoleOperator, RoleAnalyst},
 	}
 
 	v, ok := funcRoles[funcName]
@@ -72,7 +75,6 @@ func GetValidRoles(funcName string) ([]Role, error) {
 	}
 
 	return v, nil
-
 }
 
 // ContainsRole finds the intersection of two arrays
@@ -89,7 +91,6 @@ func ContainsRole(roles []Role, rolesToCheck []Role) []Role {
 
 	// Check elements in the second array against the set
 	for _, role := range rolesToCheck {
-
 		if set[role] {
 			intersection = append(intersection, role)
 		}

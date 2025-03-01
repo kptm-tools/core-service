@@ -1,7 +1,9 @@
 # Change these variables as necessary
-main_package_path = ./cmd/core-server
-sample_package_path = ./cmd/sample-data
+main_package_path = ./cmd
+sample_package_path = ./cmd/sampledata/main.go
 binary_name = core-service
+migrations_path = ./cmd/migrations/migrations
+DATABASE_URL = 
 
 # ==================================================================================== #
 # HELPERS
@@ -45,6 +47,38 @@ run/live:
 		--build.exclude_dir "" \
 		--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, git, png, bmp, wbp, ico" \
 		--misc.clean_on_exit "true"
+
+# ==================================================================================== #
+# DATABASE MIGRATIONS
+# ==================================================================================== #
+
+## migrate/create NAME=<name>: create a new migration file
+.PHONY: migrate/create
+migrate/create:
+	@if [ -z "$(NAME)" ]; then \
+		echo "Usage: make migrate/create NAME=<migration-name>"; \
+		exit 1; \
+	fi
+	migrate create -ext sql -dir ${migrations_path} -seq $(NAME)
+
+## migrate/up: apply all up migrations
+.PHONY: migrate/up
+migrate/up:
+	migrate -database $(DATABASE_URL) -path ${migrations_path} up
+
+## migrate/down: apply the latest down migration
+.PHONY: migrate/down
+migrate/down:
+	migrate -database $(DATABASE_URL) -path ${migrations_path} down
+
+## migrate/force VERSION=<version>: force a specific miration version
+.PHONY: migrate/force
+migrate/force:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Usage: make migrate/force VERSION=<version>"; \
+		exit 1; \
+	fi
+	migrate -database $(DATABASE_URL) -path ${migrations_path} force $(VERSION)
 
 ## populate: populate DB with sample data
 .PHONY: populate

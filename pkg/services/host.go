@@ -1,16 +1,16 @@
 package services
 
 import (
-	"crypto/tls"
+	"context"
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"net"
-	"regexp"
 	"strings"
 	"time"
 
-	tld "github.com/jpillora/go-tld"
-	cmmn "github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/utils/validation"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	probing "github.com/prometheus-community/pro-bing"
@@ -35,14 +35,11 @@ func NewHostService(storage interfaces.IStorage) *HostService {
 }
 
 func (s *HostService) CreateHost(t *domain.Host) (*domain.Host, error) {
-
 	return s.storage.CreateHost(t)
 }
 
-func (s *HostService) GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error) {
-
-	hosts, err := s.storage.GetHostsByTenantIDAndUserID(tenantID, userID)
-
+func (s *HostService) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
+	hosts, err := s.storage.GetHostsByTenantID(tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -50,19 +47,12 @@ func (s *HostService) GetHostsByTenantIDAndUserID(tenantID string, userID string
 	return hosts, nil
 }
 
-func (s *HostService) GetHostByID(ID int) (*domain.Host, error) {
-	host, err := s.storage.GetHostByID(ID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return host, nil
+func (s *HostService) GetHostByID(HostID int) (*domain.Host, error) {
+	return s.storage.GetHostByID(HostID)
 }
 
 func (s *HostService) DeleteHostByID(ID int) (bool, error) {
 	isDeleted, err := s.storage.DeleteHostByID(ID)
-
 	if err != nil {
 		return false, err
 	}
@@ -70,39 +60,8 @@ func (s *HostService) DeleteHostByID(ID int) (bool, error) {
 	return isDeleted, nil
 }
 
-func (s *HostService) GetHostname(ipPort string) string {
-	var timout time.Duration = 2
-	conf := &tls.Config{
-		InsecureSkipVerify: false,
-	}
-	var domainname string
-	conn, err := net.DialTimeout("tcp", ipPort, timout*time.Second)
-	if err == nil {
-		tlsconn := tls.Client(conn, conf)
-		handshake := tlsconn.Handshake()
-		if handshake == nil {
-			state := tlsconn.ConnectionState()
-			hostname := state.PeerCertificates[0].Subject.CommonName
-			hostname = "https://" + hostname
-			u, errr := tld.Parse(hostname)
-			if errr == nil {
-				if u.Subdomain == "*" || u.Subdomain == "" {
-					domainname = u.Domain + "." + u.TLD
-				} else {
-					domainname = u.Subdomain + "." + u.Domain + "." + u.TLD
-				}
-			}
-			tlsconn.Close()
-		}
-		conn.Close()
-	}
-
-	return domainname
-}
-
 func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	host, err := s.storage.PatchHostByID(h)
-
 	if err != nil {
 		return nil, err
 	}
@@ -110,66 +69,73 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	return host, nil
 }
 
+func (s *HostService) GetHostNameFromIP(ip string) ([]string, error) {
+	return s.GetHostNameFromIPWithTimeout(ip, 10*time.Second)
+}
+
+func (s *HostService) GetHostNameFromIPWithTimeout(ip string, timeout time.Duration) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	results := make(chan []string, 1)
+	errors := make(chan error, 1)
+
+	go func() {
+		if net.ParseIP(ip) == nil {
+			errors <- fmt.Errorf("invalid IP address format: %s", ip)
+			return
+		}
+
+		hostnames, err := net.DefaultResolver.LookupAddr(ctx, ip)
+		if err != nil {
+			errors <- fmt.Errorf("reverse DNS lookup failed: %w", err)
+			return
+		}
+
+		// Clean up hostnames (remove trailing dots)
+		cleaned := make([]string, len(hostnames))
+		for i, hostname := range hostnames {
+			cleaned[i] = strings.TrimSuffix(hostname, ".")
+		}
+
+		results <- cleaned
+	}()
+
+	// Wait for either results or timeout
+	select {
+	case hostnames := <-results:
+		return hostnames, nil
+	case err := <-errors:
+		return nil, err
+	case <-ctx.Done():
+		return nil, fmt.Errorf("lookup timed out after %v", timeout)
+	}
+}
+
 func (s *HostService) ValidateHost(host string) error {
-
-	if IsValidHostValue(host) {
-		normalizedHost := cmmn.NormalizeURL(host)
-		addr := strings.Split(normalizedHost, "//")[1]
-		pinger, err := probing.NewPinger(addr)
-		if err != nil {
-			log.Printf("failed to probe host: %v", err)
-			return ErrHostUnhealthy
-		}
-		pinger.Count = 1
-		pinger.Timeout = 5 * time.Second
-		err = pinger.Run()
-		defer pinger.Stop()
-		if err != nil {
-			return err
-		}
-
-		stats := pinger.Statistics()
-		log.Println(stats)
-		return nil
-	} else {
+	classification, err := validation.ClassifyHostValue(host)
+	if err != nil {
+		slog.Error("Failed to classify host", slog.Any("error", err))
 		return ErrInvalidHostValue
 	}
-}
 
-func IsValidHostValue(value string) bool {
-
-	normalizedValue := cmmn.NormalizeURL(value)
-	if cmmn.IsURL(normalizedValue) {
-		domain, err := cmmn.ExtractDomain(normalizedValue)
-		if err != nil {
-			log.Println("Invalid URL/Domain: ", normalizedValue)
-			return false
-		}
-
-		// Domain with protocol prefix
-		if IsValidDomain(domain) {
-			return true
-		}
-
-		// IP address with protocol prefix
-		if cmmn.IsValidIPv4(strings.Split(normalizedValue, "//")[1]) {
-			return true
-		}
+	normalizedHost := classification.NormalizedValue
+	addr := strings.Split(normalizedHost, "//")[1]
+	pinger, err := probing.NewPinger(addr)
+	if err != nil {
+		slog.Error("Failed to probe host", slog.Any("error", err))
+		return ErrHostUnhealthy
+	}
+	pinger.Count = 1
+	pinger.Timeout = 5 * time.Second
+	err = pinger.Run()
+	defer pinger.Stop()
+	if err != nil {
+		return err
 	}
 
-	// IP address on its own
-	if cmmn.IsValidIPv4(value) {
-		return true
-	}
-
-	log.Println("Invalid IP:", value)
-	return false
-
-}
-
-func IsValidDomain(domain string) bool {
-	re := regexp.MustCompile(`^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$`)
-	return re.MatchString(domain)
+	slog.Debug("Pinger stats", slog.Any("stats", pinger.Statistics()))
+	return nil
 }
 
 func (s *HostService) ValidateAlias(alias string) error {
@@ -181,4 +147,79 @@ func (s *HostService) ValidateAlias(alias string) error {
 		return ErrAliasTaken
 	}
 	return nil
+}
+
+func (s *HostService) GetDomainIPValues(value string) (*domain.DomainIPResult, error) {
+	classification, err := validation.ClassifyHostValue(value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to classify host value: %w", err)
+	}
+
+	switch classification.Type {
+	case enums.Domain, enums.Subdomain:
+
+		url := classification.NormalizedValue
+		return s.handleDomainType(url)
+	case enums.IP:
+		url := classification.NormalizedValue
+		return s.handleIPType(url)
+
+	default:
+		return nil, fmt.Errorf("invalid host type: %s", classification.Type.String())
+	}
+}
+
+// handleDomainType handles domain and subdomain cases
+func (s *HostService) handleDomainType(normalizedURL string) (*domain.DomainIPResult, error) {
+	if !validation.IsURL(normalizedURL) {
+		return nil, fmt.Errorf("invalid url: %s", normalizedURL)
+	}
+
+	hostName, err := validation.ExtractHostName(normalizedURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract domain: %w", err)
+	}
+
+	// Attempt to DNS lookup IP
+	ip, err := s.findFirstIPv4(hostName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find first IPv4: %w", err)
+	}
+	return &domain.DomainIPResult{
+		Domain: hostName,
+		IP:     ip,
+	}, nil
+}
+
+func (s *HostService) findFirstIPv4(domain string) (string, error) {
+	ips, err := net.LookupIP(domain)
+	if err != nil {
+		return "", fmt.Errorf("error looking up IP of domain: %w", err)
+	}
+	for _, ip := range ips {
+		if ipv4 := ip.To4(); ipv4 != nil {
+			return ipv4.String(), nil
+		}
+	}
+	return "", fmt.Errorf("no IPv4 address found for hostname: %s", domain)
+}
+
+// handleIPType handles IP cases
+func (s *HostService) handleIPType(normalizedURL string) (*domain.DomainIPResult, error) {
+	ipValue := strings.Split(normalizedURL, "//")[1]
+
+	hostNames, err := s.GetHostNameFromIP(ipValue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hostnames form IP: %w", err)
+	}
+
+	hostName := ""
+	if len(hostNames) > 0 {
+		hostName = hostNames[0]
+	}
+
+	return &domain.DomainIPResult{
+		Domain: hostName,
+		IP:     ipValue,
+	}, nil
 }

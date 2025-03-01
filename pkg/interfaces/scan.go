@@ -2,9 +2,11 @@ package interfaces
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/enums"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -19,6 +21,12 @@ type IScanService interface {
 	GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
+	HandleScanCompletion(scanID uuid.UUID) error
+	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
+	GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
+	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)
+	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
 }
 
 type IScanHandlers interface {
@@ -26,4 +34,8 @@ type IScanHandlers interface {
 	GetScans(writer http.ResponseWriter, request *http.Request) error
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
+	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error
+	GetReports(w http.ResponseWriter, r *http.Request) error
+	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
+	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
 }

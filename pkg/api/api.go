@@ -20,6 +20,7 @@ type APIServer struct {
 	authHandlers   interfaces.IAuthHandlers
 	tenantHandlers interfaces.ITenantHandlers
 	scanHandlers   interfaces.IScanHandlers
+	vulnHandlers   interfaces.IVulnerabilityHandlers
 }
 
 type APIError struct {
@@ -35,6 +36,7 @@ func NewAPIServer(
 	teHandlers interfaces.ITenantHandlers,
 	aHandlers interfaces.IAuthHandlers,
 	sHandlers interfaces.IScanHandlers,
+	vHandlers interfaces.IVulnerabilityHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
@@ -44,6 +46,7 @@ func NewAPIServer(
 		authHandlers:   aHandlers,
 		tenantHandlers: teHandlers,
 		scanHandlers:   sHandlers,
+		vulnHandlers:   vHandlers,
 	}
 }
 
@@ -66,7 +69,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.CreateHost), "newHost"))
 	router.HandleFunc("POST /api/hosts/validate-host", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateHost), "validateHost"))
 	router.HandleFunc("POST /api/hosts/validate-alias", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateAlias), "validateAlias"))
-	router.HandleFunc("GET /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostsByTenantIDAndUserID), "getHostsByTenantAndUser"))
+	router.HandleFunc("GET /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHosts), "getHosts"))
 	router.HandleFunc("GET /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), "getHostByID"))
 	router.HandleFunc("DELETE /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), "deleteHostByID"))
 	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), "patchHostByID"))
@@ -76,6 +79,14 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
+	router.HandleFunc("GET /api/scans/{id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilities), "getScanVulnerabilities"))
+	router.HandleFunc("GET /api/scans/{id}/vulnerabilities/summary", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilitySummaryByID), "getScanVulnerabilitySummaryByID"))
+
+	router.HandleFunc("GET /api/scorecard-trends", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScoreCardTrends), "getScoreCardTrends"))
+
+	router.HandleFunc("GET /api/reports", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetReports), "getAllTenantReports"))
+
+	router.HandleFunc("GET /api/vulnerabilities/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetVulnerability), "getVulnerability"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,
@@ -91,18 +102,15 @@ func (s *APIServer) Init() error {
 	log.Println("Server listening on port: ", s.listenAddr)
 
 	return server.ListenAndServe()
-
 }
 
 // This function wraps our APIFunc struct so we can handle errors gracefully
 func makeHTTPHandlerFunc(f APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := f(w, r)
-
 		if err != nil {
 			WriteJSON(w, http.StatusInternalServerError, APIError{Error: err.Error()})
 		}
-
 	}
 }
 

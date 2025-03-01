@@ -13,6 +13,7 @@ var methodAllowlist = []string{"GET", "POST", "DELETE", "OPTIONS", "PATCH"}
 var allowedHeaders = []string{"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token", "Authorization"}
 
 func CheckCORS(next http.Handler) http.Handler {
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if isPreflight(r) {

@@ -10,66 +10,18 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func (s *PostgreSQLStore) CreateHostsTable() error {
-	query := `create table if not exists hosts (
-      id SERIAL PRIMARY KEY,
-      tenant_id UUID,
-      operator_id UUID,
-      domain VARCHAR(2048),
-      ip VARCHAR(15),
-      alias VARCHAR(2048) UNIQUE NOT NULL,
-      rapporteurs JSONB,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	queryEnablePgcrypto := `create extension if not exists pgcrypto;`
-	_, errPgCrypto := s.db.Query(queryEnablePgcrypto)
-	if errPgCrypto != nil {
-		return errPgCrypto
-	}
-
-	return nil
-
-}
-
-func (s *PostgreSQLStore) CreateCredentialsTable() error {
-	query := `create table if not exists credentials (
-      id SERIAL PRIMARY KEY,
-      host_id integer REFERENCES hosts (id) ON DELETE CASCADE,
-      username text  NOT NULL,
-      password text  NOT NULL
-  )`
-
-	_, err := s.db.Query(query)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
-
 func (s *PostgreSQLStore) ClearHostsTable() error {
 	query := `TRUNCATE TABLE hosts RESTART IDENTITY CASCADE`
 
 	_, err := s.db.Exec(query)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to clear hosts table: %w", err)
 	}
 
 	return nil
 }
 
 func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
-
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction %w", err)
@@ -109,15 +61,14 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 	return newHost, nil
 }
 
-func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID string) ([]*domain.Host, error) {
-
+func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
 	query := `
     SELECT *
     FROM hosts
-    WHERE tenant_id=$1 AND operator_id= $2
+    WHERE tenant_id=$1
   `
 
-	rows, err := s.db.Query(query, tenantID, userID)
+	rows, err := s.db.Query(query, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
 	}
@@ -139,29 +90,45 @@ func (s *PostgreSQLStore) GetHostsByTenantIDAndUserID(tenantID string, userID st
 	return hosts, nil
 }
 
-func (s *PostgreSQLStore) GetHostByID(ID int) (*domain.Host, error) {
-
+func (s *PostgreSQLStore) GetHostByID(hostID int) (*domain.Host, error) {
 	query := `
-    SELECT *
-    FROM hosts
-    WHERE id=$1
+  SELECT 
+    id,
+    tenant_id,
+    operator_id,
+    "domain",
+    ip,
+    alias,
+    rapporteurs,
+    created_at,
+    updated_at
+  FROM hosts
+  WHERE id=$1;
   `
-
-	row := s.db.QueryRow(query, ID)
-	host := &domain.Host{}
-	var err error
-
-	if err = scanIntoHostRow(row, host); err != nil {
-		return nil, fmt.Errorf("failed to fetch host: %w", err)
+	var host domain.Host
+	var rapporteursBytes []byte
+	err := s.db.QueryRow(query, hostID).Scan(
+		&host.ID,
+		&host.TenantID,
+		&host.OperatorID,
+		&host.Domain,
+		&host.IP,
+		&host.Name,
+		&rapporteursBytes,
+		&host.CreatedAt,
+		&host.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan into host: %w", err)
 	}
 
-	credentials, err := s.GetCredentials(ID)
+	credentials, err := s.GetCredentials(hostID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
 	}
 	host.Credentials = credentials
 
-	return host, nil
+	return &host, nil
 }
 
 func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
@@ -207,7 +174,6 @@ func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 }
 
 func (s *PostgreSQLStore) InsertCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
-
 	query := "INSERT INTO credentials (host_id, username, password) VALUES ($1, $2, pgp_sym_encrypt($3, 'MAMA', 'compress-algo=1, cipher-algo=aes256'))"
 	for _, cred := range credentials {
 		if _, err := tx.Exec(query, hostID, cred.Username, cred.Password); err != nil {
@@ -219,7 +185,6 @@ func (s *PostgreSQLStore) InsertCredentials(tx *sql.Tx, hostID int, credentials 
 }
 
 func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error) {
-
 	query := `
     SELECT id, host_id, username,password
     FROM credentials
@@ -232,13 +197,17 @@ func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error
 	}
 	defer rows.Close()
 
-	credentials := []domain.Credential{}
+	var credentials []domain.Credential
 	for rows.Next() {
 		credential, err := scanIntoCredential(rows)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan credential: %w", err)
 		}
 		credentials = append(credentials, *credential)
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("error iterating sql rows: %w", err)
 	}
 	return credentials, nil
 }
@@ -263,7 +232,6 @@ func (s *PostgreSQLStore) UpdateCredentials(tx *sql.Tx, hostID int, credentials 
 }
 
 func (s *PostgreSQLStore) DeleteHostByID(ID int) (bool, error) {
-
 	query := `
     DELETE 
     FROM hosts
@@ -304,8 +272,8 @@ func scanIntoHostRow(row *sql.Row, host *domain.Host) error {
 
 	return nil
 }
-func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 
+func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 	credential := new(domain.Credential)
 	err := rows.Scan(
 		&credential.ID,
@@ -313,7 +281,6 @@ func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
 		&credential.Username,
 		&credential.Password,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("error scanning Credential: %w", err)
 	}

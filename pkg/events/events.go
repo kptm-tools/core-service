@@ -1,8 +1,8 @@
 package events
 
 import (
-	"github.com/kptm-tools/common/common/enums"
-	cmmn "github.com/kptm-tools/common/common/events"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/events/consumers"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
