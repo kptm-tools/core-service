@@ -69,7 +69,7 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER create_cron
+CREATE TRIGGER create_or_update_cron
 AFTER INSERT ON scan_scheduling
 FOR EACH ROW
 EXECUTE FUNCTION register_cron();

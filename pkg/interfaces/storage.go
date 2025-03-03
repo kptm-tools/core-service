@@ -44,9 +44,11 @@ type IStorage interface {
 	GetServiceByID(int) (*tools.PortData, error)
 	CreateScanScheduling(uuid.UUID, string, bool, string, int) error
 	CreateScanScheduling(uuid.UUID, string, bool, string, int, time.Time) error
-	ScanScheduleDisableJob(int) error
+	ScanScheduleDisableJob(int, bool) error
 	UpdateScanScheduling(uuid.UUID, int) error
 	DeleteScanScheduleByID(int) (bool, error)
 	GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error)
-	PatchScanScheduleByID(int, domain.RepeatSchedule, time.Time) error
+	PatchScanScheduleByID(int, uuid.UUID, string, bool, string, int, time.Time) error
+	GetCurrentHostIDFromScanSchedule(int) (int, error)
+	ScanScheduleEnableJob(string, bool, int) error
 }

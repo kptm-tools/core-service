@@ -47,6 +47,8 @@ func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http
 
 func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.Request) error {
 	id, err := GetID(r)
+	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	userID := r.Context().Value(middleware.ContextUserID).(string)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
@@ -71,12 +73,21 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 			Error: "Invalid schedule_at field. Must follow DateOnly format e.g: '2025-02-26T20:57:51.000Z'",
 		})
 	}
-	if time.Now().After(parsedToDate) || time.Now().Equal(parsedToDate) {
+
+	now := time.Now().UTC()
+	twoMinuteLater := now.Add(2 * time.Minute)
+	if !parsedToDate.After(twoMinuteLater) {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-			Error: "Invalid schedule_at field. Must be greater than now",
+			Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 		})
 	}
-	errUpdate := h.scanScheduleService.PatchScanSchedule(id, *updateScanScheduleRequest.Frequency, parsedToDate)
+	hostID, errGetHostID := h.scanScheduleService.GetCurrentHostID(id)
+	if errGetHostID != nil {
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: "There is no host configured configured for this scan schedule",
+		})
+	}
+	errUpdate := h.scanScheduleService.PatchScanSchedule(id, updateScanScheduleRequest.Frequency, parsedToDate, tenantID, userID, hostID)
 	if errUpdate != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "ID to update does not exist",

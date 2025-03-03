@@ -309,5 +309,5 @@ func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID i
 }
 
 func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
-	return s.storage.ScanScheduleDisableJob(scanScheduleID)
+	return s.storage.ScanScheduleDisableJob(scanScheduleID, false)
 }

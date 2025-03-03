@@ -123,7 +123,7 @@ func (h ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
-	return api.WriteJSON(w, http.StatusCreated, scans)
+	return api.WriteJSON(w, http.StatusOK, scans)
 }
 
 func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {

@@ -1073,10 +1073,10 @@ func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression 
 	return nil
 }
 
-func (s *PostgreSQLStore) ScanScheduleDisableJob(scanScheduleID int) error {
-	query := `SELECT unregister_cron( $1 )`
+func (s *PostgreSQLStore) ScanScheduleDisableJob(scanScheduleID int, withDelete bool) error {
+	query := `SELECT unregister_cron( $1, $2 )`
 	var result int
-	err := s.db.QueryRow(query, scanScheduleID).Scan(&result)
+	err := s.db.QueryRow(query, scanScheduleID, withDelete).Scan(&result)
 	if err != nil || result == 0 {
 		return fmt.Errorf("failed to unregister job: %w", err)
 	}

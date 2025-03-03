@@ -6,6 +6,7 @@ AS
 $$
 BEGIN
 PERFORM cron.unschedule(OLD.cron_job_id);
+DELETE FROM scans where id=OLD.scan_id;
 RETURN OLD;
 END;
 $$;

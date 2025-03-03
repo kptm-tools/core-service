@@ -24,7 +24,7 @@ func (s *PostgreSQLStore) DeleteScanScheduleByID(scanScheduleID int) (bool, erro
 	}
 }
 
-func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scheduleProgram domain.RepeatSchedule, scheduleDate time.Time) error {
+func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scanID uuid.UUID, cronExpr string, isRepeated bool, period_name string, period_quantity int, scheduleDate time.Time) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -32,9 +32,9 @@ func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scheduleProg
 	defer tx.Rollback()
 	query := `
     UPDATE 
-    scan_scheduling SET period_name=$2, period_quantity=$3, has_period=$4, scheduled_date=$5, last_run_date=NULL WHERE id=$1`
+    scan_scheduling SET period_name=$2, period_quantity=$3, has_period=$4, scheduled_date=$5, last_run_date=NULL, cron=$6, scan_id=$7, enabled=true, updated_at=$8 WHERE id=$1`
 
-	tx.QueryRow(query, scanScheduleID, scheduleProgram.UnitOfFrequency, scheduleProgram.Quantity, true, scheduleDate)
+	tx.QueryRow(query, scanScheduleID, period_name, period_quantity, isRepeated, scheduleDate, cronExpr, scanID, time.Now().UTC())
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
@@ -72,6 +72,27 @@ func (s *PostgreSQLStore) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanSc
 func scanIntoScanSchedule(rows *sql.Rows, scanSchedule *domain.ScanScheduleSummary) error {
 	if err := rows.Scan(&scanSchedule.ID, &scanSchedule.CreatedDate, &scanSchedule.HostAlias, &scanSchedule.Frequency, &scanSchedule.ScheduledDate); err != nil {
 		return fmt.Errorf("error scanning rows: %w", err)
+	}
+	return nil
+}
+
+func (s *PostgreSQLStore) GetCurrentHostIDFromScanSchedule(scanScheduleID int) (int, error) {
+	query := `SELECT S.host_id FROM (SELECT * FROM scan_scheduling WHERE id=$1)SC INNER JOIN scans S ON SC.scan_id = S.id`
+	row := s.db.QueryRow(query, scanScheduleID)
+	var hostID int
+	err := row.Scan(&hostID)
+	if err != nil {
+		return 0, err
+	}
+	return hostID, nil
+}
+
+func (s *PostgreSQLStore) ScanScheduleEnableJob(cronExp string, hasPeriod bool, scanScheduleID int) error {
+	query := `SELECT enable_cron_function( $1, $2, $3 )`
+	var result int
+	err := s.db.QueryRow(query, cronExp, hasPeriod, scanScheduleID).Scan(&result)
+	if err != nil || result == 0 {
+		return fmt.Errorf("failed to enable cron job: %w", err)
 	}
 	return nil
 }
