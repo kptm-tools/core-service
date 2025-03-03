@@ -76,80 +76,93 @@ func (pl *PostgresListener) startListening() {
 	for {
 		notification := <-pl.listener.Notify
 
-		slog.Debug("Received PostgresListener notification")
+		slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
 
+		pl.handleNotification(notification)
+	}
+}
+
+func (pl *PostgresListener) handleNotification(notification *pq.Notification) {
+	if notification != nil {
 		switch notification.Channel {
 		case "scan_completed":
-			{
-				// Parse the notification method
-				var scanCompletedEvent cmmn.BaseEvent
-				if err := json.Unmarshal([]byte(notification.Extra), &scanCompletedEvent); err != nil {
-					slog.Error("Failed to parse scan completed event",
-						slog.Any("error", err),
-						slog.Any("payload", notification.Extra))
-					continue
-				}
-
-				slog.Debug("Parsed scan completed event", slog.String("scanID", scanCompletedEvent.ScanID.String()))
-				// Use scanService to handle scanCompleted
-				if err := pl.scanService.HandleScanCompletion(scanCompletedEvent.ScanID); err != nil {
-					slog.Error("Failed to handle scan completion",
-						slog.String("scanID", scanCompletedEvent.ScanID.String()),
-						slog.Any("error", err))
-				}
-			}
+			pl.handleScanCompletedNotification(notification.Extra)
 		case "scan_cron":
-			// Parse the notification method
-			var scanCron ScanCron
-			if err := json.Unmarshal([]byte(notification.Extra), &scanCron); err != nil {
-				slog.Error("Failed to parse scan cron event",
-					slog.Any("error", err),
-					slog.Any("payload", notification.Extra))
-				continue
-			}
-
-			slog.Debug("Parsed scan cron event", slog.String("scanID", scanCron.ScanID.String()))
-
-			// Create the target
-			target, errTarget := pl.scanService.CreateTarget(scanCron.HostID)
-			if errTarget != nil {
-				slog.Error("Failed to create target", slog.Any("error", errTarget))
-			}
-			scanStartedPayload := &cmmn.ScanStartedEvent{
-				BaseEvent: cmmn.BaseEvent{
-					ScanID:    scanCron.ScanID,
-					Timestamp: scanCron.Timestamp.UTC(),
-				},
-				Target: *target,
-			}
-			scanStartedBytes, err := json.Marshal(scanStartedPayload)
-			if err != nil {
-				slog.Error("Failed to marshal scan started event")
-			}
-			pl.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
-
-			if !scanCron.HasPeriod {
-				errDisable := pl.scanService.ScanScheduleDisableJob(scanCron.ScanScheduleID)
-				if errDisable != nil {
-					slog.Error("Failed to disable job of scan scheduling", slog.Any("error", errDisable))
-				}
-			} else {
-				// 1. Create scan
-				scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String(), &scanCron.NextSchedule)
-				if errCreationScan != nil {
-					slog.Error("Failed to create scans", slog.Any("error", err))
-				}
-				// 2. Update scan scheduling with new scanID
-				errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scan.ID, scanCron.ScanScheduleID)
-				if errUpdateScanSchedule != nil {
-					slog.Error("Failed to update scan_scheduling", slog.Any("error", err))
-				}
-			}
+			pl.handleScanCronNotification(notification.Extra)
 		}
-
 	}
 }
 
 func (pl *PostgresListener) Close() error {
 	return pl.listener.Close()
+}
+
+func (pl *PostgresListener) handleScanCompletedNotification(payload string) error {
+	// Parse the notification method
+	var scanCompletedEvent cmmn.BaseEvent
+	if err := json.Unmarshal([]byte(payload), &scanCompletedEvent); err != nil {
+		slog.Error("Failed to parse scan completed event",
+			slog.Any("error", err),
+			slog.Any("payload", payload))
+		return err
+	}
+
+	slog.Debug("Parsed scan completed event", slog.String("scanID", scanCompletedEvent.ScanID.String()))
+	// Use scanService to handle scanCompleted
+	if err := pl.scanService.HandleScanCompletion(scanCompletedEvent.ScanID); err != nil {
+		slog.Error("Failed to handle scan completion",
+			slog.String("scanID", scanCompletedEvent.ScanID.String()),
+			slog.Any("error", err))
+	}
+	return nil
+}
+
+func (pl *PostgresListener) handleScanCronNotification(payload string) error {
+	// Parse the notification method
+	var scanCron ScanCron
+	if err := json.Unmarshal([]byte(payload), &scanCron); err != nil {
+		slog.Error("Failed to parse scan cron event",
+			slog.Any("error", err),
+			slog.Any("payload", payload))
+		return err
+	}
+
+	slog.Debug("Parsed scan cron event", slog.String("scanID", scanCron.ScanID.String()))
+
+	// Create the target
+	target, errTarget := pl.scanService.CreateTarget(scanCron.HostID)
+	if errTarget != nil {
+		slog.Error("Failed to create target", slog.Any("error", errTarget))
+	}
+	scanStartedPayload := &cmmn.ScanStartedEvent{
+		BaseEvent: cmmn.BaseEvent{
+			ScanID:    scanCron.ScanID,
+			Timestamp: scanCron.Timestamp.UTC(),
+		},
+		Target: *target,
+	}
+	scanStartedBytes, err := json.Marshal(scanStartedPayload)
+	if err != nil {
+		slog.Error("Failed to marshal scan started event")
+	}
+	pl.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
+
+	if !scanCron.HasPeriod {
+		errDisable := pl.scanService.ScanScheduleDisableJob(scanCron.ScanScheduleID)
+		if errDisable != nil {
+			slog.Error("Failed to disable job of scan scheduling", slog.Any("error", errDisable))
+		}
+	} else {
+		// 1. Create scan
+		scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String(), &scanCron.NextSchedule)
+		if errCreationScan != nil {
+			slog.Error("Failed to create scans", slog.Any("error", err))
+		}
+		// 2. Update scan scheduling with new scanID
+		errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scan.ID, scanCron.ScanScheduleID)
+		if errUpdateScanSchedule != nil {
+			slog.Error("Failed to update scan_scheduling", slog.Any("error", err))
+		}
+	}
+	return nil
 }

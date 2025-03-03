@@ -77,6 +77,10 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 	now := time.Now().UTC()
 	twoMinuteLater := now.Add(2 * time.Minute)
 	if !parsedToDate.After(twoMinuteLater) {
+		slog.Warn("ScanSchedule rejected, must be at least 2 minutes greater than current time",
+			slog.String("current_time", now.Format(time.DateTime)),
+			slog.String("two_minutes_later", twoMinuteLater.Format(time.DateTime)))
+
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 		})

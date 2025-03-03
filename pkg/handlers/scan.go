@@ -94,6 +94,10 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 		now := time.Now().UTC()
 		twoMinuteLater := now.Add(2 * time.Minute)
 		if !dateSchedule.After(twoMinuteLater) {
+			slog.Warn("ScanSchedule rejected, must be at least 2 minutes greater than current time",
+				slog.String("current_time", now.Format(time.DateTime)),
+				slog.String("two_minutes_later", twoMinuteLater.Format(time.DateTime)))
+
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 				Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 			})
@@ -110,6 +114,12 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 		}
 		errScanSchedule := h.scanScheduleService.InsertScanScheduling(scan.ID, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {
+			slog.Error("Error inserting scan schedule",
+				slog.String("scan_id", scan.ID.String()),
+				slog.Time("schedule_at", dateSchedule),
+				slog.Any("frequency", scanRequest.Frequency),
+				slog.Any("error", errScanSchedule))
+
 			msg := fmt.Sprintf("invalid scheduling: %s", *scanRequest.ScheduleAt)
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: msg})
 		}
