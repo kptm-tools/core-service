@@ -42,7 +42,6 @@ type IStorage interface {
 	GetVulnerabilityByID(int) (*domain.Vulnerability, error)
 	GetOSByID(int) (*tools.OSData, error)
 	GetServiceByID(int) (*tools.PortData, error)
-	CreateScanScheduling(uuid.UUID, string, bool, string, int) error
 	CreateScanScheduling(uuid.UUID, string, bool, string, int, time.Time) error
 	ScanScheduleDisableJob(int, bool) error
 	UpdateScanScheduling(uuid.UUID, int) error

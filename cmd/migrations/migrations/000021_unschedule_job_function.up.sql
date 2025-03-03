@@ -17,6 +17,7 @@ BEGIN
     UPDATE scan_scheduling SET enabled=false where id=scanScheduleID;
     IF withDelete THEN
         DELETE FROM scans where id=PSCAN_ID;
+        UPDATE scan_scheduling SET scan_id=null where id=scanScheduleID;
     END IF;
     RETURN RESULT_DATA;
 END;

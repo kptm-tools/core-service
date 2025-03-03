@@ -15,17 +15,12 @@ import (
 type APIServer struct {
 	listenAddr string
 
-	healthHandlers interfaces.IHealthcheckHandlers
-	hostHandlers   interfaces.IHostHandlers
-	authHandlers   interfaces.IAuthHandlers
-	tenantHandlers interfaces.ITenantHandlers
-	scanHandlers   interfaces.IScanHandlers
-	vulnHandlers   interfaces.IVulnerabilityHandlers
 	healthHandlers       interfaces.IHealthcheckHandlers
 	hostHandlers         interfaces.IHostHandlers
 	authHandlers         interfaces.IAuthHandlers
 	tenantHandlers       interfaces.ITenantHandlers
 	scanHandlers         interfaces.IScanHandlers
+	vulnHandlers         interfaces.IVulnerabilityHandlers
 	scanScheduleHandlers interfaces.IScanScheduleHandlers
 }
 
@@ -48,17 +43,12 @@ func NewAPIServer(
 	return &APIServer{
 		listenAddr: listenAddr,
 
-		healthHandlers: heHandlers,
-		hostHandlers:   hoHandlers,
-		authHandlers:   aHandlers,
-		tenantHandlers: teHandlers,
-		scanHandlers:   sHandlers,
-		vulnHandlers:   vHandlers,
 		healthHandlers:       heHandlers,
 		hostHandlers:         hoHandlers,
 		authHandlers:         aHandlers,
 		tenantHandlers:       teHandlers,
 		scanHandlers:         sHandlers,
+		vulnHandlers:         vHandlers,
 		scanScheduleHandlers: ssHandlers,
 	}
 }

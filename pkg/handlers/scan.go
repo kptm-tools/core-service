@@ -20,8 +20,8 @@ import (
 )
 
 type ScanHandlers struct {
-	scanService interfaces.IScanService
-	hostService interfaces.IHostService
+	scanService         interfaces.IScanService
+	hostService         interfaces.IHostService
 	scanScheduleService interfaces.IScanScheduleService
 	eventBus            cmmn.EventBus
 }
@@ -30,12 +30,13 @@ var _ interfaces.IScanHandlers = (*ScanHandlers)(nil)
 
 func NewScanHandlers(
 	scanService interfaces.IScanService,
+	scanScheduleService interfaces.IScanScheduleService,
 	hostService interfaces.IHostService,
 	bus cmmn.EventBus,
 ) *ScanHandlers {
 	return &ScanHandlers{
-		scanService: scanService,
-		hostService: hostService,
+		scanService:         scanService,
+		hostService:         hostService,
 		scanScheduleService: scanScheduleService,
 		eventBus:            bus,
 	}
@@ -433,7 +434,7 @@ func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	isDeleted, err := h.scanService.DeleteScanScheduleByID(id)
+	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}

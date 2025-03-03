@@ -293,17 +293,6 @@ func (s *ScanService) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts
 	return s.storage.GetSeverityCounts(scanID)
 }
 
-func (s ScanService) InsertScanScheduling(scans []*domain.Scan, scheduleAt string, isRepeated bool) error {
-
-	for _, scan := range scans {
-		err := s.storage.CreateScanScheduling(scan.ID, scheduleAt, isRepeated)
-		if err != nil {
-			return err
-		}
-
-	return nil
-}
-
 func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error {
 	return s.storage.UpdateScanScheduling(scanID, scanScheduleID)
 }

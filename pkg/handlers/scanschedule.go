@@ -90,7 +90,7 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 	errUpdate := h.scanScheduleService.PatchScanSchedule(id, updateScanScheduleRequest.Frequency, parsedToDate, tenantID, userID, hostID)
 	if errUpdate != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-			Error: "ID to update does not exist",
+			Error: "Update can not be terminated because of " + errUpdate.Error(),
 		})
 	}
 	return api.WriteJSON(w, http.StatusCreated, nil)
