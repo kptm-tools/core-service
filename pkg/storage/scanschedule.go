@@ -24,7 +24,7 @@ func (s *PostgreSQLStore) DeleteScanScheduleByID(scanScheduleID int) (bool, erro
 	}
 }
 
-func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scanID uuid.UUID, cronExpr string, isRepeated bool, period_name string, period_quantity int, scheduleDate time.Time) error {
+func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scanID uuid.UUID, cronExpr string, isRepeated bool, periodName string, periodQuantity int, scheduleDate time.Time) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -34,7 +34,7 @@ func (s *PostgreSQLStore) PatchScanScheduleByID(scanScheduleID int, scanID uuid.
     UPDATE 
     scan_scheduling SET period_name=$2, period_quantity=$3, has_period=$4, scheduled_date=$5, last_run_date=NULL, cron=$6, scan_id=$7, enabled=true, updated_at=$8 WHERE id=$1`
 
-	tx.QueryRow(query, scanScheduleID, period_name, period_quantity, isRepeated, scheduleDate, cronExpr, scanID, time.Now().UTC())
+	tx.QueryRow(query, scanScheduleID, periodName, periodQuantity, isRepeated, scheduleDate, cronExpr, scanID, time.Now().UTC())
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)

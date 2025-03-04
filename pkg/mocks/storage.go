@@ -10,38 +10,46 @@ import (
 )
 
 type MockStorage struct {
-	MockCreateHost                    func(*domain.Host) (*domain.Host, error)
-	MockGetHostsByTenantID            func(string) ([]*domain.Host, error)
-	MockGetHostByID                   func(int) (*domain.Host, error)
-	MockDeleteHostByID                func(int) (bool, error)
-	MockPatchHostByID                 func(*domain.Host) (*domain.Host, error)
-	MockCreateTenant                  func(*domain.Tenant) (*domain.Tenant, error)
-	MockGetTenants                    func() ([]*domain.Tenant, error)
-	MockPing                          func() error
-	MockCreateScan                    func(*domain.Scan) (*domain.Scan, error)
-	MockExistAlias                    func(string) (bool, error)
-	MockGetScans                      func(tenantID string) ([]*domain.ScanSummary, error)
-	MockGetScanByID                   func(UUID uuid.UUID) (*domain.Scan, error)
-	MockInsertScanResult              func(*sql.Tx, *domain.ScanResult) error
-	MockInsertVulnerabilityResult     func(*domain.ScanResult) error
-	MockUpdateScanStatus              func(scanID uuid.UUID, status string) error
-	MockUpdateScanStatusAndEndedAt    func(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error
-	MockGetScanInsights               func(scanID uuid.UUID) (*domain.ScanInsights, error)
-	MockGetProtectionScore            func(scanID uuid.UUID) (float64, error)
-	MockUpdateProtectionScore         func(scanID uuid.UUID, score float64) error
-	MockGetWhoisResult                func(scanID uuid.UUID) (*tools.WhoIsResult, error)
-	MockGetDNSLookupResult            func(scanID uuid.UUID) (*tools.DNSLookupResult, error)
-	MockGetHarvesterResult            func(scanID uuid.UUID) (*tools.HarvesterResult, error)
-	MockGetNmapResult                 func(scanID uuid.UUID) (*tools.NmapResult, error)
-	MockGetScanVulnerabilitiesSummary func(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
-	MockGetReportsByTenantID          func(tenantID string) ([]*domain.ReportItem, error)
-	MockGetLatestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
-	MockGetOldestScanByHostID         func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
-	MockGetScanVulnerabilities        func(uuid.UUID) ([]*domain.Vulnerability, error)
-	MockGetSeverityCounts             func(uuid.UUID) (*tools.SeverityCounts, error)
-	MockGetOSByID                     func(int) (*tools.OSData, error)
-	MockGetServiceByID                func(int) (*tools.PortData, error)
-	MockGetVulnerabilityByID          func(int) (*domain.Vulnerability, error)
+	MockCreateHost                       func(*domain.Host) (*domain.Host, error)
+	MockGetHostsByTenantID               func(string) ([]*domain.Host, error)
+	MockGetHostByID                      func(int) (*domain.Host, error)
+	MockDeleteHostByID                   func(int) (bool, error)
+	MockPatchHostByID                    func(*domain.Host) (*domain.Host, error)
+	MockCreateTenant                     func(*domain.Tenant) (*domain.Tenant, error)
+	MockGetTenants                       func() ([]*domain.Tenant, error)
+	MockPing                             func() error
+	MockCreateScan                       func(*domain.Scan) (*domain.Scan, error)
+	MockExistAlias                       func(string) (bool, error)
+	MockGetScans                         func(tenantID string) ([]*domain.ScanSummary, error)
+	MockGetScanByID                      func(UUID uuid.UUID) (*domain.Scan, error)
+	MockInsertScanResult                 func(*sql.Tx, *domain.ScanResult) error
+	MockInsertVulnerabilityResult        func(*domain.ScanResult) error
+	MockUpdateScanStatus                 func(scanID uuid.UUID, status string) error
+	MockUpdateScanStatusAndEndedAt       func(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error
+	MockGetScanInsights                  func(scanID uuid.UUID) (*domain.ScanInsights, error)
+	MockGetProtectionScore               func(scanID uuid.UUID) (float64, error)
+	MockUpdateProtectionScore            func(scanID uuid.UUID, score float64) error
+	MockGetWhoisResult                   func(scanID uuid.UUID) (*tools.WhoIsResult, error)
+	MockGetDNSLookupResult               func(scanID uuid.UUID) (*tools.DNSLookupResult, error)
+	MockGetHarvesterResult               func(scanID uuid.UUID) (*tools.HarvesterResult, error)
+	MockGetNmapResult                    func(scanID uuid.UUID) (*tools.NmapResult, error)
+	MockGetScanVulnerabilitiesSummary    func(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	MockGetReportsByTenantID             func(tenantID string) ([]*domain.ReportItem, error)
+	MockGetLatestScanByHostID            func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	MockGetOldestScanByHostID            func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	MockGetScanVulnerabilities           func(uuid.UUID) ([]*domain.Vulnerability, error)
+	MockGetSeverityCounts                func(uuid.UUID) (*tools.SeverityCounts, error)
+	MockGetOSByID                        func(int) (*tools.OSData, error)
+	MockGetServiceByID                   func(int) (*tools.PortData, error)
+	MockGetVulnerabilityByID             func(int) (*domain.Vulnerability, error)
+	MockCreateScanScheduling             func(scanID uuid.UUID, cronExpression string, isRepeated bool, periodName string, periodQuantity int, scheduledDate time.Time) error
+	MockScanScheduleDisableJob           func(scanScheduleID int, withDelete bool) error
+	MockUpdateScanScheduling             func(scanID uuid.UUID, scanScheduleID int) error
+	MockDeleteScanScheduleByID           func(scanScheduleID int) (bool, error)
+	MockGetScanSchedules                 func(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error)
+	MockPatchScanScheduleByID            func(scanScheduleID int, scanID uuid.UUID, cronExpr string, isRepeated bool, periodName string, periodQuantity int, scheduleDate time.Time) error
+	MockGetCurrentHostIDFromScanSchedule func(scanScheduleID int) (int, error)
+	MockScanScheduleEnableJob            func(cronExp string, hasPeriod bool, scanScheduleID int) error
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -266,4 +274,60 @@ func (m *MockStorage) GetVulnerabilityByID(vulnID int) (*domain.Vulnerability, e
 		return m.MockGetVulnerabilityByID(vulnID)
 	}
 	return nil, nil
+}
+
+func (m *MockStorage) CreateScanScheduling(scanID uuid.UUID, cronExpression string, isRepeated bool, periodName string, periodQuantity int, scheduledDate time.Time) error {
+	if m.MockCreateScanScheduling != nil {
+		return m.MockCreateScanScheduling(scanID, cronExpression, isRepeated, periodName, periodQuantity, scheduledDate)
+	}
+	return nil
+}
+
+func (m *MockStorage) ScanScheduleDisableJob(scanScheduleID int, withDelete bool) error {
+	if m.MockScanScheduleDisableJob != nil {
+		return m.MockScanScheduleDisableJob(scanScheduleID, withDelete)
+	}
+	return nil
+}
+
+func (m *MockStorage) UpdateScanScheduling(scanID uuid.UUID, scanScheduleID int) error {
+	if m.MockUpdateScanScheduling != nil {
+		return m.MockUpdateScanScheduling(scanID, scanScheduleID)
+	}
+	return nil
+}
+
+func (m *MockStorage) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
+	if m.MockDeleteScanScheduleByID != nil {
+		return m.MockDeleteScanScheduleByID(scanScheduleID)
+	}
+	return true, nil
+}
+
+func (m *MockStorage) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error) {
+	if m.MockGetScanSchedules != nil {
+		return m.MockGetScanSchedules(tenantID)
+	}
+	return nil, nil
+}
+
+func (m *MockStorage) PatchScanScheduleByID(scanScheduleID int, scanID uuid.UUID, cronExpr string, isRepeated bool, periodName string, periodQuantity int, scheduleDate time.Time) error {
+	if m.MockPatchScanScheduleByID != nil {
+		return m.MockPatchScanScheduleByID(scanScheduleID, scanID, cronExpr, isRepeated, periodName, periodQuantity, scheduleDate)
+	}
+	return nil
+}
+
+func (m *MockStorage) GetCurrentHostIDFromScanSchedule(scanScheduleID int) (int, error) {
+	if m.MockGetCurrentHostIDFromScanSchedule != nil {
+		return m.MockGetCurrentHostIDFromScanSchedule(scanScheduleID)
+	}
+	return 0, nil
+}
+
+func (m *MockStorage) ScanScheduleEnableJob(cronExp string, hasPeriod bool, scanScheduleID int) error {
+	if m.MockScanScheduleEnableJob != nil {
+		return m.MockScanScheduleEnableJob(cronExp, hasPeriod, scanScheduleID)
+	}
+	return nil
 }
