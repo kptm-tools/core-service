@@ -82,7 +82,7 @@ func (s *PostgreSQLStore) GetCurrentHostIDFromScanSchedule(scanScheduleID int) (
 	var hostID int
 	err := row.Scan(&hostID)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	return hostID, nil
 }

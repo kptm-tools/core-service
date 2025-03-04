@@ -102,7 +102,7 @@ func (s ScanScheduleService) GetScanSchedules(tenantID uuid.UUID) ([]*domain.Sca
 func (s ScanScheduleService) GetCurrentHostID(scanScheduleID int) (int, error) {
 	hostID, errGetHostID := s.storage.GetCurrentHostIDFromScanSchedule(scanScheduleID)
 	if errGetHostID != nil {
-		return -1, fmt.Errorf("failed to get current host ID: %w", errGetHostID)
+		return hostID, fmt.Errorf("failed to get current host ID: %w", errGetHostID)
 	}
 	return hostID, nil
 }

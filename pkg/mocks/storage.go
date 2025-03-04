@@ -322,7 +322,7 @@ func (m *MockStorage) GetCurrentHostIDFromScanSchedule(scanScheduleID int) (int,
 	if m.MockGetCurrentHostIDFromScanSchedule != nil {
 		return m.MockGetCurrentHostIDFromScanSchedule(scanScheduleID)
 	}
-	return 0, nil
+	return -1, nil
 }
 
 func (m *MockStorage) ScanScheduleEnableJob(cronExp string, hasPeriod bool, scanScheduleID int) error {
