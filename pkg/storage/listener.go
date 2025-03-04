@@ -157,6 +157,7 @@ func (pl *PostgresListener) handleScanCronNotification(payload string) error {
 		scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String(), &scanCron.NextSchedule)
 		if errCreationScan != nil {
 			slog.Error("Failed to create scans", slog.Any("error", err))
+			return errCreationScan
 		}
 		// 2. Update scan scheduling with new scanID
 		errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scan.ID, scanCron.ScanScheduleID)
