@@ -457,13 +457,3 @@ func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request
 	}
 	return api.WriteJSON(w, http.StatusOK, result)
 }
-
-func (h *ScanHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.Request) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (h *ScanHandlers) GetScanSchedules(w http.ResponseWriter, r *http.Request) error {
-	//TODO implement me
-	panic("implement me")
-}

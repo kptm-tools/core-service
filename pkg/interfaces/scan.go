@@ -43,6 +43,4 @@ type IScanHandlers interface {
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
 	DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error
-	PatchScanSchedule(w http.ResponseWriter, r *http.Request) error
-	GetScanSchedules(w http.ResponseWriter, r *http.Request) error
 }
