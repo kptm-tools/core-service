@@ -1,0 +1,20 @@
+-- Migration: 000023_enable_cron_function.up.sql
+CREATE OR REPLACE FUNCTION enable_cron_function(
+    CRON_EXP VARCHAR(20),
+    PHAS_PERIOD BOOLEAN,
+    SCAN_SCHEDULE_ID INT
+)
+RETURNS BIGINT
+LANGUAGE PLPGSQL
+AS
+$$
+DECLARE
+    JOB_ID BIGINT;
+    SCAN_LAUNCH VARCHAR(250);
+BEGIN
+SELECT concat('select launch_notification(''',PHAS_PERIOD,''',',SCAN_SCHEDULE_ID,')') INTO SCAN_LAUNCH;
+SELECT cron.schedule(CRON_EXP,SCAN_LAUNCH) INTO JOB_ID;
+UPDATE scan_scheduling SET cron_job_id=JOB_ID WHERE id= SCAN_SCHEDULE_ID;
+RETURN JOB_ID;
+END;
+$$;

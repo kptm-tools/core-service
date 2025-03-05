@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"github.com/kptm-tools/common/common/pkg/results"
 	"net/http"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type IScanService interface {
-	CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error)
+	CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error)
 	GetScans(string) ([]*domain.ScanSummary, error)
 	InsertScanResult(*domain.ScanResult) error
 	InsertVulnerabilityResult(*domain.ScanResult) error
@@ -27,10 +28,13 @@ type IScanService interface {
 	GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)
 	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
+	CreateTarget(hostID int) (*results.Target, error)
+	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
+	ScanScheduleDisableJob(int) error
 }
 
 type IScanHandlers interface {
-	CreateScans(writer http.ResponseWriter, request *http.Request) error
+	CreateScan(writer http.ResponseWriter, request *http.Request) error
 	GetScans(writer http.ResponseWriter, request *http.Request) error
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
@@ -38,4 +42,5 @@ type IScanHandlers interface {
 	GetReports(w http.ResponseWriter, r *http.Request) error
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
+	DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error
 }

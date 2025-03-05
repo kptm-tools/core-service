@@ -78,3 +78,41 @@ func Test_GetReportsByTenantID_Success(t *testing.T) {
 	assert.NotEmpty(t, reports)
 	assert.Equal(t, len(sampleReports), len(reports))
 }
+
+func Test_ScanScheduleDisableJob_Error(t *testing.T) {
+	mockStore := &mocks.MockStorage{
+		MockScanScheduleDisableJob: func(scanScheduleID int, withDelete bool) error {
+			return errors.New("failed to unregister job")
+		},
+	}
+	scansService := NewScanService(mockStore)
+	errDisable := scansService.ScanScheduleDisableJob(1)
+	assert.Error(t, errDisable)
+	assert.Contains(t, errDisable.Error(), "failed to unregister job")
+}
+
+func Test_ScanScheduleDisableJob_Success(t *testing.T) {
+	mockStore := &mocks.MockStorage{}
+	scansService := NewScanService(mockStore)
+	errDisable := scansService.ScanScheduleDisableJob(1)
+	assert.NoError(t, errDisable)
+}
+
+func Test_UpdateScanScheduling_Error(t *testing.T) {
+	mockStore := &mocks.MockStorage{
+		MockUpdateScanScheduling: func(scanID uuid.UUID, scanScheduleID int) error {
+			return errors.New("failed to update scan scheduling")
+		},
+	}
+	scansService := NewScanService(mockStore)
+	errUpdate := scansService.UpdateScanScheduleScanID(uuid.New(), 1)
+	assert.Error(t, errUpdate)
+	assert.Contains(t, errUpdate.Error(), "failed to update scan scheduling")
+}
+
+func Test_UpdateScanScheduling_Success(t *testing.T) {
+	mockStore := &mocks.MockStorage{}
+	scansService := NewScanService(mockStore)
+	errUpdate := scansService.UpdateScanScheduleScanID(uuid.New(), 1)
+	assert.NoError(t, errUpdate)
+}

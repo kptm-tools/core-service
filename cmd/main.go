@@ -52,21 +52,23 @@ func main() {
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore)
 	vulnService := services.NewVulnerabilityService(coreStore)
+	scanScheduleService := services.NewScanScheduleService(coreStore)
 
 	// Handlers
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
-	scanHandlers := handlers.NewScanHandlers(scanService, hostService, eventBus)
+	scanHandlers := handlers.NewScanHandlers(scanService, scanScheduleService, hostService, eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
+	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
 		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 
-	storageListener, err := storage.NewPostgresListener(c, scanService)
+	storageListener, err := storage.NewPostgresListener(c, scanService, eventBus)
 	if err != nil {
 		logger.Error("Error creating db listener", slog.Any("error", err))
 		os.Exit(1)
@@ -82,6 +84,7 @@ func main() {
 		authHandlers,
 		scanHandlers,
 		vulnHandlers,
+		scanScheduleHandlers,
 	)
 
 	if err := s.Init(); err != nil {
