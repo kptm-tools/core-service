@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/mocks"
 	"github.com/stretchr/testify/assert"
-	"log"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -48,7 +49,7 @@ func TestScanScheduleHandlers_Valid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// 1. Arrange query values and request
+			// 1. Arrange context values
 			w := httptest.NewRecorder()
 			bodyRequest, errDecodeBody := json.Marshal(tc.bodyRequest)
 			if errDecodeBody != nil {
@@ -59,16 +60,19 @@ func TestScanScheduleHandlers_Valid(t *testing.T) {
 			ctx = context.WithValue(ctx, middleware.ContextTenantID, "test-tenant")
 			ctx = context.WithValue(ctx, middleware.ContextUserID, "test-user")
 			r = r.WithContext(ctx)
-			handler := &ScanScheduleHandlers{}
-			// 2. Act
-			errPatch := handler.PatchScanSchedule(w, r)
-			log.Println(errPatch)
-			// 3. Assert
-			if errPatch != nil {
-				assert.False(t, tc.expectError)
-			} else {
+			mockScanScheduleService := &mocks.MockScanScheduleService{}
 
-				assert.True(t, tc.expectError)
+			// 2. Act
+			handler := &ScanScheduleHandlers{
+				mockScanScheduleService,
+				nil,
+			}
+			errPatch := handler.PatchScanSchedule(w, r)
+			// 3. Assert
+			if tc.expectError {
+				assert.Equal(t, http.StatusBadRequest, w.Code, "Expected BadRequest status code")
+			} else {
+				assert.NoError(t, errPatch, "Expected no error but got one")
 			}
 		})
 	}
