@@ -33,7 +33,7 @@ func (h *TenantHandlers) GetTenants(w http.ResponseWriter, req *http.Request) er
 func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) error {
 	tenantIDStr := req.Context().Value(middleware.ContextTenantID).(string)
 
-	_, err := h.tenantService.GetTenantDashboardData(tenantIDStr)
+	tenantDasboardData, err := h.tenantService.GetTenantDashboardData(tenantIDStr)
 	if err != nil {
 		slog.Error("Error getting tenant dashboard data",
 			slog.String("tenant_id", tenantIDStr),
@@ -42,5 +42,6 @@ func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) 
 			Error: http.StatusText(http.StatusInternalServerError),
 		})
 	}
-	return api.WriteJSON(w, http.StatusUnprocessableEntity, "IMPLEMENTATION PENDING")
+
+	return api.WriteJSON(w, http.StatusUnprocessableEntity, tenantDasboardData)
 }
