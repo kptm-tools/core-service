@@ -938,7 +938,7 @@ func (s *PostgreSQLStore) GetLatestScanByHostID(hostID int, fromDate, toDate *ti
 	var scan domain.Scan
 	row := s.db.QueryRow(query, hostID, fromDate, toDate)
 	if err := scanIntoScan(row, &scan); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to scan into scan: %w", err)
@@ -975,7 +975,7 @@ func (s *PostgreSQLStore) GetScanBeforeLatestByHostID(hostID int, fromDate, toDa
 	var scan domain.Scan
 	row := s.db.QueryRow(query, hostID, fromDate, toDate)
 	if err := scanIntoScan(row, &scan); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to scan into scan: %w", err)
