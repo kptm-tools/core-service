@@ -53,13 +53,23 @@ func main() {
 	scanService := services.NewScanService(coreStore)
 	vulnService := services.NewVulnerabilityService(coreStore)
 	scanScheduleService := services.NewScanScheduleService(coreStore)
+	emailService := services.NewEmailService(
+		c.FusionAuth.SmtpHost,
+		c.FusionAuth.SmtpPort,
+		c.FusionAuth.SmtpUsername,
+		c.FusionAuth.SmtpPassword)
 
 	// Handlers
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
-	scanHandlers := handlers.NewScanHandlers(scanService, scanScheduleService, hostService, eventBus)
+	scanHandlers := handlers.NewScanHandlers(
+		scanService,
+		scanScheduleService,
+		hostService,
+		emailService,
+		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
 

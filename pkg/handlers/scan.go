@@ -22,6 +22,7 @@ type ScanHandlers struct {
 	scanService         interfaces.IScanService
 	hostService         interfaces.IHostService
 	scanScheduleService interfaces.IScanScheduleService
+	emailService        interfaces.IEmailService
 	eventBus            cmmn.EventBus
 }
 
@@ -31,6 +32,7 @@ func NewScanHandlers(
 	scanService interfaces.IScanService,
 	scanScheduleService interfaces.IScanScheduleService,
 	hostService interfaces.IHostService,
+	emailService interfaces.IEmailService,
 	bus cmmn.EventBus,
 ) *ScanHandlers {
 	return &ScanHandlers{
@@ -38,6 +40,7 @@ func NewScanHandlers(
 		hostService:         hostService,
 		scanScheduleService: scanScheduleService,
 		eventBus:            bus,
+		emailService:        emailService,
 	}
 }
 
@@ -160,7 +163,19 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	// 2. Update scan status and ended_at in our storage
+	// 2. Get ScanInfo
+	scan, errGetScan := h.scanService.GetScanByID(scanID)
+	if errGetScan != nil {
+		slog.Error("Failed to get scan information", slog.Any("error", errGetScan))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errGetScan.Error()})
+	}
+	// 3. Get HostInfo
+	host, errGetHost := h.hostService.GetHostByID(scan.HostID)
+	if errGetHost != nil {
+		slog.Error("Failed to get host", slog.Any("error", errGetHost))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errGetHost.Error()})
+	}
+	// 4. Update scan status and ended_at in our storage
 	if err := h.scanService.MarkScanAsCancelled(scanID); err != nil {
 		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
 		var alreadyFinishedErr *customerrors.ScanAlreadyFinishedError
@@ -168,6 +183,17 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 			return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: err.Error()})
 		}
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+	}
+	// 5. Notify rapporteurs of host associated
+	for _, item := range host.Rapporteurs {
+		slog.Info("Sending email to: ", slog.Any("email", item.Email))
+		errSendEmail := h.emailService.SendEmail(
+			item.Email,
+			fmt.Sprintf("Scan %s has been cancelled", scan.ID),
+			fmt.Sprintf("Dear Rapporteur %s your scan associated to host %s has been cancelled", item.Name, host.Name))
+		if errSendEmail != nil {
+			slog.Error("Failed to send email", slog.Any("error", errSendEmail))
+		}
 	}
 
 	return api.WriteJSON(w, http.StatusOK, "Scan was cancelled")

@@ -20,6 +20,10 @@ type Config struct {
 		BlueprintTenantID      string
 		BlueprintApplicationID string
 		ApplicationID          string
+		SmtpHost               string
+		SmtpPort               string
+		SmtpUsername           string
+		SmtpPassword           string
 	}
 
 	Database struct {
@@ -67,6 +71,10 @@ func load() *Config {
 		BlueprintTenantID      string
 		BlueprintApplicationID string
 		ApplicationID          string
+		SmtpHost               string
+		SmtpPort               string
+		SmtpUsername           string
+		SmtpPassword           string
 	}{
 		ApplicationID:          fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
 		APIKey:                 fetchEnvOrPanic("FUSIONAUTH_API_KEY"),
@@ -74,6 +82,10 @@ func load() *Config {
 		Port:                   fetchEnv("FUSIONAUTH_PORT", "9011"),
 		BlueprintTenantID:      fetchEnv("FUSIONAUTH_BLUEPRINT_TENANTID", "79c9acd6-a590-4394-8f2c-fadb07b79113"),
 		BlueprintApplicationID: fetchEnv("FUSIONAUTH_BLUEPRINT_APPID", "c412a5bf-2524-46e9-85a6-08d1f1777295"),
+		SmtpHost:               fetchEnv("SMTP_HOST", "smtp-relay.brevo.com"),
+		SmtpPort:               fetchEnv("SMTP_PORT", "587"),
+		SmtpUsername:           fetchEnv("SMTP_USER", "816ce1001@smtp-brevo.com"),
+		SmtpPassword:           fetchEnv("SMTP_PASS", ""),
 	}
 
 	cfg.Database = struct {
