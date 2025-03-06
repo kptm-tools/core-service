@@ -24,7 +24,6 @@ var _ interfaces.IEmailService = (*EmailService)(nil)
 
 func NewEmailService(host, port, username, password, fromEmail string) *EmailService {
 	portNum, _ := strconv.ParseInt(port, 0, 0)
-	// Set up the SMTP dialer
 	dialer := gomail.Dialer{
 		Host:           host,
 		Port:           int(portNum),
@@ -59,7 +58,8 @@ func (s *EmailService) SendEmail(toAddress *[]domain.Rapporteur, subject, body s
 
 	if err := s.SendMail(m); err != nil {
 		slog.Error(err.Error())
+	} else {
+		slog.Info("Email sent")
 	}
-	slog.Info("Email sent")
 	return nil
 }
