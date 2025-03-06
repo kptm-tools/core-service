@@ -57,7 +57,8 @@ func main() {
 		c.FusionAuth.SmtpHost,
 		c.FusionAuth.SmtpPort,
 		c.FusionAuth.SmtpUsername,
-		c.FusionAuth.SmtpPassword)
+		c.FusionAuth.SmtpAPIKey,
+		c.FusionAuth.SmtpFromEmail)
 
 	// Handlers
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)

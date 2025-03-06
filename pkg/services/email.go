@@ -1,42 +1,65 @@
 package services
 
 import (
-	"fmt"
+	"errors"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"net/smtp"
+	gomail "gopkg.in/mail.v2"
+	"log/slog"
+	"strconv"
 )
 
+type SendMailFunction func(...*gomail.Message) error
+
 type EmailService struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	SendMail func(addr string, a smtp.Auth, from string, to []string, msg []byte) error
+	Host      string
+	Port      string
+	Username  string
+	Password  string
+	FromEmail string
+	SendMail  SendMailFunction
 }
 
 var _ interfaces.IEmailService = (*EmailService)(nil)
 
-func NewEmailService(host, port, username, password string) *EmailService {
+func NewEmailService(host, port, username, password, fromEmail string) *EmailService {
+	portNum, _ := strconv.ParseInt(port, 0, 0)
+	// Set up the SMTP dialer
+	dialer := gomail.Dialer{
+		Host:           host,
+		Port:           int(portNum),
+		Username:       username,
+		Password:       password,
+		StartTLSPolicy: gomail.NoStartTLS,
+	}
 	return &EmailService{
-		Host:     host,
-		Port:     port,
-		Username: username,
-		Password: password,
-		SendMail: smtp.SendMail,
+		Host:      host,
+		Port:      port,
+		Username:  username,
+		Password:  password,
+		FromEmail: fromEmail,
+		SendMail:  dialer.DialAndSend,
 	}
 }
 
-func (s *EmailService) SendEmail(to, subject, body string) error {
-	auth := smtp.PlainAuth("", s.Username, s.Password, s.Host)
-
-	msg := []byte(fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", to, subject, body))
-
-	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
-
-	err := s.SendMail(addr, auth, s.Username, []string{to}, msg)
-	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+func (s *EmailService) SendEmail(toAddress *[]domain.Rapporteur, subject, body string) error {
+	if toAddress == nil || len(*toAddress) == 0 {
+		return errors.New("no emails configured to be sent")
 	}
+	m := gomail.NewMessage()
+	sizeAddress := len(*toAddress)
+	addresses := make([]string, sizeAddress)
+	for i, recipient := range *toAddress {
+		addresses[i] = m.FormatAddress(recipient.Email, recipient.Name)
+	}
+	m.SetHeader("From", s.FromEmail)
+	m.SetHeader("To", addresses...)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/html", body)
 
+	if err := s.SendMail(m); err != nil {
+		slog.Error(err.Error())
+	}
+	slog.Info("Email sent")
 	return nil
 }
