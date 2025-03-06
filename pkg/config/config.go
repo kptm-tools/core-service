@@ -23,7 +23,8 @@ type Config struct {
 		SmtpHost               string
 		SmtpPort               string
 		SmtpUsername           string
-		SmtpPassword           string
+		SmtpAPIKey             string
+		SmtpFromEmail          string
 	}
 
 	Database struct {
@@ -74,7 +75,8 @@ func load() *Config {
 		SmtpHost               string
 		SmtpPort               string
 		SmtpUsername           string
-		SmtpPassword           string
+		SmtpAPIKey             string
+		SmtpFromEmail          string
 	}{
 		ApplicationID:          fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
 		APIKey:                 fetchEnvOrPanic("FUSIONAUTH_API_KEY"),
@@ -85,7 +87,8 @@ func load() *Config {
 		SmtpHost:               fetchEnv("SMTP_HOST", "smtp-relay.brevo.com"),
 		SmtpPort:               fetchEnv("SMTP_PORT", "587"),
 		SmtpUsername:           fetchEnv("SMTP_USER", "816ce1001@smtp-brevo.com"),
-		SmtpPassword:           fetchEnv("SMTP_PASS", "6Qq0AbwR9kDr4YU7"),
+		SmtpAPIKey:             fetchEnv("SMTP_API_KEY", ""),
+		SmtpFromEmail:          fetchEnv("SMTP_FROM_EMAIL", "me@cristiano-catolico.online"),
 	}
 
 	cfg.Database = struct {

@@ -185,15 +185,9 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	// 5. Notify rapporteurs of host associated
-	for _, item := range host.Rapporteurs {
-		slog.Info("Sending email to: ", slog.Any("email", item.Email))
-		errSendEmail := h.emailService.SendEmail(
-			item.Email,
-			fmt.Sprintf("Scan %s has been cancelled", scan.ID),
-			fmt.Sprintf("Dear Rapporteur %s your scan associated to host %s has been cancelled", item.Name, host.Name))
-		if errSendEmail != nil {
-			slog.Error("Failed to send email", slog.Any("error", errSendEmail))
-		}
+	errSendEmail := h.emailService.SendEmail(&host.Rapporteurs, fmt.Sprintf("Scan %s has been cancelled", scan.ID), fmt.Sprintf("Dear Rapporteur, your scan associated to host %s has been cancelled", host.Name))
+	if errSendEmail != nil {
+		slog.Error("Problems with sending email", slog.Any("error", errSendEmail.Error()))
 	}
 
 	return api.WriteJSON(w, http.StatusOK, "Scan was cancelled")

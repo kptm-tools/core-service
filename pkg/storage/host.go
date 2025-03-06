@@ -138,7 +138,9 @@ func (s *PostgreSQLStore) GetHostByID(hostID int) (*domain.Host, error) {
 		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
 	}
 	host.Credentials = credentials
-
+	if err := json.Unmarshal(rapporteursBytes, &host.Rapporteurs); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal rapporteurs: %w", err)
+	}
 	return &host, nil
 }
 

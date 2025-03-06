@@ -1,5 +1,7 @@
 package interfaces
 
+import "github.com/kptm-tools/core-service/pkg/domain"
+
 type IEmailService interface {
-	SendEmail(to, subject, body string) error
+	SendEmail(to *[]domain.Rapporteur, subject, body string) error
 }
