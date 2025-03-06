@@ -738,94 +738,32 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	summaryData.CategoryData = categoryData
 
 	// 2. Fetch trend data
-	// This query is kind of complicated, but what it does is fill out time_periods and labels,
-	// even when there is no data for said time_period. E.g: we only have data
-	// for February, but we want to have the counts for other months to be 0 too.
-	baseTrendQuery := `
-  WITH TimePeriods as (
-  SELECT 
-        CASE 
-          WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
-          WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(date_series, 'Q')
-          WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-          ELSE 'Unknown Period'
-        END AS time_period_label,
-        CASE
-          WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'YYYY-MM')
-          WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
-          WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-          ELSE '1'
-        END AS ordering_period
-      FROM generate_series(
-        DATE_TRUNC('year', CURRENT_DATE),
-        DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
-        CASE
-          WHEN $2 = 'Month' THEN INTERVAL '1 month'
-          WHEN $2 = 'Quarter' THEN INTERVAL '3 month'
-          WHEN $2 = 'Semester' THEN INTERVAL '6 month'
-          ELSE INTERVAL '1 month'
-        END
-      ) AS date_series
-  ),
-  VulnerabilityCounts AS (
-  SELECT
-          CASE
-              WHEN $2 = 'Month' THEN TO_CHAR(sv.created_at, 'FMMonth')
-              WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(sv.created_at, 'Q')
-              WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(sv.created_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-              ELSE 'Unknown Period'
-          END AS time_period_label,
-          COUNT(sv.id) AS vulnerability_count
-      FROM scan_vulnerabilities sv
-      WHERE sv.scan_id = $1
-        AND EXTRACT(YEAR FROM sv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-          -- Severity Filter Dynamic Condition goes here
-          %s
-      GROUP BY time_period_label
-  )
-  SELECT 
-    tp.time_period_label AS time_period,
-    COALESCE(vc.vulnerability_count, 0) AS vulnerability_count
-  FROM TimePeriods tp
-  LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
-  ORDER BY tp.ordering_period;
-`
-
-	trendQueryParams := []any{scanID, timePeriodFilter}
-	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
-	formattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
-	slog.Debug("Executing Summary Query",
-		slog.Any("query_params", trendQueryParams))
-
-	trendsRows, err := s.db.Query(formattedTrendQuery, trendQueryParams...)
+	scan, err := s.GetScanByID(scanID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query vulnerability trends: %w", err)
+		return nil, fmt.Errorf("failed to get scan to retrieve host_id: %w", err)
 	}
-	defer trendsRows.Close()
+	if scan == nil {
+		return nil, fmt.Errorf("scan not found with id: %s", scanID)
+	}
+
+	timePeriods, err := s.GetHostVulnerabilityTrends(scan.HostID, timePeriodFilter, severityFilters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host vulnerabilty trends: %w", err)
+	}
 
 	var vulnerabilityTrends domain.ServiceVulnerabilityTrends
-	var timePeriods []domain.ServiceTimePeriod
+	vulnerabilityTrends.TimePeriods = timePeriods
+
 	var totalVulnCountForAvg, periodCountForAvg float64
-	for trendsRows.Next() {
-		var timePeriodData domain.ServiceTimePeriod
-		if err := trendsRows.Scan(&timePeriodData.TimePeriod, &timePeriodData.VulnerabilityCount); err != nil {
-			return nil, fmt.Errorf("failed to scan into time period: %w", err)
-		}
-		timePeriods = append(timePeriods, timePeriodData)
-		totalVulnCountForAvg += float64(timePeriodData.VulnerabilityCount)
+	for _, periodData := range timePeriods {
+		totalVulnCountForAvg += float64(periodData.VulnerabilityCount)
 		periodCountForAvg++
 	}
-	if err := trendsRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate trend rows: %w", err)
-	}
-
-	vulnerabilityTrends.TimePeriods = timePeriods
 	if periodCountForAvg > 0 {
 		vulnerabilityTrends.AverageVulnerabilityCount = totalVulnCountForAvg / periodCountForAvg
 	} else {
 		vulnerabilityTrends.AverageVulnerabilityCount = 0.0
 	}
-
 	summaryData.VulnerabilityTrends = vulnerabilityTrends
 
 	return &summaryData, nil

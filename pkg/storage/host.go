@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -306,4 +307,89 @@ func (s *PostgreSQLStore) ExistAlias(alias string) (bool, error) {
 		return false, fmt.Errorf("failed to verify existence: %w", err)
 	}
 	return exists, nil
+}
+
+func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
+	hostID int,
+	timePeriodFilter string,
+	severityFilters []string,
+) ([]domain.ServiceTimePeriod, error) {
+	// This query is kind of complicated, but what it does is fill out time_periods and labels,
+	// even when there is no data for said time_period. E.g: we only have data
+	// for February, but we want to have the counts for other months to be 0 too.
+	baseTrendQuery := `
+  		WITH TimePeriods as (
+			SELECT
+				CASE
+					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
+					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(date_series, 'Q')
+					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+					ELSE 'Unknown Period'
+				END AS time_period_label,
+				CASE
+					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'YYYY-MM')
+					WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
+					WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+					ELSE '1'
+				END AS ordering_period
+			FROM generate_series(
+				DATE_TRUNC('year', CURRENT_DATE),
+				DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
+				CASE
+					WHEN $2 = 'Month' THEN INTERVAL '1 month'
+					WHEN $2 = 'Quarter' THEN INTERVAL '3 month'
+					WHEN $2 = 'Semester' THEN INTERVAL '6 month'
+					ELSE INTERVAL '1 month'
+				END
+			) AS date_series
+		),
+		VulnerabilityCounts AS (
+			SELECT
+				CASE
+					WHEN $2 = 'Month' THEN TO_CHAR(s.started_at, 'FMMonth')
+					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(s.started_at, 'Q')
+					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(s.started_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+					ELSE 'Unknown Period'
+				END AS time_period_label,
+				COUNT(sv.id) AS vulnerability_count
+			FROM scan_vulnerabilities sv
+			INNER JOIN scans s ON sv.scan_id = s.id
+			WHERE s.host_id = $1 
+				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+				-- Severity Filter Dynamic Condition goes here
+				%s
+			GROUP BY time_period_label
+		)
+		SELECT
+			tp.time_period_label AS time_period,
+			COALESCE(vc.vulnerability_count, 0) AS vulnerability_count
+		FROM TimePeriods tp
+		LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
+		ORDER BY tp.ordering_period;
+  `
+
+	trendQueryParams := []any{hostID, timePeriodFilter}
+	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
+	forattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
+	slog.Debug("Executing Host Trend Query",
+		slog.Any("query_params", trendQueryParams))
+
+	trendsRows, err := s.db.Query(forattedTrendQuery, trendQueryParams...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query vulnerability trends for host %d: %w", hostID, err)
+	}
+	defer trendsRows.Close()
+
+	var timePeriods []domain.ServiceTimePeriod
+	for trendsRows.Next() {
+		var timePeriodData domain.ServiceTimePeriod
+		if err := trendsRows.Scan(&timePeriodData.TimePeriod, &timePeriodData.VulnerabilityCount); err != nil {
+			return nil, fmt.Errorf("failed to scan into time period: %w", err)
+		}
+		timePeriods = append(timePeriods, timePeriodData)
+	}
+	if trendsRows.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate trend rows: %w", err)
+	}
+	return timePeriods, nil
 }
