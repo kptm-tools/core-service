@@ -36,6 +36,7 @@ type IStorage interface {
 	GetScanVulnerabilitiesSummary(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetReportsByTenantID(string) ([]*domain.ReportItem, error)
 	GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	GetScanBeforeLatestByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	GetScanVulnerabilities(uuid.UUID) ([]*domain.Vulnerability, error)
 	GetScanVulnerabilityCount(uuid.UUID) (int, error)

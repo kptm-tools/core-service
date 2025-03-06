@@ -36,6 +36,7 @@ type MockStorage struct {
 	MockGetScanVulnerabilitiesSummary    func(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	MockGetReportsByTenantID             func(tenantID string) ([]*domain.ReportItem, error)
 	MockGetLatestScanByHostID            func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
+	MockGetScanBeforeLatestByHostID      func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	MockGetOldestScanByHostID            func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	MockGetScanVulnerabilities           func(uuid.UUID) ([]*domain.Vulnerability, error)
 	MockGetScanVulnerabilityCount        func(uuid.UUID) (int, error)
@@ -231,6 +232,13 @@ func (m *MockStorage) GetReportsByTenantID(tenantID string) ([]*domain.ReportIte
 func (m *MockStorage) GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
 	if m.MockGetLatestScanByHostID != nil {
 		return m.MockGetLatestScanByHostID(hostID, fromDate, toDate)
+	}
+	return nil, nil
+}
+
+func (m *MockStorage) GetScanBeforeLatestByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	if m.MockGetScanBeforeLatestByHostID != nil {
+		return m.MockGetScanBeforeLatestByHostID(hostID, fromDate, toDate)
 	}
 	return nil, nil
 }

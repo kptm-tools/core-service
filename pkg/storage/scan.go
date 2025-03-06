@@ -947,6 +947,43 @@ func (s *PostgreSQLStore) GetLatestScanByHostID(hostID int, fromDate, toDate *ti
 	return &scan, nil
 }
 
+func (s *PostgreSQLStore) GetScanBeforeLatestByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	query := `
+    SELECT
+      id,
+      tenant_id,
+      operator_id,
+      host_id,
+      started_at,
+      created_at,
+      updated_at,
+      ended_at,
+      status,
+      protection_score
+    FROM
+      scans
+    WHERE
+      host_id = $1
+      AND started_at >= COALESCE($2, '1900-01-01'::DATE)
+      AND started_at <= COALESCE($3, NOW())
+    ORDER BY
+      started_at DESC
+    LIMIT 1
+    OFFSET 1;
+  `
+
+	var scan domain.Scan
+	row := s.db.QueryRow(query, hostID, fromDate, toDate)
+	if err := scanIntoScan(row, &scan); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan into scan: %w", err)
+	}
+
+	return &scan, nil
+}
+
 func (s *PostgreSQLStore) GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
 	query := `
     SELECT
