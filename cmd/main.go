@@ -57,7 +57,7 @@ func main() {
 		c.FusionAuth.SmtpHost,
 		c.FusionAuth.SmtpPort,
 		c.FusionAuth.SmtpUsername,
-		c.FusionAuth.SmtpAPIKey,
+		c.FusionAuth.SmtpPassword,
 		c.FusionAuth.SmtpFromEmail)
 
 	// Handlers
