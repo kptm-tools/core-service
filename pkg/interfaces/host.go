@@ -16,6 +16,7 @@ type IHostService interface {
 	PatchHostByID(*domain.Host) (*domain.Host, error)
 	ValidateHost(string) error
 	ValidateAlias(string) error
+	GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error)
 }
 
 type IHostHandlers interface {
@@ -26,4 +27,5 @@ type IHostHandlers interface {
 	PatchHostByID(w http.ResponseWriter, req *http.Request) error
 	ValidateHost(w http.ResponseWriter, req *http.Request) error
 	ValidateAlias(w http.ResponseWriter, req *http.Request) error
+	GetDashboard(w http.ResponseWriter, req *http.Request) error
 }

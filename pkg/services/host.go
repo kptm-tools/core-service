@@ -223,3 +223,7 @@ func (s *HostService) handleIPType(normalizedURL string) (*domain.DomainIPResult
 		IP:     ipValue,
 	}, nil
 }
+
+func (s *HostService) GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error) {
+	return nil, fmt.Errorf("Implementation Pending")
+}

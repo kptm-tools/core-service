@@ -12,6 +12,6 @@ type ITenantService interface {
 }
 
 type ITenantHandlers interface {
-	//CreateTenant(w http.ResponseWriter, req *http.Request) error
+	// CreateTenant(w http.ResponseWriter, req *http.Request) error
 	GetTenants(w http.ResponseWriter, req *http.Request) error
 }
