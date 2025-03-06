@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -220,19 +219,4 @@ func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) e
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
-}
-
-func (h *HostHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) error {
-	tenantIDStr := req.Context().Value(middleware.ContextTenantID).(string)
-
-	_, err := h.hostService.GetTenantDashboardData(tenantIDStr)
-	if err != nil {
-		slog.Error("Error getting tenant dashboard data",
-			slog.String("tenant_id", tenantIDStr),
-			slog.Any("error", err))
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
-			Error: http.StatusText(http.StatusInternalServerError),
-		})
-	}
-	return api.WriteJSON(w, http.StatusUnprocessableEntity, "IMPLEMENTATION PENDING")
 }

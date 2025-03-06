@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -18,17 +20,18 @@ func NewTenantService(storage interfaces.IStorage) *TenantService {
 }
 
 func (s *TenantService) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
-
 	return s.storage.CreateTenant(t)
 }
 
 func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
-
 	tenants, err := s.storage.GetTenants()
-
 	if err != nil {
 		return nil, err
 	}
 
 	return tenants, nil
+}
+
+func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error) {
+	return nil, fmt.Errorf("Implementation Pending")
 }

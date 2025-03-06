@@ -94,7 +94,7 @@ func (s *APIServer) Init() error {
 
 	router.HandleFunc("GET /api/vulnerabilities/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetVulnerability), "getVulnerability"))
 
-	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetDashboard), "getDashboard"))
+	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), "getDashboard"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,
