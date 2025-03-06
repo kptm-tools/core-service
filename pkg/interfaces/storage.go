@@ -52,4 +52,5 @@ type IStorage interface {
 	PatchScanScheduleByID(int, uuid.UUID, string, bool, string, int, time.Time) error
 	GetCurrentHostIDFromScanSchedule(int) (int, error)
 	ScanScheduleEnableJob(string, bool, int) error
+	GetHostVulnerabilityTrends(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 }

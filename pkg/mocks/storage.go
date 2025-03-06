@@ -52,6 +52,7 @@ type MockStorage struct {
 	MockPatchScanScheduleByID            func(scanScheduleID int, scanID uuid.UUID, cronExpr string, isRepeated bool, periodName string, periodQuantity int, scheduleDate time.Time) error
 	MockGetCurrentHostIDFromScanSchedule func(scanScheduleID int) (int, error)
 	MockScanScheduleEnableJob            func(cronExp string, hasPeriod bool, scanScheduleID int) error
+	MockGetHostVulnerabilityTrends       func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -346,4 +347,11 @@ func (m *MockStorage) ScanScheduleEnableJob(cronExp string, hasPeriod bool, scan
 		return m.MockScanScheduleEnableJob(cronExp, hasPeriod, scanScheduleID)
 	}
 	return nil
+}
+
+func (m *MockStorage) GetHostVulnerabilityTrends(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+	if m.MockGetHostVulnerabilityTrends != nil {
+		return m.MockGetHostVulnerabilityTrends(hostID, timePeriodFilter, severityFilters)
+	}
+	return nil, nil
 }

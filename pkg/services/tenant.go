@@ -64,12 +64,23 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 	}
 
 	// 4. Calculate Overall Vulnerability Trends
+	// 4.1 Get a slice with HostIDs to pass to GetHostsVulnerabilityTrends
+	hostIDs := make([]int, 0, len(hosts))
+	for _, host := range hosts {
+		hostIDs = append(hostIDs, host.ID)
+	}
+
+	trendsTimePeriods, err := s.GetHostsVulnerabilityTrends(hostIDs, "Month", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vulnerability trends for hosts: %w", err)
+	}
 	// 5. Calculate Last Scan's Data
 	// 6. Calculate HostsWithGreatestVulnerabilities
 
 	dashboardData := domain.TenantDashboardData{
 		OverallSecurityPosture: securityPostureData,
 		HostSeverityHeatMap:    heatMap,
+		VulnerabilityTrends:    trendsTimePeriods,
 	}
 
 	return &dashboardData, nil
@@ -172,4 +183,35 @@ func (s *TenantService) getHostSeverityHeatMap(hosts []*domain.Host, hostLatestS
 	}
 
 	return severityHeatMap, nil
+}
+
+func (s *TenantService) GetHostsVulnerabilityTrends(
+	hostIDs []int,
+	timePeriodFilter string,
+	severityFilters []string,
+) ([]domain.ServiceTimePeriod, error) {
+	aggregatedTrendsMap := make(map[string]int)
+
+	for _, hostID := range hostIDs {
+		hostTrends, err := s.storage.GetHostVulnerabilityTrends(hostID, timePeriodFilter, severityFilters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get trends for hostID %d: %w", hostID, err)
+		}
+
+		// Aggregate trends from the current host into the overall map
+		for _, periodData := range hostTrends {
+			aggregatedTrendsMap[periodData.TimePeriod] += periodData.VulnerabilityCount
+		}
+	}
+
+	// Convert the aggregated map to a []domain.ServiceTimePeriod slice
+	var aggregatedTimePeriods []domain.ServiceTimePeriod
+	for timePeriod, vulnCount := range aggregatedTrendsMap {
+		aggregatedTimePeriods = append(aggregatedTimePeriods, domain.ServiceTimePeriod{
+			TimePeriod:         timePeriod,
+			VulnerabilityCount: vulnCount,
+		})
+	}
+
+	return aggregatedTimePeriods, nil
 }
