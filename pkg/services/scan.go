@@ -183,6 +183,7 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 		*harvesterResult,
 		*nmapResult,
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to calculate protection score: %w", err)
 	}
