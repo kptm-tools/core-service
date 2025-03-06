@@ -53,10 +53,3 @@ func (m *MockHostService) ValidateAlias(s string) error {
 	// TODO implement me
 	panic("implement me")
 }
-
-func (m *MockHostService) GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error) {
-	if m.MockGetTenantDashboardData != nil {
-		return m.MockGetTenantDashboardData(tenantID)
-	}
-	return nil, nil
-}
