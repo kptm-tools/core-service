@@ -38,6 +38,7 @@ type IStorage interface {
 	GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	GetScanVulnerabilities(uuid.UUID) ([]*domain.Vulnerability, error)
+	GetScanVulnerabilityCount(uuid.UUID) (int, error)
 	GetSeverityCounts(uuid.UUID) (*tools.SeverityCounts, error)
 	GetVulnerabilityByID(int) (*domain.Vulnerability, error)
 	GetOSByID(int) (*tools.OSData, error)
