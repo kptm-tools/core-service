@@ -303,7 +303,10 @@ func (s *TenantService) GetHostsSortedByMostVulnerabilities(
 
 	// Sort in descending order of vulnerability count
 	sort.Slice(hostVulnerabilityPairs, func(i, j int) bool {
-		return hostVulnerabilityPairs[i].VulnerabilityCount > hostVulnerabilityPairs[j].VulnerabilityCount
+		if hostVulnerabilityPairs[i].VulnerabilityCount != hostVulnerabilityPairs[j].VulnerabilityCount {
+			return hostVulnerabilityPairs[i].VulnerabilityCount > hostVulnerabilityPairs[j].VulnerabilityCount
+		}
+		return hostVulnerabilityPairs[i].Alias < hostVulnerabilityPairs[j].Alias
 	})
 
 	return hostVulnerabilityPairs, nil
