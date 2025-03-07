@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -74,13 +75,25 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerability trends for hosts: %w", err)
 	}
+
 	// 5. Calculate Last Scan's Data
+	latestScans := make([]*domain.Scan, 0, len(hostLatestScanMap))
+	for _, scan := range hostLatestScanMap {
+		latestScans = append(latestScans, scan)
+	}
+
+	latestScanData, err := s.getLatestScanData(latestScans)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest scan data: %w", err)
+	}
+
 	// 6. Calculate HostsWithGreatestVulnerabilities
 
 	dashboardData := domain.TenantDashboardData{
 		OverallSecurityPosture: securityPostureData,
 		HostSeverityHeatMap:    heatMap,
 		VulnerabilityTrends:    trendsTimePeriods,
+		LastScan:               latestScanData,
 	}
 
 	return &dashboardData, nil
@@ -214,4 +227,35 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 	}
 
 	return aggregatedTimePeriods, nil
+}
+
+func (s *TenantService) getLatestScanData(scans []*domain.Scan) (*domain.LastScanData, error) {
+	// 5.1 Loop over hostLatestScanMap and get the one with the latest date
+	var latestScan domain.Scan
+	var latestDate time.Time
+	for _, scan := range scans {
+		if scan == nil {
+			continue
+		}
+		if scan.StartedAt.After(latestDate) {
+			latestScan = *scan
+			latestDate = scan.StartedAt
+		}
+	}
+
+	// 5.2 Get severity counts for that scan
+	latestScanInsights, err := s.storage.GetScanInsights(latestScan.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get severityCounts for latest scan %s: %w", latestScan.ID.String(), err)
+	}
+
+	latestScanData := domain.LastScanData{
+		HostAlias:                     latestScanInsights.Metadata.HostAlias,
+		TotalVulnerabilities:          latestScanInsights.TotalVulnerabilities,
+		TotalVulnerabilitiesVariation: latestScanInsights.VulnerabilityVariation,
+		SeverityCounts:                latestScanInsights.SeverityCounts,
+		ScanDate:                      latestScanInsights.Metadata.ScanDate,
+	}
+
+	return &latestScanData, nil
 }
