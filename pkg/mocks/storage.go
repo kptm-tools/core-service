@@ -53,6 +53,7 @@ type MockStorage struct {
 	MockGetCurrentHostIDFromScanSchedule func(scanScheduleID int) (int, error)
 	MockScanScheduleEnableJob            func(cronExp string, hasPeriod bool, scanScheduleID int) error
 	MockGetHostVulnerabilityTrends       func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
+	MockGetRapporteursScan               func(scanID uuid.UUID) (*[]domain.Rapporteur, string)
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -354,4 +355,11 @@ func (m *MockStorage) GetHostVulnerabilityTrends(hostID int, timePeriodFilter do
 		return m.MockGetHostVulnerabilityTrends(hostID, timePeriodFilter, severityFilters)
 	}
 	return nil, nil
+}
+
+func (m *MockStorage) GetRapporteursScan(scanID uuid.UUID) (*[]domain.Rapporteur, string) {
+	if m.MockGetRapporteursScan != nil {
+		return m.MockGetRapporteursScan(scanID)
+	}
+	return nil, ""
 }
