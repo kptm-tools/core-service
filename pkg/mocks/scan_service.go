@@ -11,7 +11,8 @@ import (
 )
 
 type MockScanService struct {
-	MockCreateScan func(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error)
+	MockCreateScan         func(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error)
+	MockGetRapporteursScan func(id uuid.UUID) (*[]domain.Rapporteur, string)
 }
 
 func (m *MockScanService) CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error) {
@@ -19,6 +20,13 @@ func (m *MockScanService) CreateScan(hostID int, tenantID, operatorID string, st
 		return m.MockCreateScan(hostID, tenantID, operatorID, startedAt)
 	}
 	return nil, nil
+}
+
+func (m *MockScanService) GetRapporteursScan(id uuid.UUID) (*[]domain.Rapporteur, string) {
+	if m.MockGetRapporteursScan != nil {
+		return m.MockGetRapporteursScan(id)
+	}
+	return nil, ""
 }
 
 func (m *MockScanService) GetScans(s string) ([]*domain.ScanSummary, error) {
