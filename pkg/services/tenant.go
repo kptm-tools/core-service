@@ -37,14 +37,9 @@ func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
 
 func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error) {
 	// 1. Get Overall Security Posture (averageProtectionScore)
-	overallSecurityPosture, securityPostureVariation, err := s.GetTenantSecurityPosture(tenantID)
+	securityPostureData, err := s.GetTenantSecurityPosture(tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenant security posture: %w", err)
-	}
-
-	securityPostureData := domain.OverallSecurityPostureData{
-		Score:     overallSecurityPosture,
-		Variation: securityPostureVariation,
 	}
 
 	// 2. Populate a map[domain.Host]domain.Scan with all latest scans for later reference
@@ -90,7 +85,7 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 	// 6. Calculate HostsWithGreatestVulnerabilities
 
 	dashboardData := domain.TenantDashboardData{
-		OverallSecurityPosture: securityPostureData,
+		OverallSecurityPosture: *securityPostureData,
 		HostSeverityHeatMap:    heatMap,
 		VulnerabilityTrends:    trendsTimePeriods,
 		LastScan:               latestScanData,
@@ -118,10 +113,10 @@ func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[int]*dom
 	return hostLatestScanMap, nil
 }
 
-func (s *TenantService) GetTenantSecurityPosture(tenantID string) (float64, float64, error) {
+func (s *TenantService) GetTenantSecurityPosture(tenantID string) (*domain.OverallSecurityPostureData, error) {
 	hosts, err := s.storage.GetHostsByTenantID(tenantID)
 	if err != nil {
-		return 0.0, 0.0, fmt.Errorf("failed to get hosts for tenant %s: %w", tenantID, err)
+		return nil, fmt.Errorf("failed to get hosts for tenant %s: %w", tenantID, err)
 	}
 
 	currentScoreSum := 0.0
@@ -171,7 +166,10 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string) (float64, floa
 
 	variation := currentOverallScore - previousOverallScore
 
-	return currentOverallScore, variation, nil
+	return &domain.OverallSecurityPostureData{
+		Score:     currentOverallScore,
+		Variation: variation,
+	}, nil
 }
 
 func (s *TenantService) getHostSeverityHeatMap(hosts []*domain.Host, hostLatestScanMap map[int]*domain.Scan) (domain.HostSeverityHeatMapData, error) {
