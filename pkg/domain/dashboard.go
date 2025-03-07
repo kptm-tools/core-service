@@ -12,7 +12,7 @@ type TenantDashboardData struct {
 	VulnerabilityTrends              []ServiceTimePeriod
 	LastScan                         *LastScanData
 	VulnerabilitySeverityCount       tools.SeverityCounts
-	HostsWithGreatestVulnerabilities map[string]int
+	HostsWithGreatestVulnerabilities []HostAliasVulnerabilityPair
 }
 
 type OverallSecurityPostureData struct {
@@ -32,3 +32,8 @@ type LastScanData struct {
 // and values are tools.SeverityCounts, representing vulnerability counts
 // per severity.
 type HostSeverityHeatMapData map[string]tools.SeverityCounts
+
+type HostAliasVulnerabilityPair struct {
+	Alias              string
+	VulnerabilityCount int
+}

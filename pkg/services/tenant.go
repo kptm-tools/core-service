@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
@@ -83,12 +84,17 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 	}
 
 	// 6. Calculate HostsWithGreatestVulnerabilities
+	sortedHostsWithGreatestVulnerabilities, err := s.GetHostsSortedByMostVulnerabilities(hosts, hostLatestScanMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sortedHostsWithGreatesVulnerabilities: %w", err)
+	}
 
 	dashboardData := domain.TenantDashboardData{
-		OverallSecurityPosture: *securityPostureData,
-		HostSeverityHeatMap:    heatMap,
-		VulnerabilityTrends:    trendsTimePeriods,
-		LastScan:               latestScanData,
+		OverallSecurityPosture:           *securityPostureData,
+		HostSeverityHeatMap:              heatMap,
+		VulnerabilityTrends:              trendsTimePeriods,
+		LastScan:                         latestScanData,
+		HostsWithGreatestVulnerabilities: sortedHostsWithGreatestVulnerabilities,
 	}
 
 	return &dashboardData, nil
@@ -256,4 +262,40 @@ func (s *TenantService) getLatestScanData(scans []*domain.Scan) (*domain.LastSca
 	}
 
 	return &latestScanData, nil
+}
+
+func (s *TenantService) GetHostsSortedByMostVulnerabilities(
+	hosts []*domain.Host,
+	latestScanMap map[int]*domain.Scan,
+) ([]domain.HostAliasVulnerabilityPair, error) {
+	var hostVulnerabilityPairs []domain.HostAliasVulnerabilityPair
+
+	// For quick lookup by ID
+	hostMap := make(map[int]*domain.Host)
+	for _, host := range hosts {
+		hostMap[host.ID] = host
+	}
+
+	for hostID, scan := range latestScanMap {
+		if scan == nil {
+			continue
+		}
+
+		host := hostMap[hostID]
+		vulnerabilityCount, err := s.storage.GetScanVulnerabilityCount(scan.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count scan %s vulnerabilities: %w", scan.ID.String(), err)
+		}
+
+		hostVulnerabilityPairs = append(hostVulnerabilityPairs,
+			domain.HostAliasVulnerabilityPair{Alias: host.Name, VulnerabilityCount: vulnerabilityCount},
+		)
+	}
+
+	// Sort in descending order of vulnerability count
+	sort.Slice(hostVulnerabilityPairs, func(i, j int) bool {
+		return hostVulnerabilityPairs[i].VulnerabilityCount > hostVulnerabilityPairs[j].VulnerabilityCount
+	})
+
+	return hostVulnerabilityPairs, nil
 }
