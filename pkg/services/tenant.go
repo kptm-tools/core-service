@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -36,6 +35,11 @@ func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
 	return tenants, nil
 }
 
+// GetTenantDashboardData gets the Dashboard data for that Tenant.
+// An important thing to note is that data is seen per host and it's latest scans.
+// If a host has no latest scan, it's data is skipped for certain graphs such as the heatMap
+// and # of vulnerabilities in HostsWithGreatestVulnerabilities, since saying no vulnerabilities
+// were found would be misleading, because the data just doesn't exist at that moment.
 func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error) {
 	// 1. Get Overall Security Posture (averageProtectionScore)
 	securityPostureData, err := s.GetTenantSecurityPosture(tenantID)
@@ -178,24 +182,29 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string) (*domain.Overa
 	}, nil
 }
 
-func (s *TenantService) getHostSeverityHeatMap(hosts []*domain.Host, hostLatestScanMap map[int]*domain.Scan) (domain.HostSeverityHeatMapData, error) {
-	severityHeatMap := make(domain.HostSeverityHeatMapData, len(hosts))
-	slog.Debug("GetHostSeverityHeatMap:", slog.Any("host_latest_scan_map", hostLatestScanMap))
+func (s *TenantService) getHostSeverityHeatMap(
+	hosts []*domain.Host,
+	hostLatestScanMap map[int]*domain.Scan,
+) ([]domain.HostAliasSeverityCountPair, error) {
+	severityHeatMap := make([]domain.HostAliasSeverityCountPair, 0, len(hosts))
 	for _, host := range hosts {
 		if host == nil {
 			continue
 		}
 
 		if scan, ok := hostLatestScanMap[host.ID]; ok {
-			if scan != nil {
-				severityCounts, err := s.storage.GetSeverityCounts(scan.ID)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get host severity counts: %w", err)
-				}
-				severityHeatMap[host.Name] = *severityCounts
-			} else {
-				severityHeatMap[host.Name] = tools.SeverityCounts{}
+			if scan == nil {
+				continue
 			}
+			severityCounts, err := s.storage.GetSeverityCounts(scan.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get host severity counts: %w", err)
+			}
+			severityHeatMap = append(severityHeatMap,
+				domain.HostAliasSeverityCountPair{
+					Alias:         host.Name,
+					SeverityCount: *severityCounts,
+				})
 		}
 	}
 

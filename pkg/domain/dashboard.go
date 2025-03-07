@@ -8,10 +8,9 @@ import (
 
 type TenantDashboardData struct {
 	OverallSecurityPosture           OverallSecurityPostureData
-	HostSeverityHeatMap              HostSeverityHeatMapData
+	HostSeverityHeatMap              []HostAliasSeverityCountPair
 	VulnerabilityTrends              []ServiceTimePeriod
 	LastScan                         *LastScanData
-	VulnerabilitySeverityCount       tools.SeverityCounts
 	HostsWithGreatestVulnerabilities []HostAliasVulnerabilityPair
 }
 
@@ -28,11 +27,16 @@ type LastScanData struct {
 	ScanDate                      time.Time
 }
 
-// HostSeverityHeatMapData is a map where keys are hostnames (strings)
+// HostAliasSeverityCountPair is a struct where keys are hostnames (strings)
 // and values are tools.SeverityCounts, representing vulnerability counts
 // per severity.
-type HostSeverityHeatMapData map[string]tools.SeverityCounts
+type HostAliasSeverityCountPair struct {
+	Alias         string
+	SeverityCount tools.SeverityCounts
+}
 
+// HostAliasSeverityVulnerabilityPair is a struct where keys are hostnames (strings)
+// and values represent total vulnerability counts for the latest scan in that host.
 type HostAliasVulnerabilityPair struct {
 	Alias              string
 	VulnerabilityCount int
