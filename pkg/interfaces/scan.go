@@ -32,6 +32,7 @@ type IScanService interface {
 	CreateTarget(hostID int) (*results.Target, error)
 	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
 	ScanScheduleDisableJob(int) error
+	GetRapporteursScan(id uuid.UUID) (*[]domain.Rapporteur, string)
 }
 
 type IScanHandlers interface {
