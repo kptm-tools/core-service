@@ -459,3 +459,174 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantService_getHostSeverityHeatMap(t *testing.T) {
+	scan1IDStr := "244cac1f-2c99-41d6-9dc6-ddd3a335ea68"
+	scan2IDStr := "cf243368-c72a-46e0-b042-682883b113cf"
+	testCases := []struct {
+		name      string // description of this test case
+		mockSetup func(*mocks.MockStorage)
+		// Named input parameters for target function.
+		hosts             []*domain.Host
+		hostLatestScanMap map[int]*domain.Scan
+		want              []domain.HostAliasSeverityCountPair
+		wantErr           bool
+	}{
+		{
+			name: "Two hosts with latest scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetSeverityCounts = func(u uuid.UUID) (*tools.SeverityCounts, error) {
+					if u == uuid.MustParse(scan1IDStr) {
+						return &tools.SeverityCounts{
+							Low: 1,
+						}, nil
+					}
+					return &tools.SeverityCounts{
+						Critical: 5,
+					}, nil
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			hostLatestScanMap: map[int]*domain.Scan{
+				1: {ID: uuid.MustParse(scan1IDStr)},
+				2: {ID: uuid.MustParse(scan2IDStr)},
+			},
+			want: []domain.HostAliasSeverityCountPair{
+				{Alias: "Host 1", SeverityCount: tools.SeverityCounts{Low: 1}},
+				{Alias: "Host 2", SeverityCount: tools.SeverityCounts{Critical: 5}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "One normal host and one nil host",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetSeverityCounts = func(u uuid.UUID) (*tools.SeverityCounts, error) {
+					if u == uuid.MustParse(scan1IDStr) {
+						return &tools.SeverityCounts{
+							Low: 1,
+						}, nil
+					}
+					return &tools.SeverityCounts{
+						Critical: 5,
+					}, nil
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				nil,
+			},
+			hostLatestScanMap: map[int]*domain.Scan{
+				1: {ID: uuid.MustParse(scan1IDStr)},
+				2: {ID: uuid.MustParse(scan2IDStr)},
+			},
+			want: []domain.HostAliasSeverityCountPair{
+				{Alias: "Host 1", SeverityCount: tools.SeverityCounts{Low: 1}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Two hosts with no scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetSeverityCounts = func(u uuid.UUID) (*tools.SeverityCounts, error) {
+					if u == uuid.MustParse(scan1IDStr) {
+						return &tools.SeverityCounts{
+							Low: 1,
+						}, nil
+					}
+					return &tools.SeverityCounts{
+						Critical: 5,
+					}, nil
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			hostLatestScanMap: map[int]*domain.Scan{},
+			want:              []domain.HostAliasSeverityCountPair{},
+			wantErr:           false,
+		},
+		{
+			name: "Two hosts with nil scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetSeverityCounts = func(u uuid.UUID) (*tools.SeverityCounts, error) {
+					return nil, nil
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			hostLatestScanMap: map[int]*domain.Scan{
+				1: nil,
+				2: nil,
+			},
+			want:    []domain.HostAliasSeverityCountPair{},
+			wantErr: false,
+		},
+		{
+			name: "No hosts, no scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetSeverityCounts = func(u uuid.UUID) (*tools.SeverityCounts, error) {
+					return nil, nil
+				}
+			},
+			hosts:             []*domain.Host{},
+			hostLatestScanMap: map[int]*domain.Scan{},
+			want:              []domain.HostAliasSeverityCountPair{},
+			wantErr:           false,
+		},
+		{
+			name: "Storage GetSeverityCounts error",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetSeverityCounts = func(u uuid.UUID) (*tools.SeverityCounts, error) {
+					return nil, fmt.Errorf("database error")
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			hostLatestScanMap: map[int]*domain.Scan{
+				1: {ID: uuid.MustParse(scan1IDStr)},
+				2: {ID: uuid.MustParse(scan2IDStr)},
+			},
+			want:    []domain.HostAliasSeverityCountPair{},
+			wantErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockStore := &mocks.MockStorage{}
+			tc.mockSetup(mockStore)
+
+			s := NewTenantService(mockStore)
+			got, gotErr := s.getHostSeverityHeatMap(tc.hosts, tc.hostLatestScanMap)
+			if gotErr != nil {
+				if !tc.wantErr {
+					assert.NoError(t, gotErr)
+				}
+				return
+			}
+			if tc.wantErr {
+				assert.Error(t, gotErr)
+			}
+
+			assert.NotNil(t, got)
+			assert.Equal(t, len(tc.want), len(got))
+
+			for i, pair := range tc.want {
+				assert.Equal(t, pair.Alias, got[i].Alias)
+				assert.Equal(t, pair.SeverityCount.Critical, got[i].SeverityCount.Critical)
+				assert.Equal(t, pair.SeverityCount.High, got[i].SeverityCount.High)
+				assert.Equal(t, pair.SeverityCount.Medium, got[i].SeverityCount.Medium)
+				assert.Equal(t, pair.SeverityCount.Low, got[i].SeverityCount.Low)
+				assert.Equal(t, pair.SeverityCount.None, got[i].SeverityCount.None)
+				assert.Equal(t, pair.SeverityCount.Unknown, got[i].SeverityCount.Unknown)
+			}
+		})
+	}
+}
