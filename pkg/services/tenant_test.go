@@ -394,6 +394,45 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "GetHostVulnerabilityTrends storage error",
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+					return nil, fmt.Errorf("database error")
+				}
+			},
+			hostIDs:          []int{1, 2},
+			timePeriodFilter: domain.TimePeriodFilterMonth,
+			severityFilters:  []string{},
+			want:             nil,
+			wantErr:          true,
+		},
+		{
+			name: "Empty hostIDs slice",
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+					return nil, fmt.Errorf("database error")
+				}
+			},
+			hostIDs:          []int{},
+			timePeriodFilter: domain.TimePeriodFilterMonth,
+			severityFilters:  []string{},
+			want: []domain.ServiceTimePeriod{
+				{TimePeriod: "January", VulnerabilityCount: 0},
+				{TimePeriod: "February", VulnerabilityCount: 0},
+				{TimePeriod: "March", VulnerabilityCount: 0},
+				{TimePeriod: "April", VulnerabilityCount: 0},
+				{TimePeriod: "May", VulnerabilityCount: 0},
+				{TimePeriod: "June", VulnerabilityCount: 0},
+				{TimePeriod: "July", VulnerabilityCount: 0},
+				{TimePeriod: "August", VulnerabilityCount: 0},
+				{TimePeriod: "September", VulnerabilityCount: 0},
+				{TimePeriod: "October", VulnerabilityCount: 0},
+				{TimePeriod: "November", VulnerabilityCount: 0},
+				{TimePeriod: "December", VulnerabilityCount: 0},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
