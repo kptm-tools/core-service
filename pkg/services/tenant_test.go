@@ -235,6 +235,75 @@ func Test_getLatestScanData(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		{
+			name:       "Nil scans",
+			inputScans: []*domain.Scan{nil, nil},
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetScanInsights = func(scanID uuid.UUID) (*domain.ScanInsights, error) {
+					return nil, nil
+				}
+			},
+			expected:  nil,
+			expectErr: false,
+		},
+		{
+			name: "Scans with same date",
+			inputScans: []*domain.Scan{
+				{
+					ID:        uuid.MustParse("740cc333-80f8-40f0-b14b-466e3cbb77d0"),
+					StartedAt: timeNow,
+				},
+				{
+					ID:        uuid.MustParse("02ac2f74-8a0d-4804-a566-e7c06dfe180e"),
+					StartedAt: timeNow,
+				},
+			},
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetScanInsights = func(scanID uuid.UUID) (*domain.ScanInsights, error) {
+					if scanID == uuid.MustParse("740cc333-80f8-40f0-b14b-466e3cbb77d0") {
+						return &domain.ScanInsights{
+							Metadata: domain.ScanInsightsMetadata{
+								HostAlias: "Host of Scan 740cc333-80f8-40f0-b14b-466e3cbb77d0",
+							},
+						}, nil
+					}
+					return &domain.ScanInsights{}, nil
+				}
+			},
+			// We expect to get the first value of the slice, since we're comparing if
+			// the date is AFTER
+			expected: &domain.LastScanData{
+				HostAlias: "Host of Scan 740cc333-80f8-40f0-b14b-466e3cbb77d0",
+			},
+			expectErr: false,
+		},
+		{
+			name: "Scans Insights Error",
+			inputScans: []*domain.Scan{
+				{
+					ID:        uuid.MustParse("740cc333-80f8-40f0-b14b-466e3cbb77d0"),
+					StartedAt: timeNow,
+				},
+			},
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetScanInsights = func(scanID uuid.UUID) (*domain.ScanInsights, error) {
+					return nil, fmt.Errorf("Error connecting to database")
+				}
+			},
+			expected:  nil,
+			expectErr: true,
+		},
+		{
+			name:       "No scans",
+			inputScans: []*domain.Scan{},
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetScanInsights = func(scanID uuid.UUID) (*domain.ScanInsights, error) {
+					return nil, nil
+				}
+			},
+			expected:  nil,
+			expectErr: false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -250,6 +319,11 @@ func Test_getLatestScanData(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
+
+			if tc.expected == nil {
+				assert.Nil(t, lastScanData)
+				return
+			}
 
 			// Assert LastScanData is equal to expected struct
 			assert.NotNil(t, lastScanData)
