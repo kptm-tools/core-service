@@ -301,6 +301,6 @@ func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
 	return s.storage.ScanScheduleDisableJob(scanScheduleID, false)
 }
 
-func (s ScanService) GetRapporteursScan(id uuid.UUID) (*[]domain.Rapporteur, string) {
-	return s.storage.GetRapporteursScan(id)
+func (s ScanService) GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error) {
+	return s.storage.GetRapporteursAndHostAliasByScanID(id)
 }

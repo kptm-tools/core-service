@@ -20,11 +20,6 @@ type Config struct {
 		BlueprintTenantID      string
 		BlueprintApplicationID string
 		ApplicationID          string
-		SmtpHost               string
-		SmtpPort               string
-		SmtpUsername           string
-		SmtpPassword           string
-		SmtpFromEmail          string
 	}
 
 	Database struct {
@@ -38,6 +33,14 @@ type Config struct {
 	Nats struct {
 		Host string
 		Port string
+	}
+
+	SMTP struct {
+		Host      string
+		Port      string
+		Username  string
+		Password  string
+		FromEmail string
 	}
 }
 
@@ -72,11 +75,6 @@ func load() *Config {
 		BlueprintTenantID      string
 		BlueprintApplicationID string
 		ApplicationID          string
-		SmtpHost               string
-		SmtpPort               string
-		SmtpUsername           string
-		SmtpPassword           string
-		SmtpFromEmail          string
 	}{
 		ApplicationID:          fetchEnv("APPLICATION_ID", "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"),
 		APIKey:                 fetchEnvOrPanic("FUSIONAUTH_API_KEY"),
@@ -84,11 +82,6 @@ func load() *Config {
 		Port:                   fetchEnv("FUSIONAUTH_PORT", "9011"),
 		BlueprintTenantID:      fetchEnv("FUSIONAUTH_BLUEPRINT_TENANTID", "79c9acd6-a590-4394-8f2c-fadb07b79113"),
 		BlueprintApplicationID: fetchEnv("FUSIONAUTH_BLUEPRINT_APPID", "c412a5bf-2524-46e9-85a6-08d1f1777295"),
-		SmtpHost:               fetchEnv("SMTP_HOST", "smtp-relay.brevo.com"),
-		SmtpPort:               fetchEnv("SMTP_PORT", "587"),
-		SmtpUsername:           fetchEnv("SMTP_USER", "816ce1001@smtp-brevo.com"),
-		SmtpFromEmail:          fetchEnv("SMTP_FROM_EMAIL", "me@cristiano-catolico.online"),
-		SmtpPassword:           fetchEnv("SMTP_PASS", ""),
 	}
 
 	cfg.Database = struct {
@@ -113,6 +106,19 @@ func load() *Config {
 		Port: fetchEnv("NATS_PORT", "4222"),
 	}
 
+	cfg.SMTP = struct {
+		Host      string
+		Port      string
+		Username  string
+		Password  string
+		FromEmail string
+	}{
+		Host:      fetchEnvOrPanic("SMTP_HOST"),
+		Port:      fetchEnvOrPanic("SMTP_PORT"),
+		Username:  fetchEnvOrPanic("SMTP_USER"),
+		FromEmail: fetchEnvOrPanic("SMTP_FROM_EMAIL"),
+		Password:  fetchEnvOrPanic("SMTP_PASS"),
+	}
 	return cfg
 }
 
