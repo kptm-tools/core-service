@@ -812,3 +812,101 @@ func TestTenantService_GetTenantSecurityPosture(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantService_getHostLatestScanMap(t *testing.T) {
+	testCases := []struct {
+		name      string // description of this test case
+		mockSetup func(*mocks.MockStorage)
+		// Named input parameters for target function.
+		hosts   []*domain.Host
+		want    map[int]*domain.Scan
+		wantErr bool
+	}{
+		{
+			name: "Two hosts - Success",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					if hostID == 1 {
+						return &domain.Scan{ID: uuid.MustParse("41fa710c-4539-4e31-9f4a-f333ded62b00"), HostID: 1}, nil
+					}
+					return &domain.Scan{ID: uuid.MustParse("023bf9d4-ac11-4500-a7f1-529fe32dda67"), HostID: 2}, nil
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			want: map[int]*domain.Scan{
+				1: {ID: uuid.MustParse("41fa710c-4539-4e31-9f4a-f333ded62b00"), HostID: 1},
+				2: {ID: uuid.MustParse("023bf9d4-ac11-4500-a7f1-529fe32dda67"), HostID: 2},
+			},
+			wantErr: false,
+		},
+		{
+			name:      "Empty Host Slice",
+			mockSetup: func(ms *mocks.MockStorage) {},
+			hosts:     []*domain.Host{},
+			want:      map[int]*domain.Scan{},
+			wantErr:   false,
+		},
+		{
+			name: "Two hosts with no scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, nil
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			want: map[int]*domain.Scan{
+				1: nil,
+				2: nil,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Storage error fetching latest scan",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, fmt.Errorf("database error")
+				}
+			},
+			hosts: []*domain.Host{
+				{ID: 1, Name: "Host 1"},
+				{ID: 2, Name: "Host 2"},
+			},
+			want:    map[int]*domain.Scan{},
+			wantErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockStore := &mocks.MockStorage{}
+			tc.mockSetup(mockStore)
+
+			s := NewTenantService(mockStore)
+			got, gotErr := s.getHostLatestScanMap(tc.hosts)
+			if gotErr != nil {
+				if !tc.wantErr {
+					assert.Error(t, gotErr)
+				}
+				return
+			}
+			if tc.wantErr {
+				assert.Error(t, gotErr)
+			}
+
+			assert.Equal(t, len(tc.want), len(got))
+			for _, host := range tc.hosts {
+				assert.Contains(t, got, host.ID, "Expected hostID to be in resulting map keys: %d", host.ID)
+				if scan, ok := got[host.ID]; ok {
+					if scan != nil {
+						assert.Equal(t, scan.HostID, host.ID, "Expected scan HostID and host.ID to match. Got %d want %d", scan.HostID, host.ID)
+					}
+				}
+			}
+		})
+	}
+}
