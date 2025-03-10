@@ -196,16 +196,15 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 		slog.Error("failed to extract scanID", slog.Any("err", err))
 	}
 
-	timePeriodFilter := r.URL.Query().Get("time_period")
-	if timePeriodFilter == "" {
-		timePeriodFilter = "Month"
-	}
-
-	validTimePeriods := map[string]bool{"Month": true, "Quarter": true, "Semester": true}
-	if !validTimePeriods[timePeriodFilter] {
-		slog.Warn("Invalid time_period filter",
-			slog.String("time_period_filter", timePeriodFilter))
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid time_period filter Must be 'Month', 'Quarter', or 'Semester'"})
+	timePeriodFilter := domain.TimePeriodFilterMonth
+	timePeriodFilterStr := r.URL.Query().Get("time_period")
+	if timePeriodFilterStr != "" {
+		timePeriodFilter, err = domain.ParseTimePeriodFilter(timePeriodFilterStr)
+		if err != nil {
+			slog.Warn("Invalid time_period filter query param",
+				slog.String("time_period_filter", timePeriodFilterStr))
+			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid time_period filter Must be 'Month', 'Quarter', or 'Semester'"})
+		}
 	}
 
 	severityFilterStr := r.URL.Query().Get("severity")

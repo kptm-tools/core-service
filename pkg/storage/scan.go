@@ -633,7 +633,7 @@ func (s *PostgreSQLStore) UpdateProtectionScore(scanID uuid.UUID, protectionScor
 
 func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	scanID uuid.UUID,
-	timePeriodFilter string,
+	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	var summaryData domain.ScanVulnerabilitySummaryData

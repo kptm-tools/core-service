@@ -1,9 +1,10 @@
 package interfaces
 
 import (
-	"github.com/kptm-tools/common/common/pkg/results"
 	"net/http"
 	"time"
+
+	"github.com/kptm-tools/common/common/pkg/results"
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -23,7 +24,7 @@ type IScanService interface {
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
 	HandleScanCompletion(scanID uuid.UUID) error
-	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
 	GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)

@@ -358,7 +358,7 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 		{
 			name: "Two hosts with no timePeriodFilter and no severityFilters",
 			mockSetup: func(mockStore *mocks.MockStorage) {
-				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
 					return []domain.ServiceTimePeriod{
 						{TimePeriod: "January", VulnerabilityCount: 5},
 						{TimePeriod: "February", VulnerabilityCount: 10},
@@ -397,7 +397,7 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 		{
 			name: "GetHostVulnerabilityTrends storage error",
 			mockSetup: func(mockStore *mocks.MockStorage) {
-				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
 					return nil, fmt.Errorf("database error")
 				}
 			},
@@ -410,7 +410,7 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 		{
 			name: "Empty hostIDs slice",
 			mockSetup: func(mockStore *mocks.MockStorage) {
-				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
 					return nil, fmt.Errorf("database error")
 				}
 			},

@@ -311,7 +311,7 @@ func (s *PostgreSQLStore) ExistAlias(alias string) (bool, error) {
 
 func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 	hostID int,
-	timePeriodFilter string,
+	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) ([]domain.ServiceTimePeriod, error) {
 	// This query is kind of complicated, but what it does is fill out time_periods and labels,
@@ -368,7 +368,7 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 		ORDER BY tp.ordering_period;
   `
 
-	trendQueryParams := []any{hostID, timePeriodFilter}
+	trendQueryParams := []any{hostID, timePeriodFilter.String()}
 	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
 	forattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
 	slog.Debug("Executing Host Trend Query",

@@ -33,7 +33,7 @@ type IStorage interface {
 	GetDNSLookupResult(scanID uuid.UUID) (*tools.DNSLookupResult, error)
 	GetHarvesterResult(scanID uuid.UUID) (*tools.HarvesterResult, error)
 	GetNmapResult(scanID uuid.UUID) (*tools.NmapResult, error)
-	GetScanVulnerabilitiesSummary(scanID uuid.UUID, timePeriodFilter string, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	GetScanVulnerabilitiesSummary(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetReportsByTenantID(string) ([]*domain.ReportItem, error)
 	GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
 	GetScanBeforeLatestByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error)
@@ -52,5 +52,5 @@ type IStorage interface {
 	PatchScanScheduleByID(int, uuid.UUID, string, bool, string, int, time.Time) error
 	GetCurrentHostIDFromScanSchedule(int) (int, error)
 	ScanScheduleEnableJob(string, bool, int) error
-	GetHostVulnerabilityTrends(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error)
+	GetHostVulnerabilityTrends(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 }

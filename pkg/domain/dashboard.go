@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 )
 
 type TimePeriodFilter string
@@ -16,6 +17,21 @@ const (
 
 func (t TimePeriodFilter) String() string {
 	return string(t)
+}
+
+// ParseTimePeriodFilter parses a string into a TimePeriodFilter enum.
+// It returns an error if the string is not a valid TimePeriodFilter value.
+func ParseTimePeriodFilter(s string) (TimePeriodFilter, error) {
+	switch s {
+	case "Month":
+		return TimePeriodFilterMonth, nil
+	case "Quarter":
+		return TimePeriodFilterQuarter, nil
+	case "Semester":
+		return TimePeriodFilterSemester, nil
+	default:
+		return TimePeriodFilterMonth, customerrors.ErrInvalidTimePeriodFilter
+	}
 }
 
 // GetOrderedTimePeriods returns a slice of ordered time periods based on the TimePeriodFilter

@@ -239,7 +239,7 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 	}
 
 	for _, hostID := range hostIDs {
-		hostTrends, err := s.storage.GetHostVulnerabilityTrends(hostID, timePeriodFilter.String(), severityFilters)
+		hostTrends, err := s.storage.GetHostVulnerabilityTrends(hostID, timePeriodFilter, severityFilters)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get trends for hostID %d: %w", hostID, err)
 		}
