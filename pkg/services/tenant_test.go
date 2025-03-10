@@ -746,6 +746,46 @@ func TestTenantService_GetTenantSecurityPosture(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "Tenant hosts with scans with nil protection scores",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetHostsByTenantID = func(tenantID string) ([]*domain.Host, error) {
+					return nil, fmt.Errorf("database error")
+				}
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: nil}, nil
+				}
+				ms.MockGetScanBeforeLatestByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: nil}, nil
+				}
+			},
+			tenantID: "79541000-de8a-459c-856a-db36563ac4ee",
+			want:     &domain.OverallSecurityPostureData{},
+			wantErr:  true,
+		},
+		{
+			name: "Tenant with hosts but failed to fetch scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetHostsByTenantID = func(tenantID string) ([]*domain.Host, error) {
+					return []*domain.Host{
+						{ID: 1, Name: "Host 1"},
+						{ID: 2, Name: "Host 2"},
+					}, nil
+				}
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, fmt.Errorf("database error")
+				}
+				ms.MockGetScanBeforeLatestByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, fmt.Errorf("database error")
+				}
+			},
+			tenantID: "79541000-de8a-459c-856a-db36563ac4ee",
+			want: &domain.OverallSecurityPostureData{
+				Score:     0.0,
+				Variation: 0.0,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -767,7 +807,7 @@ func TestTenantService_GetTenantSecurityPosture(t *testing.T) {
 			assert.NotNil(t, got)
 
 			// Assert OverallSecurityPostureData struct fields
-			assert.Equal(t, tc.want.Score, got.Score, "Expected OverallSecurityPostureData Score %.5f, got %.5f", tc.want.Score, got.Score)
+			assert.Equal(t, tc.want.Score, got.Score, "Expected OverallSecurityPostureData Score %.2f, got %.2f", tc.want.Score, got.Score)
 			assert.Equal(t, tc.want.Variation, got.Variation, "Expected OverallSecurityPostureData Variation %.2f, got %.2f", tc.want.Variation, got.Variation)
 		})
 	}
