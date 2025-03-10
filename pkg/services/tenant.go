@@ -147,7 +147,7 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string) (*domain.Overa
 			)
 			continue
 		}
-		if latestScan != nil {
+		if latestScan != nil && latestScan.ProtectionScore != nil {
 			currentScoreSum += *latestScan.ProtectionScore
 			currentHostCount++
 		}
@@ -161,7 +161,7 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string) (*domain.Overa
 			)
 			continue
 		}
-		if previousScan != nil {
+		if previousScan != nil && previousScan.ProtectionScore != nil {
 			previousScoreSum += *previousScan.ProtectionScore
 			previousHostCount++
 		}
