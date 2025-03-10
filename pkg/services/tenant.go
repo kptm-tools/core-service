@@ -86,6 +86,9 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest scan data: %w", err)
 	}
+	if latestScanData == nil {
+		slog.Warn("Main Dashboard - No latest scan data was found, returning nil")
+	}
 
 	// 6. Calculate HostsWithGreatestVulnerabilities
 	sortedHostsWithGreatestVulnerabilities, err := s.GetHostsSortedByMostVulnerabilities(hosts, hostLatestScanMap)
@@ -97,7 +100,7 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 		OverallSecurityPosture:           *securityPostureData,
 		HostSeverityHeatMap:              heatMap,
 		VulnerabilityTrends:              trendsTimePeriods,
-		LastScan:                         latestScanData,
+		LastScan:                         latestScanData, // Might be nil if there's no last scan
 		HostsWithGreatestVulnerabilities: sortedHostsWithGreatestVulnerabilities,
 	}
 
@@ -244,16 +247,21 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 
 func (s *TenantService) getLatestScanData(scans []*domain.Scan) (*domain.LastScanData, error) {
 	// 5.1 Loop over hostLatestScanMap and get the one with the latest date
-	var latestScan domain.Scan
-	var latestDate time.Time
+	var latestScan *domain.Scan
+	var latestDate time.Time // Starts as zero-value for time.Time
 	for _, scan := range scans {
 		if scan == nil {
 			continue
 		}
 		if scan.StartedAt.After(latestDate) {
-			latestScan = *scan
+			latestScan = scan
 			latestDate = scan.StartedAt
 		}
+	}
+
+	// If there's no latest scan, return nil
+	if latestScan == nil {
+		return nil, nil
 	}
 
 	// 5.2 Get severity counts for that scan
