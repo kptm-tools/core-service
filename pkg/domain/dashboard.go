@@ -76,7 +76,7 @@ type HostAliasSeverityCountPair struct {
 	SeverityCount tools.SeverityCounts
 }
 
-// HostAliasSeverityVulnerabilityPair is a struct where keys are hostnames (strings)
+// HostAliasVulnerabilityPair is a struct where keys are hostnames (strings)
 // and values represent total vulnerability counts for the latest scan in that host.
 type HostAliasVulnerabilityPair struct {
 	Alias              string
