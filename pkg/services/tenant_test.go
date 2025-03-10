@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/mocks"
@@ -154,8 +156,6 @@ func Test_GetHostsSortedByMostVulnerabilities(t *testing.T) {
 				return
 			}
 
-			fmt.Printf("Got aliasVulnerPairs: %+v\n", aliasVulnerPairs)
-
 			assert.NoError(t, err)
 			assert.Equal(t, len(tc.expected), len(aliasVulnerPairs), "Expected number of HostAliasVulnerabilityPair does not match")
 
@@ -170,6 +170,102 @@ func Test_GetHostsSortedByMostVulnerabilities(t *testing.T) {
 				assert.Equal(t, expectedPair.Alias, aliasVulnerPairs[i].Alias, "Alias mismatch at index %d", i)
 				assert.Equal(t, expectedPair.VulnerabilityCount, aliasVulnerPairs[i].VulnerabilityCount, "VulnerabilityCount mismatch at index %d for Alias %s", i, expectedPair.Alias)
 			}
+		})
+	}
+}
+
+func Test_getLatestScanData(t *testing.T) {
+	timeNow := time.Now().UTC()
+
+	testCases := []struct {
+		name       string
+		inputScans []*domain.Scan
+		mockSetup  func(mockStore *mocks.MockStorage)
+		expected   *domain.LastScanData
+		expectErr  bool
+	}{
+		{
+			name: "Two Valid Scans - Success",
+			inputScans: []*domain.Scan{
+				{
+					ID:        uuid.MustParse("740cc333-80f8-40f0-b14b-466e3cbb77d0"),
+					StartedAt: timeNow,
+				},
+				{
+					ID:        uuid.MustParse("02ac2f74-8a0d-4804-a566-e7c06dfe180e"),
+					StartedAt: timeNow.Add(time.Hour * -24),
+				},
+			},
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetScanInsights = func(scanID uuid.UUID) (*domain.ScanInsights, error) {
+					if scanID == uuid.MustParse("740cc333-80f8-40f0-b14b-466e3cbb77d0") {
+						return &domain.ScanInsights{
+							TotalVulnerabilities:   5,
+							VulnerabilityVariation: 1,
+							SeverityCounts: tools.SeverityCounts{
+								Critical: 1,
+								High:     1,
+								Medium:   1,
+								Low:      1,
+								None:     0,
+								Unknown:  0,
+							},
+							Metadata: domain.ScanInsightsMetadata{
+								HostAlias: "Scan 740cc333-80f8-40f0-b14b-466e3cbb77d0 Host Alias",
+								ScanDate:  timeNow,
+							},
+						}, nil
+					}
+					return nil, fmt.Errorf("No scan insights for scan")
+				}
+			},
+			expected: &domain.LastScanData{
+				HostAlias:                     "Scan 740cc333-80f8-40f0-b14b-466e3cbb77d0 Host Alias",
+				TotalVulnerabilities:          5,
+				TotalVulnerabilitiesVariation: 1,
+				SeverityCounts: tools.SeverityCounts{
+					Critical: 1,
+					High:     1,
+					Medium:   1,
+					Low:      1,
+					None:     0,
+					Unknown:  0,
+				},
+				ScanDate: timeNow,
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockStore := &mocks.MockStorage{}
+			tc.mockSetup(mockStore)
+
+			tenantService := NewTenantService(mockStore)
+			lastScanData, err := tenantService.getLatestScanData(tc.inputScans)
+			if tc.expectErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+
+			// Assert LastScanData is equal to expected struct
+			assert.NotNil(t, lastScanData)
+			assert.Equal(t, tc.expected.HostAlias, lastScanData.HostAlias)
+			assert.Equal(t, tc.expected.TotalVulnerabilities, lastScanData.TotalVulnerabilities)
+			assert.Equal(t, tc.expected.TotalVulnerabilitiesVariation, lastScanData.TotalVulnerabilitiesVariation)
+
+			// SeverityCount sub-struct
+			assert.Equal(t, tc.expected.SeverityCounts.Critical, lastScanData.SeverityCounts.Critical)
+			assert.Equal(t, tc.expected.SeverityCounts.High, lastScanData.SeverityCounts.High)
+			assert.Equal(t, tc.expected.SeverityCounts.Medium, lastScanData.SeverityCounts.Medium)
+			assert.Equal(t, tc.expected.SeverityCounts.Low, lastScanData.SeverityCounts.Low)
+			assert.Equal(t, tc.expected.SeverityCounts.None, lastScanData.SeverityCounts.None)
+			assert.Equal(t, tc.expected.SeverityCounts.Unknown, lastScanData.SeverityCounts.Unknown)
+
+			assert.Equal(t, tc.expected.ScanDate, lastScanData.ScanDate)
 		})
 	}
 }
