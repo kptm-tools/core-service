@@ -185,6 +185,9 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string) (*domain.Overa
 	}, nil
 }
 
+// getHostSeverityHeatMap returns a heatmap with the amount of severities found for each host.
+// In case a host has no scans, it is skipped, to avoid giving the false impression that said host
+// has no vulnerabilities (it just doesn't have data yet).
 func (s *TenantService) getHostSeverityHeatMap(
 	hosts []*domain.Host,
 	hostLatestScanMap map[int]*domain.Scan,
