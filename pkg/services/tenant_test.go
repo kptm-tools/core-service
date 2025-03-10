@@ -343,3 +343,80 @@ func Test_getLatestScanData(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
+	testCases := []struct {
+		name      string // description of this test case
+		mockSetup func(mockStore *mocks.MockStorage)
+		// Named input parameters for target function.
+		hostIDs          []int
+		timePeriodFilter domain.TimePeriodFilter
+		severityFilters  []string
+		want             []domain.ServiceTimePeriod
+		wantErr          bool
+	}{
+		{
+			name: "Two hosts with no timePeriodFilter and no severityFilters",
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter string, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+					return []domain.ServiceTimePeriod{
+						{TimePeriod: "January", VulnerabilityCount: 5},
+						{TimePeriod: "February", VulnerabilityCount: 10},
+						{TimePeriod: "March", VulnerabilityCount: 0},
+						{TimePeriod: "April", VulnerabilityCount: 0},
+						{TimePeriod: "May", VulnerabilityCount: 0},
+						{TimePeriod: "June", VulnerabilityCount: 0},
+						{TimePeriod: "July", VulnerabilityCount: 0},
+						{TimePeriod: "Agust", VulnerabilityCount: 0},
+						{TimePeriod: "September", VulnerabilityCount: 0},
+						{TimePeriod: "October", VulnerabilityCount: 0},
+						{TimePeriod: "November", VulnerabilityCount: 0},
+						{TimePeriod: "December", VulnerabilityCount: 0},
+					}, nil
+				}
+			},
+			hostIDs:          []int{1, 2},
+			timePeriodFilter: domain.TimePeriodFilterMonth,
+			severityFilters:  []string{},
+			want: []domain.ServiceTimePeriod{
+				{TimePeriod: "January", VulnerabilityCount: 10},
+				{TimePeriod: "February", VulnerabilityCount: 20},
+				{TimePeriod: "March", VulnerabilityCount: 0},
+				{TimePeriod: "April", VulnerabilityCount: 0},
+				{TimePeriod: "May", VulnerabilityCount: 0},
+				{TimePeriod: "June", VulnerabilityCount: 0},
+				{TimePeriod: "July", VulnerabilityCount: 0},
+				{TimePeriod: "August", VulnerabilityCount: 0},
+				{TimePeriod: "September", VulnerabilityCount: 0},
+				{TimePeriod: "October", VulnerabilityCount: 0},
+				{TimePeriod: "November", VulnerabilityCount: 0},
+				{TimePeriod: "December", VulnerabilityCount: 0},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockStore := &mocks.MockStorage{}
+			tc.mockSetup(mockStore)
+
+			s := NewTenantService(mockStore)
+			got, gotErr := s.GetHostsVulnerabilityTrends(tc.hostIDs, tc.timePeriodFilter, tc.severityFilters)
+			if gotErr != nil {
+				if !tc.wantErr {
+					assert.NoError(t, gotErr)
+				}
+				return
+			}
+			if tc.wantErr {
+				assert.Error(t, gotErr)
+			}
+
+			assert.Equal(t, len(tc.want), len(got))
+			for i, wantPeriod := range tc.want {
+				assert.Equal(t, wantPeriod.TimePeriod, got[i].TimePeriod)
+				assert.Equal(t, wantPeriod.VulnerabilityCount, got[i].VulnerabilityCount)
+			}
+		})
+	}
+}
