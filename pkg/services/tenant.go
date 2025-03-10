@@ -216,30 +216,40 @@ func (s *TenantService) getHostSeverityHeatMap(
 
 func (s *TenantService) GetHostsVulnerabilityTrends(
 	hostIDs []int,
-	timePeriodFilter string,
+	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) ([]domain.ServiceTimePeriod, error) {
-	aggregatedTrendsMap := make(map[string]int)
+	orderedTimePeriods := timePeriodFilter.GetOrderedTimePeriods()
+
+	aggregatedTimePeriods := make([]domain.ServiceTimePeriod, len(orderedTimePeriods))
+	for i, period := range orderedTimePeriods {
+		aggregatedTimePeriods[i] = domain.ServiceTimePeriod{
+			TimePeriod:         period,
+			VulnerabilityCount: 0,
+		}
+	}
+
+	// Map for quick lookup of time period index in aggregatedTimePeriods
+	periodIndexMap := make(map[string]int)
+	for i, periodData := range aggregatedTimePeriods {
+		periodIndexMap[periodData.TimePeriod] = i
+	}
 
 	for _, hostID := range hostIDs {
-		hostTrends, err := s.storage.GetHostVulnerabilityTrends(hostID, timePeriodFilter, severityFilters)
+		hostTrends, err := s.storage.GetHostVulnerabilityTrends(hostID, timePeriodFilter.String(), severityFilters)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get trends for hostID %d: %w", hostID, err)
 		}
 
-		// Aggregate trends from the current host into the overall map
+		// Aggregate trends to the pre-ordered slice
 		for _, periodData := range hostTrends {
-			aggregatedTrendsMap[periodData.TimePeriod] += periodData.VulnerabilityCount
+			if index, ok := periodIndexMap[periodData.TimePeriod]; ok {
+				aggregatedTimePeriods[index].VulnerabilityCount += periodData.VulnerabilityCount
+			}
+			slog.Error("Unexpected time period",
+				slog.String("time_period", periodData.TimePeriod),
+				slog.String("time_period_filter", timePeriodFilter.String()))
 		}
-	}
-
-	// Convert the aggregated map to a []domain.ServiceTimePeriod slice
-	var aggregatedTimePeriods []domain.ServiceTimePeriod
-	for timePeriod, vulnCount := range aggregatedTrendsMap {
-		aggregatedTimePeriods = append(aggregatedTimePeriods, domain.ServiceTimePeriod{
-			TimePeriod:         timePeriod,
-			VulnerabilityCount: vulnCount,
-		})
 	}
 
 	return aggregatedTimePeriods, nil
