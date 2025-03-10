@@ -630,3 +630,145 @@ func TestTenantService_getHostSeverityHeatMap(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantService_GetTenantSecurityPosture(t *testing.T) {
+	// mockTenantID := "bca58c71-c268-4c18-aa5b-ecff00d69121"
+	protScore50 := 50.0
+	protScore25 := 25.0
+
+	testCases := []struct {
+		name      string // description of this test case
+		mockSetup func(*mocks.MockStorage)
+		// Named input parameters for target function.
+		tenantID string
+		want     *domain.OverallSecurityPostureData
+		wantErr  bool
+	}{
+		{
+			name: "Tenant with hosts - success",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetHostsByTenantID = func(tenantID string) ([]*domain.Host, error) {
+					return []*domain.Host{
+						{ID: 1, Name: "Host 1"},
+						{ID: 2, Name: "Host 2"},
+					}, nil
+				}
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: &protScore50}, nil
+				}
+				ms.MockGetScanBeforeLatestByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: &protScore25}, nil
+				}
+			},
+			tenantID: "79541000-de8a-459c-856a-db36563ac4ee",
+			want: &domain.OverallSecurityPostureData{
+				Score:     protScore50,
+				Variation: protScore50 - protScore25,
+			},
+			wantErr: false,
+		},
+		{
+			name:      "Tenant with no hosts",
+			mockSetup: func(ms *mocks.MockStorage) {},
+			tenantID:  "79541000-de8a-459c-856a-db36563ac4ee",
+			want: &domain.OverallSecurityPostureData{
+				Score:     0.0,
+				Variation: 0.0,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Tenant hosts with no scans",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetHostsByTenantID = func(tenantID string) ([]*domain.Host, error) {
+					return []*domain.Host{
+						{ID: 1, Name: "Host 1"},
+						{ID: 2, Name: "Host 2"},
+					}, nil
+				}
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, nil
+				}
+				ms.MockGetScanBeforeLatestByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, nil
+				}
+			},
+			tenantID: "79541000-de8a-459c-856a-db36563ac4ee",
+			want: &domain.OverallSecurityPostureData{
+				Score:     0.0,
+				Variation: 0.0,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Tenant hosts with only one scan",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetHostsByTenantID = func(tenantID string) ([]*domain.Host, error) {
+					return []*domain.Host{
+						{ID: 1, Name: "Host 1"},
+						{ID: 2, Name: "Host 2"},
+					}, nil
+				}
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: &protScore50}, nil
+				}
+				ms.MockGetScanBeforeLatestByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return nil, nil
+				}
+			},
+			tenantID: "79541000-de8a-459c-856a-db36563ac4ee",
+			want: &domain.OverallSecurityPostureData{
+				Score:     protScore50,
+				Variation: protScore50, // It increased by 50
+			},
+			wantErr: false,
+		},
+		{
+			name: "Tenant hosts with scans with nil protection scores",
+			mockSetup: func(ms *mocks.MockStorage) {
+				ms.MockGetHostsByTenantID = func(tenantID string) ([]*domain.Host, error) {
+					return []*domain.Host{
+						{ID: 1, Name: "Host 1"},
+						{ID: 2, Name: "Host 2"},
+					}, nil
+				}
+				ms.MockGetLatestScanByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: nil}, nil
+				}
+				ms.MockGetScanBeforeLatestByHostID = func(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+					return &domain.Scan{ProtectionScore: nil}, nil
+				}
+			},
+			tenantID: "79541000-de8a-459c-856a-db36563ac4ee",
+			want: &domain.OverallSecurityPostureData{
+				Score:     0.0,
+				Variation: 0.0,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockStore := &mocks.MockStorage{}
+			tc.mockSetup(mockStore)
+
+			s := NewTenantService(mockStore)
+			got, gotErr := s.GetTenantSecurityPosture(tc.tenantID)
+			if gotErr != nil {
+				if !tc.wantErr {
+					assert.NoError(t, gotErr)
+				}
+				return
+			}
+			if tc.wantErr {
+				assert.Error(t, gotErr)
+			}
+
+			assert.NotNil(t, got)
+
+			// Assert OverallSecurityPostureData struct fields
+			assert.Equal(t, tc.want.Score, got.Score, "Expected OverallSecurityPostureData Score %.5f, got %.5f", tc.want.Score, got.Score)
+			assert.Equal(t, tc.want.Variation, got.Variation, "Expected OverallSecurityPostureData Variation %.2f, got %.2f", tc.want.Variation, got.Variation)
+		})
+	}
+}
