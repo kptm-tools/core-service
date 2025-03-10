@@ -54,4 +54,5 @@ type IStorage interface {
 	ScanScheduleEnableJob(string, bool, int) error
 	GetHostVulnerabilityTrends(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 	GetRapporteursScan(id uuid.UUID) (*[]domain.Rapporteur, string)
+	GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
 }

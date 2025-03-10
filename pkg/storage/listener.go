@@ -118,11 +118,23 @@ func (pl *PostgresListener) handleScanCompletedNotification(payload string) erro
 			slog.Any("error", err))
 	}
 	// 3. Get the emails rapporteurs structure
-	rapporteurs, hostName := pl.scanService.GetRapporteursScan(scanCompletedEvent.ScanID)
-	// 4. Notify rapporteurs of host associated
-	errSendEmail := pl.emailService.SendEmail(rapporteurs, fmt.Sprintf("Scan %s has been completed", scanCompletedEvent.ScanID), fmt.Sprintf("Dear Rapporteur, your scan associated to host %s has been completed", hostName))
-	if errSendEmail != nil {
-		slog.Error("Problems with sending email", slog.Any("error", errSendEmail.Error()))
+	rapporteurs, hostName, errGetRapporteur := pl.scanService.GetRapporteursScan(scanCompletedEvent.ScanID)
+	if errGetRapporteur != nil {
+		slog.Error("Can not obtain rapporteurs associated to the scan",
+			slog.String("scan_id", scanCompletedEvent.ScanID.String()),
+			slog.Any("error", errGetRapporteur))
+		return errGetRapporteur
+	}
+
+	for _, rapporteur := range rapporteurs {
+		if err := pl.emailService.SendScanCompletedEmail(rapporteur.Email, hostName); err != nil {
+			slog.Warn("Failed to send email to rapporteur",
+				slog.String("scan_id", scanCompletedEvent.ScanID.String()),
+				slog.String("rapporteur_email", rapporteur.Email),
+				slog.Any("error", err),
+			)
+			continue
+		}
 	}
 	return nil
 }

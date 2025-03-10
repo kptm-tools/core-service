@@ -45,7 +45,7 @@ func TestSendEmail_Success(t *testing.T) {
 		SendMail: mockSMTPClient.SendMail,
 	}
 
-	err := emailService.SendEmail(&[]domain.Rapporteur{
+	err := emailService.SendEmail([]*domain.Rapporteur{
 		{
 			"jose",
 			"ada@gmail.com",
