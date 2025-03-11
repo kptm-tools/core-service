@@ -9,7 +9,7 @@ import (
 type ITenantService interface {
 	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
 	GetTenants() ([]*domain.Tenant, error)
-	GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error)
+	GetTenantDashboardData(tenantID string, trendsTimePeriodFilter domain.TimePeriodFilter, trendsSeverityFilter []string, hostsFilter []int) (*domain.TenantDashboardData, error)
 }
 
 type ITenantHandlers interface {

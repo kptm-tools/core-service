@@ -40,15 +40,20 @@ func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
 // If a host has no latest scan, it's data is skipped for certain graphs such as the heatMap
 // and # of vulnerabilities in HostsWithGreatestVulnerabilities, since saying no vulnerabilities
 // were found would be misleading, because the data just doesn't exist at that moment.
-func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantDashboardData, error) {
+func (s *TenantService) GetTenantDashboardData(
+	tenantID string,
+	trendsTimePeriodFilter domain.TimePeriodFilter,
+	trendsSeverityFilters []string,
+	hostsIDFilter []int,
+) (*domain.TenantDashboardData, error) {
 	// 1. Get Overall Security Posture (averageProtectionScore)
-	securityPostureData, err := s.GetTenantSecurityPosture(tenantID)
+	securityPostureData, err := s.GetTenantSecurityPosture(tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenant security posture: %w", err)
 	}
 
 	// 2. Populate a map[domain.Host]domain.Scan with all latest scans for later reference
-	hosts, err := s.storage.GetHostsByTenantID(tenantID)
+	hosts, err := s.storage.GetHostsByTenantID(tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hosts by tenantID %s: %w", tenantID, err)
 	}
@@ -71,7 +76,7 @@ func (s *TenantService) GetTenantDashboardData(tenantID string) (*domain.TenantD
 		hostIDs = append(hostIDs, host.ID)
 	}
 
-	trendsTimePeriods, err := s.GetHostsVulnerabilityTrends(hostIDs, "Month", nil)
+	trendsTimePeriods, err := s.GetHostsVulnerabilityTrends(hostIDs, trendsTimePeriodFilter, trendsSeverityFilters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerability trends for hosts: %w", err)
 	}
@@ -126,8 +131,8 @@ func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[int]*dom
 	return hostLatestScanMap, nil
 }
 
-func (s *TenantService) GetTenantSecurityPosture(tenantID string) (*domain.OverallSecurityPostureData, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID)
+func (s *TenantService) GetTenantSecurityPosture(tenantID string, hostsIDFilter []int) (*domain.OverallSecurityPostureData, error) {
+	hosts, err := s.storage.GetHostsByTenantID(tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hosts for tenant %s: %w", tenantID, err)
 	}
@@ -248,10 +253,11 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 		for _, periodData := range hostTrends {
 			if index, ok := periodIndexMap[periodData.TimePeriod]; ok {
 				aggregatedTimePeriods[index].VulnerabilityCount += periodData.VulnerabilityCount
+			} else {
+				slog.Error("Unexpected time period",
+					slog.String("time_period", periodData.TimePeriod),
+					slog.String("time_period_filter", timePeriodFilter.String()))
 			}
-			slog.Error("Unexpected time period",
-				slog.String("time_period", periodData.TimePeriod),
-				slog.String("time_period_filter", timePeriodFilter.String()))
 		}
 	}
 
@@ -298,7 +304,7 @@ func (s *TenantService) GetHostsSortedByMostVulnerabilities(
 	hosts []*domain.Host,
 	latestScanMap map[int]*domain.Scan,
 ) ([]domain.HostAliasVulnerabilityPair, error) {
-	var hostVulnerabilityPairs []domain.HostAliasVulnerabilityPair
+	hostVulnerabilityPairs := []domain.HostAliasVulnerabilityPair{}
 
 	// For quick lookup by ID
 	hostMap := make(map[int]*domain.Host)

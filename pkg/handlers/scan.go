@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -196,33 +195,15 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 		slog.Error("failed to extract scanID", slog.Any("err", err))
 	}
 
-	timePeriodFilter := domain.TimePeriodFilterMonth
-	timePeriodFilterStr := r.URL.Query().Get("time_period")
-	if timePeriodFilterStr != "" {
-		timePeriodFilter, err = domain.ParseTimePeriodFilter(timePeriodFilterStr)
-		if err != nil {
-			slog.Warn("Invalid time_period filter query param",
-				slog.String("time_period_filter", timePeriodFilterStr))
-			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid time_period filter Must be 'Month', 'Quarter', or 'Semester'"})
-		}
+	timePeriodFilter, err := parseTimePeriodFilterFromURLQuery(r, "time_period")
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid time_period filter Must be 'Month', 'Quarter', or 'Semester'"})
 	}
 
-	severityFilterStr := r.URL.Query().Get("severity")
-	var severityFilters []string
-	if severityFilterStr != "" {
-		severityFilters = strings.Split(severityFilterStr, ",")
-		validSeverities := map[string]bool{
-			"low":      true,
-			"medium":   true,
-			"high":     true,
-			"critical": true,
-		}
-		for i, severity := range severityFilters {
-			if !validSeverities[strings.ToLower(severity)] {
-				return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
-			}
-			severityFilters[i] = strings.ToLower(severity)
-		}
+	severityFilters, err := parseSeverityFilterFromURLQuery(r, "severity")
+	if err != nil {
+		slog.Warn("Error parsing severity filter", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
 	}
 
 	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID, timePeriodFilter, severityFilters)

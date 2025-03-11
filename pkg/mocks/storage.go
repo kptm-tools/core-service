@@ -11,7 +11,7 @@ import (
 
 type MockStorage struct {
 	MockCreateHost                       func(*domain.Host) (*domain.Host, error)
-	MockGetHostsByTenantID               func(string) ([]*domain.Host, error)
+	MockGetHostsByTenantID               func(string, []int) ([]*domain.Host, error)
 	MockGetHostByID                      func(int) (*domain.Host, error)
 	MockDeleteHostByID                   func(int) (bool, error)
 	MockPatchHostByID                    func(*domain.Host) (*domain.Host, error)
@@ -62,9 +62,9 @@ func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
 	return nil, nil // Default behavior if mock function not set
 }
 
-func (m *MockStorage) GetHostsByTenantID(arg0 string) ([]*domain.Host, error) {
+func (m *MockStorage) GetHostsByTenantID(arg0 string, arg1 []int) ([]*domain.Host, error) {
 	if m.MockGetHostsByTenantID != nil {
-		return m.MockGetHostsByTenantID(arg0)
+		return m.MockGetHostsByTenantID(arg0, arg1)
 	}
 	return nil, nil // Default behavior if mock function not set
 }

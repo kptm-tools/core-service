@@ -39,7 +39,7 @@ func (s *HostService) CreateHost(t *domain.Host) (*domain.Host, error) {
 }
 
 func (s *HostService) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID)
+	hosts, err := s.storage.GetHostsByTenantID(tenantID, []int{})
 	if err != nil {
 		return nil, err
 	}

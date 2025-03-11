@@ -225,7 +225,7 @@ func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportI
 }
 
 func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID)
+	hosts, err := s.storage.GetHostsByTenantID(tenantID, []int{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}

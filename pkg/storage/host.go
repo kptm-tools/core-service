@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/lib/pq"
 )
 
 func (s *PostgreSQLStore) ClearHostsTable() error {
@@ -62,14 +63,23 @@ func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
 	return newHost, nil
 }
 
-func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
+func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string, hostsIDFilter []int) ([]*domain.Host, error) {
+	var rows *sql.Rows
+	var err error
 	query := `
     SELECT *
     FROM hosts
     WHERE tenant_id=$1
   `
 
-	rows, err := s.db.Query(query, tenantID)
+	if len(hostsIDFilter) > 0 {
+		// Add a filter condition if hostsFilter is provided
+		query += " AND id = ANY($2)"
+		rows, err = s.db.Query(query, tenantID, pq.Array(hostsIDFilter))
+	} else {
+		rows, err = s.db.Query(query, tenantID)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
 	}
