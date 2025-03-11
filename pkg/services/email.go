@@ -2,11 +2,19 @@ package services
 
 import (
 	"errors"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	gomail "gopkg.in/mail.v2"
 	"log/slog"
+	"os"
 	"strconv"
+	"time"
+)
+
+const (
+	maxRetries        = 3
+	initialRetryDelay = 5 * time.Second
 )
 
 type SendMailFunction func(...*gomail.Message) error
@@ -58,7 +66,7 @@ func (s *EmailService) SendEmail(toAddress []*domain.Rapporteur, subject, body s
 	m.SetBody("text/html", body)
 
 	if err := s.SendMail(m); err != nil {
-		slog.Error(err.Error())
+		return err
 	} else {
 		slog.Info("Email sent")
 	}
@@ -75,7 +83,7 @@ func (s *EmailService) SendScanFailedEmail(recipient string, hostName string) er
 			false,
 		},
 	}
-	err := s.SendEmail(recipientRapporteur, subject, body)
+	err := s.sendEmailWithRetry(recipientRapporteur, subject, body)
 	if err != nil {
 		return err
 	}
@@ -93,7 +101,7 @@ func (s *EmailService) SendScanCompletedEmail(recipient string, hostName string)
 			false,
 		},
 	}
-	err := s.SendEmail(recipientRapporteur, subject, body)
+	err := s.sendEmailWithRetry(recipientRapporteur, subject, body)
 	if err != nil {
 		return err
 	}
@@ -111,10 +119,57 @@ func (s *EmailService) SendScanCancelledEmail(recipient string, hostName string)
 			false,
 		},
 	}
-	err := s.SendEmail(recipientRapporteur, subject, body)
+	err := s.sendEmailWithRetry(recipientRapporteur, subject, body)
 	if err != nil {
 		return err
 	}
 	slog.Info("Email of Scan cancelled sent", slog.String("recipient", recipient))
 	return nil
+}
+
+func calculateRetryDelay(attempt int) time.Duration {
+	// Exponential backoff with jitter
+	delay := initialRetryDelay * time.Duration(1<<uint(attempt))
+	jitter := time.Duration(int64(float64(delay) * 0.2)) // +/- 20% jitter
+	delay += jitter
+
+	if delay > 15*time.Second {
+		delay = 15 * time.Second
+	}
+	return delay
+}
+
+func shouldRetry(err error) bool {
+	return os.IsTimeout(err)
+}
+
+func (s *EmailService) sendEmailWithRetry(toAddress []*domain.Rapporteur, subject, body string) error {
+	var errSMTP error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		errSMTP = s.SendEmail(toAddress, subject, body)
+		// Success case
+		if errSMTP == nil {
+			return nil
+		}
+
+		// Non-retriable error
+		if !shouldRetry(errSMTP) {
+			if errors.Is(errSMTP, customerrors.ErrGomailUncryptedConnection) || errors.Is(errSMTP, customerrors.ErrGomailWrongHostName) || errors.Is(errSMTP, customerrors.ErrGomailExpectedAuth) {
+				return customerrors.ErrEmailAuth
+			}
+
+		}
+
+		retryDelay := calculateRetryDelay(attempt)
+		slog.Warn("Send Email service failed, retrying",
+			slog.Int("attempt", attempt),
+			slog.Duration("delay", retryDelay),
+			slog.String("email", toAddress[0].Email))
+		time.Sleep(retryDelay)
+	}
+
+	slog.Error("Send Email service failed after max retries",
+		slog.Int("max_retries", maxRetries),
+		slog.Any("error", errSMTP))
+	return customerrors.ErrEmailTimeout
 }
