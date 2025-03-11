@@ -197,7 +197,7 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 
 func (s *ScanService) GetScanVulnerabilitySummaryByID(
 	scanID uuid.UUID,
-	timePeriodFilter string,
+	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
@@ -225,8 +225,7 @@ func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportI
 }
 
 func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID)
-
+	hosts, err := s.storage.GetHostsByTenantID(tenantID, []int{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}

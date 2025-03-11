@@ -427,6 +427,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2017-15715",
 									Type:          "cve",
 									BaseCVSSScore: 9.8,
+									BaseSeverity:  enums.SeverityTypeCritical,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
 									Exploit: tools.Exploit{
 										Score:          9.8,
@@ -496,6 +497,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2017-15715",
 									Type:          "cve",
 									BaseCVSSScore: 9.8,
+									BaseSeverity:  enums.SeverityTypeCritical,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
 									Exploit: tools.Exploit{
 										Score:          0.8,
@@ -519,6 +521,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2021-34527", // Example CVE for nginx
 									Type:          "cve",
 									BaseCVSSScore: 7.5,
+									BaseSeverity:  enums.SeverityTypeHigh,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
 									Exploit: tools.Exploit{
 										Score:          0.8,
@@ -529,6 +532,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2021-34528", // Another example CVE for nginx
 									Type:          "cve",
 									BaseCVSSScore: 6.5,
+									BaseSeverity:  enums.SeverityTypeMedium,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
 									Exploit: tools.Exploit{
 										Score:          0.0,
@@ -598,6 +602,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2020-0601", // Example CVE for IIS
 									Type:          "cve",
 									BaseCVSSScore: 8.8,
+									BaseSeverity:  enums.SeverityTypeHigh,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2020-0601"},
 									Exploit: tools.Exploit{
 										Score:          9.9,
@@ -701,6 +706,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2021-34527",
 									Type:          "cve",
 									BaseCVSSScore: 7.5,
+									BaseSeverity:  enums.SeverityTypeHigh,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
 									Exploit: tools.Exploit{
 										Score:          9.9,
@@ -711,6 +717,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2021-34528",
 									Type:          "cve",
 									BaseCVSSScore: 6.5,
+									BaseSeverity:  enums.SeverityTypeMedium,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
 									Exploit: tools.Exploit{
 										Score:          5.0,
@@ -780,6 +787,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 									ID:            "CVE-2023-XXXXX", // Placeholder CVE for embedded device
 									Type:          "cve",
 									BaseCVSSScore: 6.0,
+									BaseSeverity:  enums.SeverityTypeMedium,
 									References:    []string{"https://example.com/embedded-cve"}, // Placeholder URL
 									Exploit: tools.Exploit{
 										Score:          5.0,
