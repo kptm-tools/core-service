@@ -217,10 +217,12 @@ func TestScanHandler_CreateScheduled(t *testing.T) {
 			mockScanService := &mocks.MockScanService{}
 			mockScanScheduleService := &mocks.MockScanScheduleService{}
 			mockHostService := &mocks.MockHostService{}
+			mockEmailService := &mocks.MockEmailService{}
 			handler := &ScanHandlers{
 				mockScanService,
 				mockHostService,
 				mockScanScheduleService,
+				mockEmailService,
 				nil,
 			}
 			// 2. Act

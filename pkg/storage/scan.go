@@ -1066,3 +1066,24 @@ func (s *PostgreSQLStore) UpdateScanScheduling(scanID uuid.UUID, scanScheduleID 
 	}
 	return nil
 }
+
+func (s *PostgreSQLStore) GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error) {
+	query := `SELECT H.rapporteurs, H.alias FROM scans S INNER JOIN  hosts H ON H.id = S.host_id WHERE S.id=$1 `
+	var rapporteursBytes []byte
+	var rapporteurs []*domain.Rapporteur
+	var name string
+	err := s.db.QueryRow(query, scanID).Scan(&rapporteursBytes, &name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.Debug("No rapporteurs found for scan_id: %s", scanID.String(),
+				slog.String("scan_id", scanID.String()),
+			)
+			return nil, "", customerrors.ErrHostNotFound
+		}
+		return nil, "", fmt.Errorf("failed to run query: %w", err)
+	}
+	if err := json.Unmarshal(rapporteursBytes, &rapporteurs); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal rapporteurs: %w", err)
+	}
+	return rapporteurs, name, nil
+}

@@ -183,6 +183,7 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 		*harvesterResult,
 		*nmapResult,
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to calculate protection score: %w", err)
 	}
@@ -298,4 +299,8 @@ func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID i
 
 func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
 	return s.storage.ScanScheduleDisableJob(scanScheduleID, false)
+}
+
+func (s ScanService) GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error) {
+	return s.storage.GetRapporteursAndHostAliasByScanID(id)
 }

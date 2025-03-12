@@ -15,9 +15,10 @@ import (
 )
 
 type PostgresListener struct {
-	listener    *pq.Listener
-	eventBus    cmmn.EventBus
-	scanService interfaces.IScanService
+	listener     *pq.Listener
+	eventBus     cmmn.EventBus
+	scanService  interfaces.IScanService
+	emailService interfaces.IEmailService
 }
 
 type ScanCron struct {
@@ -34,6 +35,7 @@ type ScanCron struct {
 func NewPostgresListener(
 	cfg *config.Config,
 	scanService interfaces.IScanService,
+	emailService interfaces.IEmailService,
 	eventBus cmmn.EventBus,
 ) (*PostgresListener, error) {
 	connectionString := cfg.PostgreSQLCoreConnStr()
@@ -62,9 +64,10 @@ func NewPostgresListener(
 	}
 	slog.Info("PostgresListener started", slog.String("channel", "scan_cron"))
 	postgresListener := &PostgresListener{
-		listener:    listener,
-		scanService: scanService,
-		eventBus:    eventBus,
+		listener:     listener,
+		scanService:  scanService,
+		emailService: emailService,
+		eventBus:     eventBus,
 	}
 
 	go postgresListener.startListening()
@@ -113,6 +116,25 @@ func (pl *PostgresListener) handleScanCompletedNotification(payload string) erro
 		slog.Error("Failed to handle scan completion",
 			slog.String("scanID", scanCompletedEvent.ScanID.String()),
 			slog.Any("error", err))
+	}
+	// 3. Get the emails rapporteurs structure
+	rapporteurs, hostName, errGetRapporteur := pl.scanService.GetRapporteursScan(scanCompletedEvent.ScanID)
+	if errGetRapporteur != nil {
+		slog.Error("Can not obtain rapporteurs associated to the scan",
+			slog.String("scan_id", scanCompletedEvent.ScanID.String()),
+			slog.Any("error", errGetRapporteur))
+		return errGetRapporteur
+	}
+
+	for _, rapporteur := range rapporteurs {
+		if err := pl.emailService.SendScanCompletedEmail(rapporteur.Email, hostName); err != nil {
+			slog.Warn("Failed to send email to rapporteur",
+				slog.String("scan_id", scanCompletedEvent.ScanID.String()),
+				slog.String("rapporteur_email", rapporteur.Email),
+				slog.Any("error", err),
+			)
+			continue
+		}
 	}
 	return nil
 }

@@ -34,6 +34,14 @@ type Config struct {
 		Host string
 		Port string
 	}
+
+	SMTP struct {
+		Host      string
+		Port      string
+		Username  string
+		Password  string
+		FromEmail string
+	}
 }
 
 var (
@@ -98,6 +106,19 @@ func load() *Config {
 		Port: fetchEnv("NATS_PORT", "4222"),
 	}
 
+	cfg.SMTP = struct {
+		Host      string
+		Port      string
+		Username  string
+		Password  string
+		FromEmail string
+	}{
+		Host:      fetchEnvOrPanic("SMTP_HOST"),
+		Port:      fetchEnvOrPanic("SMTP_PORT"),
+		Username:  fetchEnvOrPanic("SMTP_USER"),
+		FromEmail: fetchEnvOrPanic("SMTP_FROM_EMAIL"),
+		Password:  fetchEnvOrPanic("SMTP_PASS"),
+	}
 	return cfg
 }
 
