@@ -1,9 +1,10 @@
 package services
 
 import (
+	"testing"
+
 	"github.com/kptm-tools/core-service/pkg/domain"
 	gomail "gopkg.in/mail.v2"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -47,9 +48,9 @@ func TestSendEmail_Success(t *testing.T) {
 
 	err := emailService.SendEmail([]*domain.Rapporteur{
 		{
-			"jose",
-			"ada@gmail.com",
-			false,
+			Name:        "jose",
+			Email:       "ada@gmail.com",
+			IsPrincipal: false,
 		},
 	}, "Test Subject", "This is the email body.")
 	assert.NoError(t, err)
