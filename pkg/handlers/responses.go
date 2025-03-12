@@ -135,7 +135,6 @@ type ScanVulnerabilityDetailResponse struct {
 	Description    string                `json:"description"`
 	Comment        string                `json:"comment"`
 	VendorComments []tools.VendorComment `json:"vendor_comments"`
-	Recommendation string                `json:"recommendation"`
 	References     []string              `json:"references"`
 
 	DateInfo   DateInfo   `json:"date"`
