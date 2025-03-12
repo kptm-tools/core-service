@@ -94,20 +94,21 @@ type ScanVulnerabilityItemsResponse struct {
 }
 
 type ScanVulnerabilityItem struct {
-	ID             int      `json:"id"`
-	Name           string   `json:"name"`
-	Severity       string   `json:"severity"`
-	MaxCVSS        float64  `json:"max_cvss"`
-	RiskScore      float64  `json:"risk_score"`
-	ImpactScore    float64  `json:"impact_score"`
-	Likelihood     string   `json:"likelihood"`
-	Access         string   `json:"access"`
-	Complexity     string   `json:"complexity"`
-	Privileges     string   `json:"privileges"`
-	Exploitability string   `json:"exploitability"`
-	Description    string   `json:"description"`
-	Comment        string   `json:"comment"`
-	References     []string `json:"references"`
+	ID             int                   `json:"id"`
+	Name           string                `json:"name"`
+	Severity       string                `json:"severity"`
+	MaxCVSS        float64               `json:"max_cvss"`
+	RiskScore      float64               `json:"risk_score"`
+	ImpactScore    float64               `json:"impact_score"`
+	Likelihood     string                `json:"likelihood"`
+	Access         string                `json:"access"`
+	Complexity     string                `json:"complexity"`
+	Privileges     string                `json:"privileges"`
+	Exploitability string                `json:"exploitability"`
+	Description    string                `json:"description"`
+	Comment        string                `json:"comment"`
+	VendorComments []tools.VendorComment `json:"vendor_comments"`
+	References     []string              `json:"references"`
 }
 
 // ScanVulnerabilityDetailResponse is the DTO with the details for a particular
@@ -131,10 +132,11 @@ type ScanVulnerabilityDetailResponse struct {
 	Privileges     string  `json:"privileges"`
 	Exploitability string  `json:"exploitability"`
 
-	Description    string   `json:"description"`
-	Comment        string   `json:"comment"`
-	Recommendation string   `json:"recommendation"`
-	References     []string `json:"references"`
+	Description    string                `json:"description"`
+	Comment        string                `json:"comment"`
+	VendorComments []tools.VendorComment `json:"vendor_comments"`
+	Recommendation string                `json:"recommendation"`
+	References     []string              `json:"references"`
 
 	DateInfo   DateInfo   `json:"date"`
 	PluginInfo PluginInfo `json:"plugin"`
