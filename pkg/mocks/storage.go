@@ -56,6 +56,7 @@ type MockStorage struct {
 	MockGetRapporteursAndHostAliasByScanID func(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
 	MockUpdateVulnerabilityComment         func(ID int, comment string) (bool, error)
 	MockDeleteVulnerabilityComment         func(ID int) (bool, error)
+	MockNotExistComment                    func(ID int) (bool, error)
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -375,6 +376,12 @@ func (m *MockStorage) UpdateVulnerabilityComment(ID int, comment string) (bool, 
 func (m *MockStorage) DeleteVulnerabilityComment(ID int) (bool, error) {
 	if m.MockDeleteVulnerabilityComment != nil {
 		return m.MockDeleteVulnerabilityComment(ID)
+	}
+	return true, nil
+}
+func (m *MockStorage) NotExistComment(ID int) (bool, error) {
+	if m.MockNotExistComment != nil {
+		return m.MockNotExistComment(ID)
 	}
 	return true, nil
 }
