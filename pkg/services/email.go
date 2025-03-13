@@ -2,14 +2,15 @@ package services
 
 import (
 	"errors"
-	"github.com/kptm-tools/core-service/pkg/customerrors"
-	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/interfaces"
-	gomail "gopkg.in/mail.v2"
 	"log/slog"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
+	gomail "gopkg.in/mail.v2"
 )
 
 const (
@@ -51,7 +52,7 @@ func NewEmailService(host, port, username, password, fromEmail string) *EmailSer
 }
 
 func (s *EmailService) SendEmail(toAddress []*domain.Rapporteur, subject, body string) error {
-	if toAddress == nil || len(toAddress) == 0 {
+	if len(toAddress) == 0 {
 		return errors.New("no emails configured to be sent")
 	}
 	m := gomail.NewMessage()
@@ -78,9 +79,9 @@ func (s *EmailService) SendScanFailedEmail(recipient string, hostName string) er
 	body := "Dear Recipient, the scan has been failed"
 	recipientRapporteur := []*domain.Rapporteur{
 		{
-			"",
-			recipient,
-			false,
+			Name:        "",
+			Email:       recipient,
+			IsPrincipal: false,
 		},
 	}
 	err := s.sendEmailWithRetry(recipientRapporteur, subject, body)
@@ -96,9 +97,9 @@ func (s *EmailService) SendScanCompletedEmail(recipient string, hostName string)
 	body := "Dear Recipient, the scan has been completed"
 	recipientRapporteur := []*domain.Rapporteur{
 		{
-			"",
-			recipient,
-			false,
+			Name:        "",
+			Email:       recipient,
+			IsPrincipal: false,
 		},
 	}
 	err := s.sendEmailWithRetry(recipientRapporteur, subject, body)
@@ -114,9 +115,9 @@ func (s *EmailService) SendScanCancelledEmail(recipient string, hostName string)
 	body := "Dear Recipient, the scan has been canceled"
 	recipientRapporteur := []*domain.Rapporteur{
 		{
-			"",
-			recipient,
-			false,
+			Name:        "",
+			Email:       recipient,
+			IsPrincipal: false,
 		},
 	}
 	err := s.sendEmailWithRetry(recipientRapporteur, subject, body)
@@ -157,7 +158,6 @@ func (s *EmailService) sendEmailWithRetry(toAddress []*domain.Rapporteur, subjec
 			if errors.Is(errSMTP, customerrors.ErrGomailUncryptedConnection) || errors.Is(errSMTP, customerrors.ErrGomailWrongHostName) || errors.Is(errSMTP, customerrors.ErrGomailExpectedAuth) {
 				return customerrors.ErrEmailAuth
 			}
-
 		}
 
 		retryDelay := calculateRetryDelay(attempt)

@@ -13,12 +13,13 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/kptm-tools/common v1.5.2-alpha
+	github.com/kptm-tools/common v1.5.2
 	github.com/likexian/whois-parser v1.24.20
 	github.com/lmittmann/tint v1.0.6
 	github.com/nats-io/nats.go v1.38.0
 	github.com/prometheus-community/pro-bing v0.5.0
 	github.com/stretchr/testify v1.10.0
+	gopkg.in/mail.v2 v2.3.1
 )
 
 require (
@@ -38,6 +39,5 @@ require (
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
-	gopkg.in/mail.v2 v2.3.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
