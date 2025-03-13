@@ -361,6 +361,7 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 		),
 		ScanPeriods AS (
 			SELECT
+        DISTINCT ON (time_period_label)
 				CASE
 					WHEN $2 = 'Month' THEN TO_CHAR(s.started_at, 'FMMonth')
 					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(s.started_at, 'Q')
@@ -372,6 +373,7 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 			FROM scans s
 			WHERE s.host_id = $1
 				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+      ORDER BY time_period_label, s.started_at DESC
 		),
 		VulnerabilityCounts AS (
 			SELECT
