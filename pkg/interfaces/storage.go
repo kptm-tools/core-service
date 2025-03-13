@@ -54,4 +54,7 @@ type IStorage interface {
 	ScanScheduleEnableJob(string, bool, int) error
 	GetHostVulnerabilityTrends(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 	GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
+	CreateVulnerabilityComment(ID int, comment string) (*domain.VulnerabilityComment, error)
+	UpdateVulnerabilityComment(ID int, comment string) (*domain.VulnerabilityComment, error)
+	DeleteVulnerabilityComment(ID int) (bool, error)
 }

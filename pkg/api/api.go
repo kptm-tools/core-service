@@ -93,6 +93,9 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/reports", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetReports), "getAllTenantReports"))
 
 	router.HandleFunc("GET /api/vulnerabilities/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetVulnerability), "getVulnerability"))
+	router.HandleFunc("POST /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.CreateVulnerabilityComment), "createVulnerabilityComment"))
+	router.HandleFunc("PATCH /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.PatchVulnerabilityComment), "editVulnerabilityComment"))
+	router.HandleFunc("DELETE /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.DeleteVulnerabilityComment), "deleteVulnerabilityComment"))
 
 	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), "getDashboard"))
 

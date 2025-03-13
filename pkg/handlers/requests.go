@@ -75,3 +75,7 @@ type ScanScheduleRequest struct {
 	ScheduleAt *string                `json:"schedule_at"`
 	Frequency  *domain.RepeatSchedule `json:"repeat_frequency"`
 }
+
+type VulnerabilityCommentRequest struct {
+	Comment string `json:"comment"`
+}

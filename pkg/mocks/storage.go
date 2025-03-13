@@ -54,6 +54,9 @@ type MockStorage struct {
 	MockScanScheduleEnableJob              func(cronExp string, hasPeriod bool, scanScheduleID int) error
 	MockGetHostVulnerabilityTrends         func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 	MockGetRapporteursAndHostAliasByScanID func(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
+	MockCreateVulnerabilityComment         func(ID int, comment string) (*domain.VulnerabilityComment, error)
+	MockUpdateVulnerabilityComment         func(ID int, comment string) (*domain.VulnerabilityComment, error)
+	MockDeleteVulnerabilityComment         func(ID int) (bool, error)
 }
 
 func (m *MockStorage) CreateHost(arg0 *domain.Host) (*domain.Host, error) {
@@ -362,4 +365,23 @@ func (m *MockStorage) GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*d
 		return m.GetRapporteursAndHostAliasByScanID(scanID)
 	}
 	return nil, "", nil
+}
+
+func (m *MockStorage) CreateVulnerabilityComment(ID int, comment string) (*domain.VulnerabilityComment, error) {
+	if m.MockCreateVulnerabilityComment != nil {
+		return m.MockCreateVulnerabilityComment(ID, comment)
+	}
+	return nil, nil
+}
+func (m *MockStorage) UpdateVulnerabilityComment(ID int, comment string) (*domain.VulnerabilityComment, error) {
+	if m.MockUpdateVulnerabilityComment != nil {
+		return m.MockUpdateVulnerabilityComment(ID, comment)
+	}
+	return nil, nil
+}
+func (m *MockStorage) DeleteVulnerabilityComment(ID int) (bool, error) {
+	if m.MockDeleteVulnerabilityComment != nil {
+		return m.MockDeleteVulnerabilityComment(ID)
+	}
+	return true, nil
 }
