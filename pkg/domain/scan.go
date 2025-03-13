@@ -103,7 +103,7 @@ type ServiceVulnerabilityTrends struct {
 
 type ServiceTimePeriod struct {
 	TimePeriod         string `json:"time_period"`
-	VulnerabilityCount int    `json:"vulnerability_count"`
+	VulnerabilityCount *int   `json:"vulnerability_count"`
 }
 
 func NewScan(startedAt time.Time) *Scan {

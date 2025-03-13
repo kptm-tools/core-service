@@ -41,7 +41,7 @@ type VulnerabilityTrends struct {
 
 type TimePeriod struct {
 	TimePeriod         string `json:"time_period"`
-	VulnerabilityCount int    `json:"vulnerability_count"`
+	VulnerabilityCount *int   `json:"vulnerability_count"`
 }
 
 func adaptCategoryData(serviceCategoryData []domain.ServiceCategoryData) []CategoryData {

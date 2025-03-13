@@ -756,8 +756,10 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 
 	var totalVulnCountForAvg, periodCountForAvg float64
 	for _, periodData := range timePeriods {
-		totalVulnCountForAvg += float64(periodData.VulnerabilityCount)
-		periodCountForAvg++
+		if periodData.VulnerabilityCount != nil {
+			totalVulnCountForAvg += float64(*periodData.VulnerabilityCount)
+			periodCountForAvg++
+		}
 	}
 	if periodCountForAvg > 0 {
 		vulnerabilityTrends.AverageVulnerabilityCount = totalVulnCountForAvg / periodCountForAvg

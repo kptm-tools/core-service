@@ -345,6 +345,10 @@ func Test_getLatestScanData(t *testing.T) {
 }
 
 func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
+	intPtr := func(i int) *int {
+		return &i
+	}
+
 	testCases := []struct {
 		name      string // description of this test case
 		mockSetup func(mockStore *mocks.MockStorage)
@@ -360,18 +364,18 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			mockSetup: func(mockStore *mocks.MockStorage) {
 				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
 					return []domain.ServiceTimePeriod{
-						{TimePeriod: "January", VulnerabilityCount: 5},
-						{TimePeriod: "February", VulnerabilityCount: 10},
-						{TimePeriod: "March", VulnerabilityCount: 0},
-						{TimePeriod: "April", VulnerabilityCount: 0},
-						{TimePeriod: "May", VulnerabilityCount: 0},
-						{TimePeriod: "June", VulnerabilityCount: 0},
-						{TimePeriod: "July", VulnerabilityCount: 0},
-						{TimePeriod: "Agust", VulnerabilityCount: 0},
-						{TimePeriod: "September", VulnerabilityCount: 0},
-						{TimePeriod: "October", VulnerabilityCount: 0},
-						{TimePeriod: "November", VulnerabilityCount: 0},
-						{TimePeriod: "December", VulnerabilityCount: 0},
+						{TimePeriod: "January", VulnerabilityCount: intPtr(5)},
+						{TimePeriod: "February", VulnerabilityCount: intPtr(10)},
+						{TimePeriod: "March", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "April", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "Agust", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "December", VulnerabilityCount: intPtr(0)},
 					}, nil
 				}
 			},
@@ -379,18 +383,57 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			timePeriodFilter: domain.TimePeriodFilterMonth,
 			severityFilters:  []string{},
 			want: []domain.ServiceTimePeriod{
-				{TimePeriod: "January", VulnerabilityCount: 10},
-				{TimePeriod: "February", VulnerabilityCount: 20},
-				{TimePeriod: "March", VulnerabilityCount: 0},
-				{TimePeriod: "April", VulnerabilityCount: 0},
-				{TimePeriod: "May", VulnerabilityCount: 0},
-				{TimePeriod: "June", VulnerabilityCount: 0},
-				{TimePeriod: "July", VulnerabilityCount: 0},
-				{TimePeriod: "August", VulnerabilityCount: 0},
-				{TimePeriod: "September", VulnerabilityCount: 0},
-				{TimePeriod: "October", VulnerabilityCount: 0},
-				{TimePeriod: "November", VulnerabilityCount: 0},
-				{TimePeriod: "December", VulnerabilityCount: 0},
+				{TimePeriod: "January", VulnerabilityCount: intPtr(10)},
+				{TimePeriod: "February", VulnerabilityCount: intPtr(20)},
+				{TimePeriod: "March", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "April", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "August", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "December", VulnerabilityCount: intPtr(0)},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Two hosts with null vulnerabilities, no timePeriodFilter and no severityFilters",
+			mockSetup: func(mockStore *mocks.MockStorage) {
+				mockStore.MockGetHostVulnerabilityTrends = func(hostID int, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error) {
+					return []domain.ServiceTimePeriod{
+						{TimePeriod: "January", VulnerabilityCount: intPtr(5)},
+						{TimePeriod: "February", VulnerabilityCount: intPtr(10)},
+						{TimePeriod: "March", VulnerabilityCount: nil},
+						{TimePeriod: "April", VulnerabilityCount: nil},
+						{TimePeriod: "May", VulnerabilityCount: nil},
+						{TimePeriod: "June", VulnerabilityCount: nil},
+						{TimePeriod: "July", VulnerabilityCount: nil},
+						{TimePeriod: "Agust", VulnerabilityCount: nil},
+						{TimePeriod: "September", VulnerabilityCount: nil},
+						{TimePeriod: "October", VulnerabilityCount: nil},
+						{TimePeriod: "November", VulnerabilityCount: nil},
+						{TimePeriod: "December", VulnerabilityCount: nil},
+					}, nil
+				}
+			},
+			hostIDs:          []int{1, 2},
+			timePeriodFilter: domain.TimePeriodFilterMonth,
+			severityFilters:  []string{},
+			want: []domain.ServiceTimePeriod{
+				{TimePeriod: "January", VulnerabilityCount: intPtr(10)},
+				{TimePeriod: "February", VulnerabilityCount: intPtr(20)},
+				{TimePeriod: "March", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "April", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "August", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "December", VulnerabilityCount: intPtr(0)},
 			},
 			wantErr: false,
 		},
@@ -418,18 +461,18 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			timePeriodFilter: domain.TimePeriodFilterMonth,
 			severityFilters:  []string{},
 			want: []domain.ServiceTimePeriod{
-				{TimePeriod: "January", VulnerabilityCount: 0},
-				{TimePeriod: "February", VulnerabilityCount: 0},
-				{TimePeriod: "March", VulnerabilityCount: 0},
-				{TimePeriod: "April", VulnerabilityCount: 0},
-				{TimePeriod: "May", VulnerabilityCount: 0},
-				{TimePeriod: "June", VulnerabilityCount: 0},
-				{TimePeriod: "July", VulnerabilityCount: 0},
-				{TimePeriod: "August", VulnerabilityCount: 0},
-				{TimePeriod: "September", VulnerabilityCount: 0},
-				{TimePeriod: "October", VulnerabilityCount: 0},
-				{TimePeriod: "November", VulnerabilityCount: 0},
-				{TimePeriod: "December", VulnerabilityCount: 0},
+				{TimePeriod: "January", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "February", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "March", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "April", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "August", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "December", VulnerabilityCount: intPtr(0)},
 			},
 			wantErr: false,
 		},
