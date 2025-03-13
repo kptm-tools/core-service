@@ -233,7 +233,7 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 	for i, period := range orderedTimePeriods {
 		aggregatedTimePeriods[i] = domain.ServiceTimePeriod{
 			TimePeriod:         period,
-			VulnerabilityCount: 0,
+			VulnerabilityCount: new(int), // Allocated as 0 value
 		}
 	}
 
@@ -252,7 +252,9 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 		// Aggregate trends to the pre-ordered slice
 		for _, periodData := range hostTrends {
 			if index, ok := periodIndexMap[periodData.TimePeriod]; ok {
-				aggregatedTimePeriods[index].VulnerabilityCount += periodData.VulnerabilityCount
+				if aggregatedTimePeriods[index].VulnerabilityCount != nil && periodData.VulnerabilityCount != nil {
+					*aggregatedTimePeriods[index].VulnerabilityCount += *periodData.VulnerabilityCount
+				}
 			} else {
 				slog.Error("Unexpected time period",
 					slog.String("time_period", periodData.TimePeriod),

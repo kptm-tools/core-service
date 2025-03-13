@@ -329,8 +329,11 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 	// This query is kind of complicated, but what it does is fill out time_periods and labels,
 	// even when there is no data for said time_period. E.g: we only have data
 	// for February, but we want to have the counts for other months to be 0 too.
+	// It also has a CTE called ScanPeriods, which identifies if there was a scan at all
+	// during that period. This allows us to differentiate if we got a 0 count because there
+	// are no vulnerabilities, or because there is no scan.
 	baseTrendQuery := `
-  		WITH TimePeriods as (
+		WITH TimePeriods AS (
 			SELECT
 				CASE
 					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
@@ -343,7 +346,8 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 					WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
 					WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
 					ELSE '1'
-				END AS ordering_period
+				END AS ordering_period,
+				date_series
 			FROM generate_series(
 				DATE_TRUNC('year', CURRENT_DATE),
 				DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
@@ -355,7 +359,7 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 				END
 			) AS date_series
 		),
-		VulnerabilityCounts AS (
+		ScanPeriods AS (
 			SELECT
 				CASE
 					WHEN $2 = 'Month' THEN TO_CHAR(s.started_at, 'FMMonth')
@@ -363,22 +367,33 @@ func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
 					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(s.started_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
 					ELSE 'Unknown Period'
 				END AS time_period_label,
+				s.id AS scan_id,
+				s.started_at AS scan_started_at
+			FROM scans s
+			WHERE s.host_id = $1
+				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+		),
+		VulnerabilityCounts AS (
+			SELECT
+				sp.time_period_label,
 				COUNT(sv.id) AS vulnerability_count
-			FROM scan_vulnerabilities sv
-			INNER JOIN scans s ON sv.scan_id = s.id
-			WHERE s.host_id = $1 
+			FROM ScanPeriods sp
+			LEFT JOIN scan_vulnerabilities sv ON sv.scan_id = sp.scan_id
+			INNER JOIN scans s ON sp.scan_id = s.id
+			WHERE s.host_id = $1
 				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
 				-- Severity Filter Dynamic Condition goes here
 				%s
-			GROUP BY time_period_label
+			GROUP BY sp.time_period_label
 		)
 		SELECT
 			tp.time_period_label AS time_period,
-			COALESCE(vc.vulnerability_count, 0) AS vulnerability_count
+			vc.vulnerability_count AS vulnerability_count -- Now vc.vulnerability_count will be NULL if no scan
 		FROM TimePeriods tp
+		LEFT JOIN ScanPeriods sp ON tp.time_period_label = sp.time_period_label -- Join with ScanPeriods to ensure time period has a scan
 		LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
 		ORDER BY tp.ordering_period;
-  `
+	`
 
 	trendQueryParams := []any{hostID, timePeriodFilter.String()}
 	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
