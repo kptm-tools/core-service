@@ -56,5 +56,5 @@ type IStorage interface {
 	GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
 	UpdateVulnerabilityComment(ID int, comment string) (bool, error)
 	DeleteVulnerabilityComment(ID int) (bool, error)
-	NotExistComment(ID int) (bool, error)
+	HasComment(ID int) (bool, error)
 }
