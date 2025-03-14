@@ -46,7 +46,7 @@ func main() {
 	defer eventBus.Close()
 
 	// Services
-	healthService := services.NewHealthcheckService(coreStore)
+	healthService := services.NewHealthcheckService(c, coreStore)
 	authService := services.NewAuthService(coreStore)
 	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
