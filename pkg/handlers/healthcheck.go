@@ -1,13 +1,10 @@
 package handlers
 
 import (
-	"errors"
-	"log"
 	"net/http"
 
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/services"
 )
 
 type HealthcheckHandlers struct {
@@ -23,14 +20,10 @@ func NewHealthcheckHandlers(healthcheckService interfaces.IHealthcheckService) *
 }
 
 func (h *HealthcheckHandlers) Healthcheck(w http.ResponseWriter, req *http.Request) error {
+	status := h.healthcheckService.CheckHealth()
 
-	if err := h.healthcheckService.CheckHealth(); err != nil {
-		log.Println(err.Error())
-		status := http.StatusInternalServerError
-		if errors.Is(err, services.ErrorUnhealthy) {
-			status = http.StatusServiceUnavailable
-		}
-		return api.WriteJSON(w, status, http.StatusText(status))
+	if !status.OverallHealthy {
+		return api.WriteJSON(w, http.StatusServiceUnavailable, http.StatusText(http.StatusServiceUnavailable))
 	}
 
 	return api.WriteJSON(w, http.StatusOK, "Healthcheck - OK")

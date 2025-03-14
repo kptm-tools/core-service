@@ -31,8 +31,9 @@ type Config struct {
 	}
 
 	Nats struct {
-		Host string
-		Port string
+		Host        string
+		Port        string
+		MonitorPort string
 	}
 
 	SMTP struct {
@@ -99,11 +100,13 @@ func load() *Config {
 	}
 
 	cfg.Nats = struct {
-		Host string
-		Port string
+		Host        string
+		Port        string
+		MonitorPort string
 	}{
-		Host: fetchEnv("NATS_HOST", "localhost"),
-		Port: fetchEnv("NATS_PORT", "4222"),
+		Host:        fetchEnv("NATS_HOST", "localhost"),
+		Port:        fetchEnv("NATS_PORT", "4222"),
+		MonitorPort: fetchEnv("NATS_MONITOR_PORT", "8222"),
 	}
 
 	cfg.SMTP = struct {
@@ -177,6 +180,10 @@ func (c *Config) GetAllowedOrigins() []string {
 
 func (c *Config) GetNatsConnStr() string {
 	return fmt.Sprintf("http://%s:%s", c.Nats.Host, c.Nats.Port)
+}
+
+func (c *Config) GetNatsHealthcheckURL() string {
+	return fmt.Sprintf("http://%s:%s/healthz", c.Nats.Host, c.Nats.MonitorPort)
 }
 
 func isTestEnv() bool {
