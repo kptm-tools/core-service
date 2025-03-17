@@ -22,10 +22,6 @@ type PostgreSQLStore struct {
 }
 
 func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore, error) {
-	if err := createDatabaseIfNotExists(cfg); err != nil {
-		return nil, fmt.Errorf("failed to create database: %w", err)
-	}
-
 	db, err := sql.Open("postgres", cfg.PostgreSQLCoreDatabaseURL())
 	if err != nil {
 		return nil, err
@@ -45,38 +41,6 @@ func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore,
 		migrations: migrations,
 		config:     cfg,
 	}, nil
-}
-
-// createDatabaseIfNotExists handles database creation before main connection
-func createDatabaseIfNotExists(cfg *config.Config) error {
-	defaultConnStr := cfg.PostgreSQLDefaultDatabaseURL()
-
-	db, err := sql.Open("postgres", defaultConnStr)
-	if err != nil {
-		return fmt.Errorf("failed to connect to default database: %w", err)
-	}
-	defer db.Close()
-
-	dbName := cfg.Database.Name
-	query := `SELECT EXISTS(SELECT FROM pg_database WHERE datname=$1)`
-	var exists bool
-	err = db.QueryRow(query, dbName).Scan(&exists)
-	// If the database doesn't exist, create it
-	if err != nil {
-		return fmt.Errorf("failed to check databse existence: %w", err)
-	}
-
-	if !exists {
-		createQuery := fmt.Sprintf("CREATE DATABASE %s", dbName)
-		_, err = db.Exec(createQuery)
-		if err != nil {
-			return fmt.Errorf("failed to create database %s: %w", dbName, err)
-		}
-		slog.Info("Database created successfully", slog.String("name", dbName))
-
-	}
-
-	return nil
 }
 
 func (s *PostgreSQLStore) Close() error {
