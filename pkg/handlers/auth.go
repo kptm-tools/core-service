@@ -202,6 +202,30 @@ func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error
 	return api.WriteJSON(w, http.StatusOK, user)
 }
 
+func (h *AuthHandlers) VerifyEmailOnTemplate(w http.ResponseWriter, r *http.Request) error {
+	id, err := GetUUID(r)
+	verificationID, tenantID, errGetQueryParam := GetVerificationIDAndTenantID(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
+	}
+	if errGetQueryParam != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errGetQueryParam.Error()})
+	}
+
+	user, err := h.authService.VerifyEmail(verificationID, id.String(), tenantID)
+	if err != nil {
+		var fae *services.FaError
+
+		if errors.As(err, &fae) {
+			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
+		} else {
+			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
+		}
+	}
+
+	return api.WriteJSON(w, http.StatusOK, user)
+}
+
 func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
 	changePasswordRequest := new(ChangePasswordRequest)

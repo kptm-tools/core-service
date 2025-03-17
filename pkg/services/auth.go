@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -456,15 +457,19 @@ func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fus
 	if faErr != nil {
 		return nil, NewFaError(userFusion.StatusCode, faErr.Error())
 	}
-	if userFusion.User.Verified {
-		return nil, NewFaError(200, "User already verified")
+	for i := 0; i < len(userFusion.User.Registrations); i++ {
+		slog.Info("Registration", slog.Any("registration", userFusion.User.Registrations[i]))
 	}
+	/*	if userFusion.User.Verified {
+		return nil, NewFaError(200, "User already verified")
+	}*/
 	verifyEmailReq := fusionauth.VerifyRegistrationRequest{
 		VerificationId: verificationID,
 	}
 
 	// Use FusionAuth Go client to log in the user
 	verificationResponse, faErr, err := client.VerifyUserRegistration(verifyEmailReq)
+
 	if err != nil {
 		return nil, err
 	}
