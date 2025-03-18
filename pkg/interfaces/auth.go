@@ -14,7 +14,7 @@ type IAuthService interface {
 	ForgotPassword(email, applicationID string) (*fusionauth.ForgotPasswordResponse, error)
 	RegisterUser(firstname, lastname, email, password, applicationID string, roles []string) (*fusionauth.RegistrationResponse, error)
 	ChangePassword(changePasswordID, password, email, applicationID string) (*fusionauth.ChangePasswordResponse, error)
-	VerifyEmail(verificationID, userID, tenantID string) (*fusionauth.BaseHTTPResponse, error)
+	VerifyEmail(verificationID, tenantID string) (*fusionauth.BaseHTTPResponse, error)
 }
 
 type IAuthHandlers interface {
