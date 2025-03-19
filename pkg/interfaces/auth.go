@@ -23,8 +23,7 @@ type IAuthHandlers interface {
 	GetUser(w http.ResponseWriter, req *http.Request) error
 	ForgotPassword(w http.ResponseWriter, req *http.Request) error
 	RegisterUser(w http.ResponseWriter, req *http.Request) error
-	VerifyEmail(w http.ResponseWriter, req *http.Request) error
 	ChangePassword(writer http.ResponseWriter, request *http.Request) error
 	WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc
-	VerifyEmailOnTemplate(w http.ResponseWriter, req *http.Request) error
+	VerifyEmail(w http.ResponseWriter, req *http.Request) error
 }

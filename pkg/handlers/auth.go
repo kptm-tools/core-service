@@ -168,37 +168,6 @@ func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
-	tenantID, errTenant := GetTenantIDFromHeader(r)
-	if errTenant != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errTenant.Error()})
-	}
-
-	verifyEmailRequest := new(VerifyEmailRequest)
-
-	if err := decodeJSONBody(w, r, verifyEmailRequest); err != nil {
-		var mr *malformedRequest
-
-		if errors.As(err, &mr) {
-			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
-		} else {
-			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-		}
-	}
-	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, tenantID)
-	if err != nil {
-		var fae *services.FaError
-
-		if errors.As(err, &fae) {
-			return api.WriteJSON(w, fae.Status(), api.APIError{Error: fae.Error()})
-		} else {
-			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-		}
-	}
-
-	return api.WriteJSON(w, http.StatusOK, user)
-}
-
-func (h *AuthHandlers) VerifyEmailOnTemplate(w http.ResponseWriter, r *http.Request) error {
 	verificationID, tenantID, errGetQueryParam := GetVerificationIDAndTenantID(r)
 	if errGetQueryParam != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errGetQueryParam.Error()})
