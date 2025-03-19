@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -69,9 +70,11 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 	// Use FusionAuth Go client to log in the user
 	loginResponse, faErr, err := client.Login(loginReq)
 	if err != nil {
+		slog.Error("Error using fusionauth client", slog.Any("request", loginReq), slog.Any("error", err.Error()))
 		return nil, err
 	}
 	if faErr != nil {
+
 		return nil, NewFaError(loginResponse.StatusCode, faErr.Error())
 	}
 
@@ -374,9 +377,11 @@ func (s *AuthService) ForgotPassword(email, applicationID string) (*fusionauth.F
 	// Use FusionAuth Go client to log in the user
 	forgotResponse, faErr, err := client.ForgotPassword(forgotReq)
 	if err != nil {
+		slog.Error("Error with fusionauth api forgot password", slog.Any("forgotPasswordRequest", forgotReq), slog.Any("error", err))
 		return nil, err
 	}
 	if faErr != nil {
+		slog.Error("Error with fusionauth api forgot password", slog.Any("forgotPasswordRequest", forgotReq), slog.Any("error", faErr))
 		return nil, NewFaError(forgotResponse.StatusCode, faErr.Error())
 	}
 
@@ -408,9 +413,11 @@ func (s *AuthService) RegisterUser(firstname, lastname, email, password, applica
 	// Use FusionAuth Go client to log in the user
 	registerResponse, faErr, err := client.Register(userID, registerReq)
 	if err != nil {
+		slog.Error("Error with fusionauth api register user", slog.Any("userID", userID), slog.Any("registerRequest", registerReq), slog.Any("error", err))
 		return nil, err
 	}
 	if faErr != nil {
+		slog.Error("Error with fusionauth api register user", slog.Any("userID", userID), slog.Any("registerRequest", registerReq), slog.Any("error", faErr))
 		return nil, NewFaError(registerResponse.StatusCode, faErr.Error())
 	}
 
@@ -433,42 +440,38 @@ func (s *AuthService) ChangePassword(changePasswordID, password, email, applicat
 	// Use FusionAuth Go client to log in the user
 	changePasswordResponse, faErr, err := client.ChangePassword(changePasswordID, changePasswordReq)
 	if err != nil {
+		slog.Error("Error with fusionauth api change password", slog.Any("changePasswordId", changePasswordID), slog.Any("passwordRequest", changePasswordReq), slog.Any("error", err))
 		return nil, err
 	}
 	if faErr != nil {
+		slog.Error("Error with fusionauth api change password", slog.Any("changePasswordId", changePasswordID), slog.Any("passwordRequest", changePasswordReq), slog.Any("error", faErr))
 		return nil, NewFaError(changePasswordResponse.StatusCode, faErr.Error())
 	}
 
 	return changePasswordResponse, nil
 }
 
-func (s *AuthService) VerifyEmail(verificationID, userID, tenantID string) (*fusionauth.BaseHTTPResponse, error) {
+func (s *AuthService) VerifyEmail(verificationID, tenantID string) (*fusionauth.BaseHTTPResponse, error) {
 	client, err := s.NewFusionAuthClient()
 	if err != nil {
 		return nil, err
 	}
 	client.SetTenantId(tenantID)
 
-	userFusion, faErr, err := client.RetrieveUser(userID)
-	if err != nil {
-		return nil, err
-	}
-	if faErr != nil {
-		return nil, NewFaError(userFusion.StatusCode, faErr.Error())
-	}
-	if userFusion.User.Verified {
-		return nil, NewFaError(200, "User already verified")
-	}
 	verifyEmailReq := fusionauth.VerifyRegistrationRequest{
 		VerificationId: verificationID,
 	}
 
 	// Use FusionAuth Go client to log in the user
 	verificationResponse, faErr, err := client.VerifyUserRegistration(verifyEmailReq)
+
 	if err != nil {
+		slog.Error("Error with fusionauth api verify registration", slog.Any("verificationId", verificationID), slog.Any("tenantId", tenantID), slog.Any("error", err))
 		return nil, err
 	}
+
 	if faErr != nil {
+		slog.Error("Error with fusionauth api verify registration", slog.Any("verificationId", verificationID), slog.Any("tenantId", tenantID), slog.Any("error", faErr))
 		return nil, NewFaError(verificationResponse.StatusCode, faErr.Error())
 	}
 

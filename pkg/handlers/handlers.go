@@ -109,3 +109,15 @@ func GetTenantIDFromHeader(req *http.Request) (string, error) {
 	}
 	return tenantID, nil
 }
+
+func GetVerificationIDAndTenantID(req *http.Request) (string, string, error) {
+	verificationID := req.URL.Query().Get("verificationId")
+	tenantID := req.URL.Query().Get("tenantId")
+	if len(verificationID) == 0 {
+		return "", "", errors.New("no verificationId given")
+	}
+	if len(tenantID) == 0 {
+		return "", "", errors.New("no tenantId given")
+	}
+	return verificationID, tenantID, nil
+}

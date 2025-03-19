@@ -168,27 +168,12 @@ func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
-	id, err := GetUUID(r)
-	tenantID, errTenant := GetTenantIDFromHeader(r)
-	if err != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
-	}
-	if errTenant != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errTenant.Error()})
+	verificationID, tenantID, errGetQueryParam := GetVerificationIDAndTenantID(r)
+	if errGetQueryParam != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: errGetQueryParam.Error()})
 	}
 
-	verifyEmailRequest := new(VerifyEmailRequest)
-
-	if err := decodeJSONBody(w, r, verifyEmailRequest); err != nil {
-		var mr *malformedRequest
-
-		if errors.As(err, &mr) {
-			return api.WriteJSON(w, mr.status, api.APIError{Error: mr.Error()})
-		} else {
-			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
-		}
-	}
-	user, err := h.authService.VerifyEmail(verifyEmailRequest.VerificationID, id.String(), tenantID)
+	user, err := h.authService.VerifyEmail(verificationID, tenantID)
 	if err != nil {
 		var fae *services.FaError
 
@@ -244,18 +229,18 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 		token, err := h.parseToken(r)
 		if err != nil {
 			if errors.Is(err, middleware.ErrInvalidToken) {
-				slog.Error(err.Error())
+				slog.Error("Invalid token", slog.Any("token", err.Error()))
 				WriteUnauthorized(w)
 			} else if errors.Is(err, middleware.ErrNoToken) {
-				slog.Error(err.Error())
+				slog.Error("No token provided", slog.Any("token", err.Error()))
 				WriteUnauthorized(w)
 			} else if errors.Is(err, jwt.ErrTokenExpired) {
-				slog.Error(err.Error())
+				slog.Error("Token has expired", slog.Any("token", err.Error()))
 				WriteUnauthorized(w)
 			} else {
 				// General error
-				slog.Error("General error", slog.Any("error", err))
-				WriteInternalServerError(w)
+				slog.Error("General error", slog.Any("token", err.Error()))
+				WriteUnauthorized(w)
 			}
 			return
 		}
@@ -275,7 +260,10 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 		exists, err := h.ValidateUserWithFusionAuth(userID.(string), tenantID.(string))
 		if err != nil {
 			if errors.Is(err, middleware.ErrUserNotFound) {
-				slog.Error("User not found", slog.Any("error", err))
+				slog.Error("User not found",
+					slog.Any("user_id", userID),
+					slog.Any("tenant_id", tenantID),
+					slog.Any("error", err))
 				WriteUnauthorized(w)
 				return
 			} else {
@@ -285,7 +273,8 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 			}
 		}
 		if !exists {
-			slog.Error("User is not authorized")
+			slog.Error("User is not authorized", slog.Any("user_id", userID),
+				slog.Any("tenant_id", tenantID))
 			WriteUnauthorized(w)
 			return
 		}
@@ -297,7 +286,7 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 				WriteUnauthorized(w)
 				return
 			}
-			slog.Error("General error: ", slog.Any("error", err))
+			slog.Error("Error checking roles in token: ", slog.Any("error", err))
 			WriteInternalServerError(w)
 			return
 		}
@@ -452,6 +441,7 @@ func checkTokenRoles(token *jwt.Token, functionName string) error {
 	validRoles, err := domain.GetValidRoles(functionName)
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%v`, must be one of `%v`", parsedRoles, validRoles)
+		slog.Error("Error in obtaining role of function", slog.Any("function_name", functionName))
 		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
@@ -460,6 +450,7 @@ func checkTokenRoles(token *jwt.Token, functionName string) error {
 	// log.Printf("Intersection result: `%v`\n", result)
 	if len(result) == 0 {
 		msg := fmt.Sprintf("Roles missing: Have `%v`, want one of `%v`", parsedRoles, validRoles)
+		slog.Error("Invalid role for consuming endpoint", slog.Any("roles", parsedRoles))
 		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
