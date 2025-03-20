@@ -46,7 +46,7 @@ func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, started
 	scanToCreate.HostID = hostID
 	dataScan, err := s.storage.CreateScan(&scanToCreate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scan: %w", err)
+		return nil, err
 	}
 
 	// 3. Add the target to the scan

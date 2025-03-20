@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	"log"
 	"log/slog"
 	"strings"
@@ -66,6 +67,11 @@ func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
 		&insertedScan.StartedAt,
 	)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			if pqErr.Code == "23503" && pqErr.Constraint == "scans_host_id_fkey" {
+				return nil, customerrors.ErrScanHostFKNotFound
+			}
+		}
 		return nil, fmt.Errorf("failed to insert scan: %w", err)
 	}
 

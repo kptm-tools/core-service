@@ -67,7 +67,9 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 				statusCode := http.StatusNotFound
 				return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 			}
-
+			if errors.Is(err, customerrors.ErrScanHostFKNotFound) {
+				return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("No host %d found ", scanRequest.HostID)})
+			}
 			slog.Error("Failed to create scans", slog.Any("error", err))
 			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		}
