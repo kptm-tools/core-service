@@ -405,6 +405,8 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		var analystComment string
 		if vuln.AnalystComment == nil {
 			analystComment = ""
+		} else {
+			analystComment = *vuln.AnalystComment
 		}
 
 		scanVulnerItems[i] = ScanVulnerabilityItem{
