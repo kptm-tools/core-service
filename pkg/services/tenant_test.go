@@ -371,7 +371,7 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 						{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
 						{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
 						{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
-						{TimePeriod: "Agust", VulnerabilityCount: intPtr(0)},
+						{TimePeriod: "August", VulnerabilityCount: intPtr(0)},
 						{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
 						{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
 						{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
@@ -410,7 +410,7 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 						{TimePeriod: "May", VulnerabilityCount: nil},
 						{TimePeriod: "June", VulnerabilityCount: nil},
 						{TimePeriod: "July", VulnerabilityCount: nil},
-						{TimePeriod: "Agust", VulnerabilityCount: nil},
+						{TimePeriod: "August", VulnerabilityCount: nil},
 						{TimePeriod: "September", VulnerabilityCount: nil},
 						{TimePeriod: "October", VulnerabilityCount: nil},
 						{TimePeriod: "November", VulnerabilityCount: nil},
@@ -424,16 +424,16 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			want: []domain.ServiceTimePeriod{
 				{TimePeriod: "January", VulnerabilityCount: intPtr(10)},
 				{TimePeriod: "February", VulnerabilityCount: intPtr(20)},
-				{TimePeriod: "March", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "April", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "August", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "December", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "March", VulnerabilityCount: nil},
+				{TimePeriod: "April", VulnerabilityCount: nil},
+				{TimePeriod: "May", VulnerabilityCount: nil},
+				{TimePeriod: "June", VulnerabilityCount: nil},
+				{TimePeriod: "July", VulnerabilityCount: nil},
+				{TimePeriod: "August", VulnerabilityCount: nil},
+				{TimePeriod: "September", VulnerabilityCount: nil},
+				{TimePeriod: "October", VulnerabilityCount: nil},
+				{TimePeriod: "November", VulnerabilityCount: nil},
+				{TimePeriod: "December", VulnerabilityCount: nil},
 			},
 			wantErr: false,
 		},
@@ -461,18 +461,18 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			timePeriodFilter: domain.TimePeriodFilterMonth,
 			severityFilters:  []string{},
 			want: []domain.ServiceTimePeriod{
-				{TimePeriod: "January", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "February", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "March", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "April", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "May", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "June", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "July", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "August", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "September", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "October", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "November", VulnerabilityCount: intPtr(0)},
-				{TimePeriod: "December", VulnerabilityCount: intPtr(0)},
+				{TimePeriod: "January", VulnerabilityCount: nil},
+				{TimePeriod: "February", VulnerabilityCount: nil},
+				{TimePeriod: "March", VulnerabilityCount: nil},
+				{TimePeriod: "April", VulnerabilityCount: nil},
+				{TimePeriod: "May", VulnerabilityCount: nil},
+				{TimePeriod: "June", VulnerabilityCount: nil},
+				{TimePeriod: "July", VulnerabilityCount: nil},
+				{TimePeriod: "August", VulnerabilityCount: nil},
+				{TimePeriod: "September", VulnerabilityCount: nil},
+				{TimePeriod: "October", VulnerabilityCount: nil},
+				{TimePeriod: "November", VulnerabilityCount: nil},
+				{TimePeriod: "December", VulnerabilityCount: nil},
 			},
 			wantErr: false,
 		},
@@ -497,7 +497,12 @@ func TestTenantService_GetHostsVulnerabilityTrends(t *testing.T) {
 			assert.Equal(t, len(tc.want), len(got))
 			for i, wantPeriod := range tc.want {
 				assert.Equal(t, wantPeriod.TimePeriod, got[i].TimePeriod)
-				assert.Equal(t, wantPeriod.VulnerabilityCount, got[i].VulnerabilityCount)
+				if wantPeriod.VulnerabilityCount == nil {
+					assert.Nil(t, got[i].VulnerabilityCount, "Expected nil vulnerability count for %s TimePeriod", got[i].TimePeriod)
+				} else {
+					assert.NotNil(t, got[i].VulnerabilityCount, "Expected non-nil vulnerability count for %s TimePeriod", got[i].TimePeriod)
+					assert.Equal(t, wantPeriod.VulnerabilityCount, got[i].VulnerabilityCount)
+				}
 			}
 		})
 	}
