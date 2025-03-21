@@ -196,13 +196,13 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
       COALESCE(A.medium, 0) AS medium,
       COALESCE(A.high, 0) AS high,
       COALESCE(A.critical, 0) AS critical
-   FROM  scans S
+   FROM  (SELECT * FROM scans WHERE status!=$2) S
    INNER JOIN hosts H ON S.host_id = H.id
    LEFT JOIN aggregated_vulnerabilities A ON S.id = A.scan_id
    WHERE S.tenant_id = $1
    ORDER BY S.started_at DESC`
 
-	rows, err := s.db.Query(query, tenantID)
+	rows, err := s.db.Query(query, tenantID, enums.StatusScheduled.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch scans: %w", err)
 	}
@@ -1043,7 +1043,7 @@ func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression 
 		INSERT INTO scan_scheduling (
 		scan_id, enabled, has_period, cron,scheduled_date, created_at, updated_at
 		)
-		values ($1, $2, $3, $4, $5, $6)`
+		values ($1, $2, $3, $4, $5, $6, $7)`
 
 		if _, err := tx.Exec(query, scanID, true, isRepeated, cronExpression, scheduledDate, time.Now().UTC(), time.Now().UTC()); err != nil {
 			return fmt.Errorf("failed to insert scan scheduling: %w", err)

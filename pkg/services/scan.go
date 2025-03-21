@@ -40,7 +40,9 @@ func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, started
 	commonScanData := domain.NewScan(startScanDate)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
-
+	if startedAt != nil {
+		commonScanData.Status = enums.StatusScheduled.String()
+	}
 	// 1. Create the scan in storage
 	scanToCreate := *commonScanData
 	scanToCreate.HostID = hostID
