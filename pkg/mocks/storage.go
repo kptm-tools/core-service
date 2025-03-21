@@ -129,7 +129,7 @@ func (m *MockStorage) ExistAlias(arg0 string) (bool, error) {
 	return false, nil // Default behavior if mock function not set
 }
 
-func (m *MockStorage) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+func (m *MockStorage) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
 	if m.MockGetScans != nil {
 		return m.MockGetScans(tenantID)
 	}

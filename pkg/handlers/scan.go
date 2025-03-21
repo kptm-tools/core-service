@@ -134,7 +134,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 
 func (h ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
 	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	scans, err := h.scanService.GetScans(tenantID)
+	scans, err := h.scanService.GetCurrentScans(tenantID)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}

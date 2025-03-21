@@ -29,7 +29,7 @@ func (m *MockScanService) GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur
 	return nil, "", nil
 }
 
-func (m *MockScanService) GetScans(s string) ([]*domain.ScanSummary, error) {
+func (m *MockScanService) GetCurrentScans(s string) ([]*domain.ScanSummary, error) {
 	// TODO implement me
 	panic("implement me")
 }

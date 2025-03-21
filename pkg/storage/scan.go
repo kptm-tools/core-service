@@ -170,7 +170,7 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	return scanSum, nil
 }
 
-func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+func (s *PostgreSQLStore) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
 	query := `
   WITH aggregated_vulnerabilities AS (
     SELECT
@@ -196,10 +196,10 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
       COALESCE(A.medium, 0) AS medium,
       COALESCE(A.high, 0) AS high,
       COALESCE(A.critical, 0) AS critical
-   FROM  (SELECT * FROM scans WHERE status!=$2) S
+   FROM  scans S
    INNER JOIN hosts H ON S.host_id = H.id
    LEFT JOIN aggregated_vulnerabilities A ON S.id = A.scan_id
-   WHERE S.tenant_id = $1
+   WHERE S.tenant_id = $1 and status!=$2
    ORDER BY S.started_at DESC`
 
 	rows, err := s.db.Query(query, tenantID, enums.StatusScheduled.String())

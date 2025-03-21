@@ -14,7 +14,7 @@ import (
 
 type IScanService interface {
 	CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error)
-	GetScans(string) ([]*domain.ScanSummary, error)
+	GetCurrentScans(string) ([]*domain.ScanSummary, error)
 	InsertScanResult(*domain.ScanResult) error
 	InsertVulnerabilityResult(*domain.ScanResult) error
 	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error

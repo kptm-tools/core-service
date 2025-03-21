@@ -90,8 +90,8 @@ func (s ScanService) CreateTarget(hostID int) (*results.Target, error) {
 	}, nil
 }
 
-func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
-	return s.storage.GetScans(tenantID)
+func (s ScanService) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
+	return s.storage.GetCurrentScans(tenantID)
 }
 
 func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
