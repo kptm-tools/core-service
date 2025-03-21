@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	"log"
 	"log/slog"
 	"strings"
@@ -66,6 +67,11 @@ func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
 		&insertedScan.StartedAt,
 	)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			if pqErr.Code == "23503" && pqErr.Constraint == "scans_host_id_fkey" {
+				return nil, customerrors.ErrScanHostFKNotFound
+			}
+		}
 		return nil, fmt.Errorf("failed to insert scan: %w", err)
 	}
 
@@ -164,7 +170,7 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	return scanSum, nil
 }
 
-func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+func (s *PostgreSQLStore) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
 	query := `
   WITH aggregated_vulnerabilities AS (
     SELECT
@@ -193,10 +199,10 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
    FROM  scans S
    INNER JOIN hosts H ON S.host_id = H.id
    LEFT JOIN aggregated_vulnerabilities A ON S.id = A.scan_id
-   WHERE S.tenant_id = $1
+   WHERE S.tenant_id = $1 and status!=$2
    ORDER BY S.started_at DESC`
 
-	rows, err := s.db.Query(query, tenantID)
+	rows, err := s.db.Query(query, tenantID, enums.StatusScheduled.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch scans: %w", err)
 	}
@@ -1037,7 +1043,7 @@ func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression 
 		INSERT INTO scan_scheduling (
 		scan_id, enabled, has_period, cron,scheduled_date, created_at, updated_at
 		)
-		values ($1, $2, $3, $4, $5, $6)`
+		values ($1, $2, $3, $4, $5, $6, $7)`
 
 		if _, err := tx.Exec(query, scanID, true, isRepeated, cronExpression, scheduledDate, time.Now().UTC(), time.Now().UTC()); err != nil {
 			return fmt.Errorf("failed to insert scan scheduling: %w", err)

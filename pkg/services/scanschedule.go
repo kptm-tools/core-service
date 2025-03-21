@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"time"
 
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -64,6 +65,7 @@ func (s ScanScheduleService) PatchScanSchedule(scanScheduleID int, frequency *do
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
 	commonScanData.HostID = hostID
+	commonScanData.Status = enums.StatusScheduled.String()
 	dataScan, errCreationScan := s.storage.CreateScan(commonScanData)
 	if errCreationScan != nil {
 		return fmt.Errorf("failed to create new scan for update scan scheduling: %w", errCreationScan)

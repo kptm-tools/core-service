@@ -42,6 +42,8 @@ github.com/klauspost/compress v1.17.9 h1:6KIumPrER1LHsvBVuDa0r5xaG0Es51mhhB9BQB2
 github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
 github.com/kptm-tools/common v1.5.2 h1:fCzVsZPWBTNZ8WmW9ecXZhn/J91Cscd+R52qfOODhjU=
 github.com/kptm-tools/common v1.5.2/go.mod h1:7wa3RNr3+jwTBZfrQMrlzUq7Mr0hmMzlJIX59hkHPic=
+github.com/kptm-tools/common v1.5.3-beta h1:GgCt21FDqjEnSYIp4r0kIfj/hJ/DjXrTt7MzkrCQCgU=
+github.com/kptm-tools/common v1.5.3-beta/go.mod h1:7wa3RNr3+jwTBZfrQMrlzUq7Mr0hmMzlJIX59hkHPic=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/likexian/gokit v0.25.15 h1:QjospM1eXhdMMHwZRpMKKAHY/Wig9wgcREmLtf9NslY=

@@ -40,13 +40,15 @@ func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, started
 	commonScanData := domain.NewScan(startScanDate)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
-
+	if startedAt != nil {
+		commonScanData.Status = enums.StatusScheduled.String()
+	}
 	// 1. Create the scan in storage
 	scanToCreate := *commonScanData
 	scanToCreate.HostID = hostID
 	dataScan, err := s.storage.CreateScan(&scanToCreate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scan: %w", err)
+		return nil, err
 	}
 
 	// 3. Add the target to the scan
@@ -88,8 +90,8 @@ func (s ScanService) CreateTarget(hostID int) (*results.Target, error) {
 	}, nil
 }
 
-func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
-	return s.storage.GetScans(tenantID)
+func (s ScanService) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
+	return s.storage.GetCurrentScans(tenantID)
 }
 
 func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
