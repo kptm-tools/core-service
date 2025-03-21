@@ -65,7 +65,7 @@ func getSemestersInOrder() []string {
 
 type TenantDashboardData struct {
 	OverallSecurityPosture           OverallSecurityPostureData   `json:"overall_security_posture"`
-	HostSeverityHeatMap              []HostAliasSeverityCountPair `json:"host_severit_heat_map"`
+	HostSeverityHeatMap              []HostAliasSeverityCountPair `json:"host_severity_heat_map"`
 	VulnerabilityTrends              []ServiceTimePeriod          `json:"vulnerability_trends"`
 	LastScan                         *LastScanData                `json:"last_scan"`
 	HostsWithGreatestVulnerabilities []HostAliasVulnerabilityPair `json:"hosts_with_greatest_vulnerabilities"`
