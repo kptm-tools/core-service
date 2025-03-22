@@ -102,15 +102,15 @@ type ServiceVulnerabilityTrends struct {
 }
 
 type ServiceTimePeriod struct {
-	TimePeriod         string
-	VulnerabilityCount int
+	TimePeriod         string `json:"time_period"`
+	VulnerabilityCount *int   `json:"vulnerability_count"`
 }
 
-func NewScan() *Scan {
+func NewScan(startedAt time.Time) *Scan {
 	return &Scan{
 		ID:        uuid.New(),
 		Status:    enums.StatusPending.String(),
-		StartedAt: time.Now().UTC(),
+		StartedAt: startedAt,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

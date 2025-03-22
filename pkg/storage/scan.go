@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	"log"
 	"log/slog"
 	"strings"
@@ -66,6 +67,11 @@ func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
 		&insertedScan.StartedAt,
 	)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			if pqErr.Code == "23503" && pqErr.Constraint == "scans_host_id_fkey" {
+				return nil, customerrors.ErrScanHostFKNotFound
+			}
+		}
 		return nil, fmt.Errorf("failed to insert scan: %w", err)
 	}
 
@@ -164,7 +170,7 @@ func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
 	return scanSum, nil
 }
 
-func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
+func (s *PostgreSQLStore) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
 	query := `
   WITH aggregated_vulnerabilities AS (
     SELECT
@@ -193,10 +199,10 @@ func (s *PostgreSQLStore) GetScans(tenantID string) ([]*domain.ScanSummary, erro
    FROM  scans S
    INNER JOIN hosts H ON S.host_id = H.id
    LEFT JOIN aggregated_vulnerabilities A ON S.id = A.scan_id
-   WHERE S.tenant_id = $1
+   WHERE S.tenant_id = $1 and status!=$2
    ORDER BY S.started_at DESC`
 
-	rows, err := s.db.Query(query, tenantID)
+	rows, err := s.db.Query(query, tenantID, enums.StatusScheduled.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch scans: %w", err)
 	}
@@ -633,7 +639,7 @@ func (s *PostgreSQLStore) UpdateProtectionScore(scanID uuid.UUID, protectionScor
 
 func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	scanID uuid.UUID,
-	timePeriodFilter string,
+	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	var summaryData domain.ScanVulnerabilitySummaryData
@@ -738,94 +744,34 @@ func (s *PostgreSQLStore) GetScanVulnerabilitiesSummary(
 	summaryData.CategoryData = categoryData
 
 	// 2. Fetch trend data
-	// This query is kind of complicated, but what it does is fill out time_periods and labels,
-	// even when there is no data for said time_period. E.g: we only have data
-	// for February, but we want to have the counts for other months to be 0 too.
-	baseTrendQuery := `
-  WITH TimePeriods as (
-  SELECT 
-        CASE 
-          WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
-          WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(date_series, 'Q')
-          WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-          ELSE 'Unknown Period'
-        END AS time_period_label,
-        CASE
-          WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'YYYY-MM')
-          WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
-          WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-          ELSE '1'
-        END AS ordering_period
-      FROM generate_series(
-        DATE_TRUNC('year', CURRENT_DATE),
-        DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
-        CASE
-          WHEN $2 = 'Month' THEN INTERVAL '1 month'
-          WHEN $2 = 'Quarter' THEN INTERVAL '3 month'
-          WHEN $2 = 'Semester' THEN INTERVAL '6 month'
-          ELSE INTERVAL '1 month'
-        END
-      ) AS date_series
-  ),
-  VulnerabilityCounts AS (
-  SELECT
-          CASE
-              WHEN $2 = 'Month' THEN TO_CHAR(sv.created_at, 'FMMonth')
-              WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(sv.created_at, 'Q')
-              WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(sv.created_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-              ELSE 'Unknown Period'
-          END AS time_period_label,
-          COUNT(sv.id) AS vulnerability_count
-      FROM scan_vulnerabilities sv
-      WHERE sv.scan_id = $1
-        AND EXTRACT(YEAR FROM sv.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-          -- Severity Filter Dynamic Condition goes here
-          %s
-      GROUP BY time_period_label
-  )
-  SELECT 
-    tp.time_period_label AS time_period,
-    COALESCE(vc.vulnerability_count, 0) AS vulnerability_count
-  FROM TimePeriods tp
-  LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
-  ORDER BY tp.ordering_period;
-`
-
-	trendQueryParams := []any{scanID, timePeriodFilter}
-	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
-	formattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
-	slog.Debug("Executing Summary Query",
-		slog.Any("query_params", trendQueryParams))
-
-	trendsRows, err := s.db.Query(formattedTrendQuery, trendQueryParams...)
+	scan, err := s.GetScanByID(scanID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query vulnerability trends: %w", err)
+		return nil, fmt.Errorf("failed to get scan to retrieve host_id: %w", err)
 	}
-	defer trendsRows.Close()
+	if scan == nil {
+		return nil, fmt.Errorf("scan not found with id: %s", scanID)
+	}
+
+	timePeriods, err := s.GetHostVulnerabilityTrends(scan.HostID, timePeriodFilter, severityFilters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host vulnerabilty trends: %w", err)
+	}
 
 	var vulnerabilityTrends domain.ServiceVulnerabilityTrends
-	var timePeriods []domain.ServiceTimePeriod
-	var totalVulnCountForAvg, periodCountForAvg float64
-	for trendsRows.Next() {
-		var timePeriodData domain.ServiceTimePeriod
-		if err := trendsRows.Scan(&timePeriodData.TimePeriod, &timePeriodData.VulnerabilityCount); err != nil {
-			return nil, fmt.Errorf("failed to scan into time period: %w", err)
-		}
-		timePeriods = append(timePeriods, timePeriodData)
-		totalVulnCountForAvg += float64(timePeriodData.VulnerabilityCount)
-		periodCountForAvg++
-	}
-	if err := trendsRows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate trend rows: %w", err)
-	}
-
 	vulnerabilityTrends.TimePeriods = timePeriods
+
+	var totalVulnCountForAvg, periodCountForAvg float64
+	for _, periodData := range timePeriods {
+		if periodData.VulnerabilityCount != nil {
+			totalVulnCountForAvg += float64(*periodData.VulnerabilityCount)
+			periodCountForAvg++
+		}
+	}
 	if periodCountForAvg > 0 {
 		vulnerabilityTrends.AverageVulnerabilityCount = totalVulnCountForAvg / periodCountForAvg
 	} else {
 		vulnerabilityTrends.AverageVulnerabilityCount = 0.0
 	}
-
 	summaryData.VulnerabilityTrends = vulnerabilityTrends
 
 	return &summaryData, nil
@@ -938,7 +884,44 @@ func (s *PostgreSQLStore) GetLatestScanByHostID(hostID int, fromDate, toDate *ti
 	var scan domain.Scan
 	row := s.db.QueryRow(query, hostID, fromDate, toDate)
 	if err := scanIntoScan(row, &scan); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan into scan: %w", err)
+	}
+
+	return &scan, nil
+}
+
+func (s *PostgreSQLStore) GetScanBeforeLatestByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+	query := `
+    SELECT
+      id,
+      tenant_id,
+      operator_id,
+      host_id,
+      started_at,
+      created_at,
+      updated_at,
+      ended_at,
+      status,
+      protection_score
+    FROM
+      scans
+    WHERE
+      host_id = $1
+      AND started_at >= COALESCE($2, '1900-01-01'::DATE)
+      AND started_at <= COALESCE($3, NOW())
+    ORDER BY
+      started_at DESC
+    LIMIT 1
+    OFFSET 1;
+  `
+
+	var scan domain.Scan
+	row := s.db.QueryRow(query, hostID, fromDate, toDate)
+	if err := scanIntoScan(row, &scan); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to scan into scan: %w", err)
@@ -1036,4 +1019,79 @@ func (s *PostgreSQLStore) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCo
 	}
 
 	return &severityCounts, nil
+}
+
+func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression string, isRepeated bool, periodName string, periodQuantity int, scheduledDate time.Time) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if isRepeated {
+		query := `
+		INSERT INTO scan_scheduling (
+		scan_id, period_name,period_quantity, enabled, has_period, cron, scheduled_date, created_at, updated_at
+		)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+
+		if _, err := tx.Exec(query, scanID, periodName, periodQuantity, true, isRepeated, cronExpression, scheduledDate, time.Now().UTC(), time.Now().UTC()); err != nil {
+			return fmt.Errorf("failed to insert scan scheduling: %w", err)
+		}
+	} else {
+		query := `
+		INSERT INTO scan_scheduling (
+		scan_id, enabled, has_period, cron,scheduled_date, created_at, updated_at
+		)
+		values ($1, $2, $3, $4, $5, $6, $7)`
+
+		if _, err := tx.Exec(query, scanID, true, isRepeated, cronExpression, scheduledDate, time.Now().UTC(), time.Now().UTC()); err != nil {
+			return fmt.Errorf("failed to insert scan scheduling: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
+func (s *PostgreSQLStore) ScanScheduleDisableJob(scanScheduleID int, withDelete bool) error {
+	query := `SELECT unregister_cron( $1, $2 )`
+	var result int
+	err := s.db.QueryRow(query, scanScheduleID, withDelete).Scan(&result)
+	if err != nil || result == 0 {
+		return fmt.Errorf("failed to unregister job: %w", err)
+	}
+	return nil
+}
+
+func (s *PostgreSQLStore) UpdateScanScheduling(scanID uuid.UUID, scanScheduleID int) error {
+	query := `UPDATE scan_scheduling SET scan_id=$1, updated_at=now() WHERE id=$2`
+	_, err := s.db.Exec(query, scanID, scanScheduleID)
+	if err != nil {
+		return fmt.Errorf("failed to update scan scheduling: %w", err)
+	}
+	return nil
+}
+
+func (s *PostgreSQLStore) GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error) {
+	query := `SELECT H.rapporteurs, H.alias FROM scans S INNER JOIN  hosts H ON H.id = S.host_id WHERE S.id=$1 `
+	var rapporteursBytes []byte
+	var rapporteurs []*domain.Rapporteur
+	var name string
+	err := s.db.QueryRow(query, scanID).Scan(&rapporteursBytes, &name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.Debug("No rapporteurs found for scan_id: %s", scanID.String(),
+				slog.String("scan_id", scanID.String()),
+			)
+			return nil, "", customerrors.ErrHostNotFound
+		}
+		return nil, "", fmt.Errorf("failed to run query: %w", err)
+	}
+	if err := json.Unmarshal(rapporteursBytes, &rapporteurs); err != nil {
+		return nil, "", fmt.Errorf("failed to unmarshal rapporteurs: %w", err)
+	}
+	return rapporteurs, name, nil
 }

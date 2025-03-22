@@ -46,27 +46,40 @@ func main() {
 	defer eventBus.Close()
 
 	// Services
-	healthService := services.NewHealthcheckService(coreStore)
+	healthService := services.NewHealthcheckService(c, coreStore)
 	authService := services.NewAuthService(coreStore)
 	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore)
 	vulnService := services.NewVulnerabilityService(coreStore)
+	scanScheduleService := services.NewScanScheduleService(coreStore)
+	emailService := services.NewEmailService(
+		c.SMTP.Host,
+		c.SMTP.Port,
+		c.SMTP.Username,
+		c.SMTP.Password,
+		c.SMTP.FromEmail)
 
 	// Handlers
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
 	tenantHandlers := handlers.NewTenantHandlers(tenantService)
-	scanHandlers := handlers.NewScanHandlers(scanService, hostService, eventBus)
+	scanHandlers := handlers.NewScanHandlers(
+		scanService,
+		scanScheduleService,
+		hostService,
+		emailService,
+		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
+	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
 		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 
-	storageListener, err := storage.NewPostgresListener(c, scanService)
+	storageListener, err := storage.NewPostgresListener(c, scanService, emailService, eventBus)
 	if err != nil {
 		logger.Error("Error creating db listener", slog.Any("error", err))
 		os.Exit(1)
@@ -82,6 +95,7 @@ func main() {
 		authHandlers,
 		scanHandlers,
 		vulnHandlers,
+		scanScheduleHandlers,
 	)
 
 	if err := s.Init(); err != nil {

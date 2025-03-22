@@ -30,43 +30,45 @@ func NewScanService(storage interfaces.IStorage) *ScanService {
 	}
 }
 
-func (s ScanService) CreateScans(hostIDs []int, tenantID, operatorID string) ([]*domain.Scan, error) {
-	var createdScans []*domain.Scan
-	commonScanData := domain.NewScan()
+func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error) {
+	var startScanDate time.Time
+	if startedAt == nil {
+		startScanDate = time.Now().UTC()
+	} else {
+		startScanDate = *startedAt
+	}
+	commonScanData := domain.NewScan(startScanDate)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
-
-	for _, hostID := range hostIDs {
-		// 1. Create the scan in storage
-		scanToCreate := *commonScanData
-		scanToCreate.HostID = hostID
-		dataScan, err := s.storage.CreateScan(&scanToCreate)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create scan: %w", err)
-		}
-
-		// 2. Get host details
-		host, err := s.storage.GetHostByID(scanToCreate.HostID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get host: %w", err)
-		}
-
-		// 3. Add the target to the scan
-		target, err := createTarget(*host)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create target: %w", err)
-		}
-
-		dataScan.Target = *target
-
-		// 4. Append to results
-		createdScans = append(createdScans, dataScan)
+	if startedAt != nil {
+		commonScanData.Status = enums.StatusScheduled.String()
+	}
+	// 1. Create the scan in storage
+	scanToCreate := *commonScanData
+	scanToCreate.HostID = hostID
+	dataScan, err := s.storage.CreateScan(&scanToCreate)
+	if err != nil {
+		return nil, err
 	}
 
-	return createdScans, nil
+	// 3. Add the target to the scan
+	target, err := s.CreateTarget(scanToCreate.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target: %w", err)
+	}
+
+	dataScan.Target = *target
+
+	return dataScan, nil
 }
 
-func createTarget(host domain.Host) (*results.Target, error) {
+func (s ScanService) CreateTarget(hostID int) (*results.Target, error) {
+	// 1. Get host details
+	host, err := s.storage.GetHostByID(hostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host: %w", err)
+	}
+	// 2. Construct the target
 	var hostValue string
 	var hostType enums.TargetType
 	if host.Domain == "" {
@@ -88,8 +90,8 @@ func createTarget(host domain.Host) (*results.Target, error) {
 	}, nil
 }
 
-func (s ScanService) GetScans(tenantID string) ([]*domain.ScanSummary, error) {
-	return s.storage.GetScans(tenantID)
+func (s ScanService) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
+	return s.storage.GetCurrentScans(tenantID)
 }
 
 func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
@@ -183,6 +185,7 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 		*harvesterResult,
 		*nmapResult,
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to calculate protection score: %w", err)
 	}
@@ -197,7 +200,7 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 
 func (s *ScanService) GetScanVulnerabilitySummaryByID(
 	scanID uuid.UUID,
-	timePeriodFilter string,
+	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
@@ -225,7 +228,7 @@ func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportI
 }
 
 func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID)
+	hosts, err := s.storage.GetHostsByTenantID(tenantID, []int{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}
@@ -290,4 +293,16 @@ func (s *ScanService) GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulner
 
 func (s *ScanService) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error) {
 	return s.storage.GetSeverityCounts(scanID)
+}
+
+func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error {
+	return s.storage.UpdateScanScheduling(scanID, scanScheduleID)
+}
+
+func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
+	return s.storage.ScanScheduleDisableJob(scanScheduleID, false)
+}
+
+func (s ScanService) GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error) {
+	return s.storage.GetRapporteursAndHostAliasByScanID(id)
 }

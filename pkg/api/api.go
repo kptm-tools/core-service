@@ -15,12 +15,13 @@ import (
 type APIServer struct {
 	listenAddr string
 
-	healthHandlers interfaces.IHealthcheckHandlers
-	hostHandlers   interfaces.IHostHandlers
-	authHandlers   interfaces.IAuthHandlers
-	tenantHandlers interfaces.ITenantHandlers
-	scanHandlers   interfaces.IScanHandlers
-	vulnHandlers   interfaces.IVulnerabilityHandlers
+	healthHandlers       interfaces.IHealthcheckHandlers
+	hostHandlers         interfaces.IHostHandlers
+	authHandlers         interfaces.IAuthHandlers
+	tenantHandlers       interfaces.ITenantHandlers
+	scanHandlers         interfaces.IScanHandlers
+	vulnHandlers         interfaces.IVulnerabilityHandlers
+	scanScheduleHandlers interfaces.IScanScheduleHandlers
 }
 
 type APIError struct {
@@ -37,16 +38,18 @@ func NewAPIServer(
 	aHandlers interfaces.IAuthHandlers,
 	sHandlers interfaces.IScanHandlers,
 	vHandlers interfaces.IVulnerabilityHandlers,
+	ssHandlers interfaces.IScanScheduleHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
 
-		healthHandlers: heHandlers,
-		hostHandlers:   hoHandlers,
-		authHandlers:   aHandlers,
-		tenantHandlers: teHandlers,
-		scanHandlers:   sHandlers,
-		vulnHandlers:   vHandlers,
+		healthHandlers:       heHandlers,
+		hostHandlers:         hoHandlers,
+		authHandlers:         aHandlers,
+		tenantHandlers:       teHandlers,
+		scanHandlers:         sHandlers,
+		vulnHandlers:         vHandlers,
+		scanScheduleHandlers: ssHandlers,
 	}
 }
 
@@ -62,7 +65,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("POST /api/forgot-password", makeHTTPHandlerFunc(s.authHandlers.ForgotPassword))
 	router.HandleFunc("POST /api/change-password", makeHTTPHandlerFunc(s.authHandlers.ChangePassword))
 	router.HandleFunc("POST /api/users", makeHTTPHandlerFunc(s.authHandlers.RegisterUser))
-	router.HandleFunc("POST /api/users/{id}/verify-email", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
+	router.HandleFunc("GET /api/users/verify", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
 	router.HandleFunc("POST /api/tenants", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
 	router.HandleFunc("GET /api/users/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), "getUser"))
 
@@ -75,7 +78,7 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), "patchHostByID"))
 	router.HandleFunc("GET /tenants", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
-	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScans), "createScans"))
+	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScan), "createScans"))
 	router.HandleFunc("GET /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
@@ -83,10 +86,18 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities/summary", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilitySummaryByID), "getScanVulnerabilitySummaryByID"))
 
 	router.HandleFunc("GET /api/scorecard-trends", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScoreCardTrends), "getScoreCardTrends"))
+	router.HandleFunc("DELETE /api/scan-schedules/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanScheduleHandlers.DeleteScanSchedule), "deleteScheduleByID"))
+	router.HandleFunc("PATCH /api/scan-schedules/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanScheduleHandlers.PatchScanSchedule), "patchScheduleByID"))
+	router.HandleFunc("GET /api/scan-schedules", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanScheduleHandlers.GetScanSchedules), "getSchedules"))
 
 	router.HandleFunc("GET /api/reports", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetReports), "getAllTenantReports"))
 
 	router.HandleFunc("GET /api/vulnerabilities/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetVulnerability), "getVulnerability"))
+	router.HandleFunc("POST /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.CreateVulnerabilityComment), "createVulnerabilityComment"))
+	router.HandleFunc("PATCH /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.PatchVulnerabilityComment), "editVulnerabilityComment"))
+	router.HandleFunc("DELETE /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.DeleteVulnerabilityComment), "deleteVulnerabilityComment"))
+
+	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), "getDashboard"))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,
