@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 	"log"
 	"net/http"
 	"reflect"
@@ -9,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/middleware"
 )
 
 type APIServer struct {
@@ -22,6 +22,7 @@ type APIServer struct {
 	scanHandlers         interfaces.IScanHandlers
 	vulnHandlers         interfaces.IVulnerabilityHandlers
 	scanScheduleHandlers interfaces.IScanScheduleHandlers
+	wsServer             interfaces.IWsHandlers
 }
 
 type APIError struct {
@@ -39,6 +40,7 @@ func NewAPIServer(
 	sHandlers interfaces.IScanHandlers,
 	vHandlers interfaces.IVulnerabilityHandlers,
 	ssHandlers interfaces.IScanScheduleHandlers,
+	wsServer interfaces.IWsHandlers,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
@@ -50,6 +52,7 @@ func NewAPIServer(
 		scanHandlers:         sHandlers,
 		vulnHandlers:         vHandlers,
 		scanScheduleHandlers: ssHandlers,
+		wsServer:             wsServer,
 	}
 }
 
@@ -98,6 +101,8 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("DELETE /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.DeleteVulnerabilityComment), "deleteVulnerabilityComment"))
 
 	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), "getDashboard"))
+
+	router.HandleFunc("/ws", s.wsServer.Serve)
 
 	stack := middleware.CreateStack(
 		middleware.Logging,

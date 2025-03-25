@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"bufio"
+	"errors"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
@@ -29,4 +32,12 @@ func Logging(next http.Handler) http.Handler {
 
 		log.Println(wrapped.statusCode, r.Method, r.URL.Path, time.Since(start))
 	})
+}
+
+func (w *wrappedWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("the ResponseWriter does not support the Hijacker interface")
+	}
+	return hijacker.Hijack()
 }
