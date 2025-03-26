@@ -67,8 +67,8 @@ func SendMessageHandler(event Event, c *WsClient) error {
 	outgoingEvent.Type = EventNewMessage
 	// Broadcast to all other Clients
 	for client := range c.manager.clients {
-		// Only send to clients inside the same chatroom
-		if client.chatroom == c.chatroom {
+		// Only send to clients inside the same tenantID
+		if client.tenantID == c.tenantID {
 			client.egress <- outgoingEvent
 		}
 
@@ -89,7 +89,7 @@ func ChatRoomHandler(event Event, c *WsClient) error {
 	}
 
 	// Add Client to chat room
-	c.chatroom = changeRoomEvent.Name
+	c.tenantID = changeRoomEvent.Name
 
 	return nil
 }

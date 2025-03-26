@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
+	"log/slog"
+	"strconv"
 	"time"
 )
 
@@ -17,8 +19,8 @@ type WsClient struct {
 	manager *WsServer
 	// egress is used to avoid concurrent writes on the WebSocket
 	egress chan Event
-	// chatroom is used to know what room user is in
-	chatroom string
+	// tenantID is used to know what room user is in
+	tenantID string
 }
 
 var (
@@ -31,11 +33,12 @@ var (
 )
 
 // NewClient is used to initialize a new Client with all required values initialized
-func NewWsClient(conn *websocket.Conn, manager *WsServer) *WsClient {
+func NewWsClient(conn *websocket.Conn, manager *WsServer, tenantID string) *WsClient {
 	return &WsClient{
 		connection: conn,
 		manager:    manager,
 		egress:     make(chan Event),
+		tenantID:   tenantID,
 	}
 }
 
@@ -89,7 +92,6 @@ func (c *WsClient) readMessages() {
 // pongHandler is used to handle PongMessages for the Client
 func (c *WsClient) pongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	log.Println("pong")
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
 
@@ -97,6 +99,9 @@ func (c *WsClient) pongHandler(pongMsg string) error {
 func (c *WsClient) writeMessages() {
 	// Create a ticker that triggers a ping at given interval
 	ticker := time.NewTicker(pingInterval)
+	scanInterval, _ := strconv.Atoi(c.manager.cfg.Websocket.IntervalScanRefresh)
+	scanIntervalDuration := time.Duration(scanInterval) * time.Second
+	tickerScan := time.NewTicker(scanIntervalDuration)
 	defer func() {
 		ticker.Stop()
 		// Graceful close if this triggers a closing
@@ -133,6 +138,19 @@ func (c *WsClient) writeMessages() {
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				log.Println("writemsg: ", err)
 				return // return to break this goroutine triggeing cleanup
+			}
+		case <-tickerScan.C:
+			scans, errGetScans := c.manager.scanService.GetCurrentScans(c.tenantID)
+			if errGetScans != nil {
+				slog.Error("Not able to get scans", slog.Any("tenantID", c.tenantID), slog.Any("error", errGetScans))
+			}
+			data, err := json.Marshal(scans)
+			if err != nil {
+				log.Println(err)
+				return // closes the connection, should we really
+			}
+			if err := c.connection.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Println(err)
 			}
 		}
 

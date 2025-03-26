@@ -73,7 +73,7 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
-	wsServer := handlers.NewWsHandlers()
+	wsServer := handlers.NewWsHandlers(scanService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {

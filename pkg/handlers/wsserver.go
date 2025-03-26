@@ -13,8 +13,9 @@ type WsServer struct {
 	cfg *config.Config
 	sync.RWMutex
 	// handlers are functions that are used to handle Events
-	handlers map[string]EventHandler
-	clients  WsClientList
+	handlers    map[string]EventHandler
+	clients     WsClientList
+	scanService interfaces.IScanService
 }
 
 var (
@@ -40,11 +41,12 @@ func checkOrigin(r *http.Request) bool {
 
 var _ interfaces.IWsHandlers = (*WsServer)(nil)
 
-func NewWsHandlers() *WsServer {
+func NewWsHandlers(scanService interfaces.IScanService) *WsServer {
 	server := &WsServer{
-		cfg:      config.LoadConfig(),
-		clients:  make(WsClientList),
-		handlers: make(map[string]EventHandler),
+		cfg:         config.LoadConfig(),
+		clients:     make(WsClientList),
+		handlers:    make(map[string]EventHandler),
+		scanService: scanService,
 	}
 	server.setupEventHandlers()
 	return server
@@ -54,13 +56,14 @@ func (m *WsServer) setupEventHandlers() {
 	m.handlers[EventChangeRoom] = ChatRoomHandler
 }
 
-func (ws *WsServer) Serve(w http.ResponseWriter, req *http.Request) {
-	conn, err := websocketUpgrader.Upgrade(w, req, nil)
+func (ws *WsServer) Serve(w http.ResponseWriter, r *http.Request) {
+	tenantID, _ := GetTenantIDFromHeader(r)
+	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 	// Create New Client
-	client := NewWsClient(conn, ws)
+	client := NewWsClient(conn, ws, tenantID)
 	// Add the newly created client to the manager
 	ws.addClient(client)
 
