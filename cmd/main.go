@@ -104,7 +104,7 @@ func main() {
 
 	// Server
 	wss := api.NewWSServer(
-		":8001",
+		":8002",
 		wsHandler,
 	)
 
