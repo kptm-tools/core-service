@@ -132,15 +132,6 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 	return api.WriteJSON(w, http.StatusCreated, scan)
 }
 
-func (h ScanHandlers) GetScans(w http.ResponseWriter, r *http.Request) error {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	scans, err := h.scanService.GetCurrentScans(tenantID)
-	if err != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
-	}
-	return api.WriteJSON(w, http.StatusOK, scans)
-}
-
 func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
 	scanID, err := GetUUID(req)
 	if err != nil {

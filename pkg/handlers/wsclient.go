@@ -32,7 +32,7 @@ var (
 	pingInterval = (pongWait * 9) / 10
 )
 
-// NewClient is used to initialize a new Client with all required values initialized
+// NewWsClient is used to initialize a new Client with all required values initialized
 func NewWsClient(conn *websocket.Conn, manager *WsServer, tenantID string) *WsClient {
 	return &WsClient{
 		connection: conn,

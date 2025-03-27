@@ -39,7 +39,7 @@ func checkOrigin(r *http.Request) bool {
 	return true
 }
 
-var _ interfaces.IWsHandlers = (*WsServer)(nil)
+var _ interfaces.IWsHandler = (*WsServer)(nil)
 
 func NewWsHandlers(scanService interfaces.IScanService) *WsServer {
 	server := &WsServer{
@@ -51,8 +51,8 @@ func NewWsHandlers(scanService interfaces.IScanService) *WsServer {
 	server.setupEventHandlers()
 	return server
 }
-func (m *WsServer) setupEventHandlers() {
-	m.handlers[EventSendMessage] = SendMessageHandler
+func (ws *WsServer) setupEventHandlers() {
+	ws.handlers[EventSendMessage] = SendMessageHandler
 }
 
 func (ws *WsServer) Serve(w http.ResponseWriter, r *http.Request) {
