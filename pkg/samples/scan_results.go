@@ -425,7 +425,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Vulnerabilities: []tools.Vulnerability{
 								{
 									ID:            "CVE-2017-15715",
-									Type:          "cve",
+									Type:          enums.WeaknessInjection,
 									BaseCVSSScore: 9.8,
 									BaseSeverity:  enums.SeverityTypeCritical,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
@@ -495,7 +495,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Vulnerabilities: []tools.Vulnerability{ // Vulnerability still present
 								{
 									ID:            "CVE-2017-15715",
-									Type:          "cve",
+									Type:          enums.WeaknessInjection,
 									BaseCVSSScore: 9.8,
 									BaseSeverity:  enums.SeverityTypeCritical,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2017-15715"},
@@ -519,7 +519,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Vulnerabilities: []tools.Vulnerability{ // New vulnerabilities on HTTPS
 								{
 									ID:            "CVE-2021-34527", // Example CVE for nginx
-									Type:          "cve",
+									Type:          enums.WeaknessBrokenAccessControl,
 									BaseCVSSScore: 7.5,
 									BaseSeverity:  enums.SeverityTypeHigh,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
@@ -530,7 +530,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 								},
 								{
 									ID:            "CVE-2021-34528", // Another example CVE for nginx
-									Type:          "cve",
+									Type:          enums.WeaknessInsecureDesign,
 									BaseCVSSScore: 6.5,
 									BaseSeverity:  enums.SeverityTypeMedium,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
@@ -600,7 +600,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Vulnerabilities: []tools.Vulnerability{ // Different vulnerabilities
 								{
 									ID:            "CVE-2020-0601", // Example CVE for IIS
-									Type:          "cve",
+									Type:          enums.WeaknessSecurityMisconfiguration,
 									BaseCVSSScore: 8.8,
 									BaseSeverity:  enums.SeverityTypeHigh,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2020-0601"},
@@ -704,7 +704,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Vulnerabilities: []tools.Vulnerability{ // Could inherit same vulns
 								{
 									ID:            "CVE-2021-34527",
-									Type:          "cve",
+									Type:          enums.WeaknessOther,
 									BaseCVSSScore: 7.5,
 									BaseSeverity:  enums.SeverityTypeHigh,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34527"},
@@ -715,7 +715,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 								},
 								{
 									ID:            "CVE-2021-34528",
-									Type:          "cve",
+									Type:          enums.WeaknessNoInfo,
 									BaseCVSSScore: 6.5,
 									BaseSeverity:  enums.SeverityTypeMedium,
 									References:    []string{"https://nvd.nist.gov/vuln/detail/CVE-2021-34528"},
@@ -785,7 +785,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 							Vulnerabilities: []tools.Vulnerability{
 								{
 									ID:            "CVE-2023-XXXXX", // Placeholder CVE for embedded device
-									Type:          "cve",
+									Type:          enums.WeaknessNoInfo,
 									BaseCVSSScore: 6.0,
 									BaseSeverity:  enums.SeverityTypeMedium,
 									References:    []string{"https://example.com/embedded-cve"}, // Placeholder URL
