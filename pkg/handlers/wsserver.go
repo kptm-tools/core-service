@@ -53,7 +53,6 @@ func NewWsHandlers(scanService interfaces.IScanService) *WsServer {
 }
 func (m *WsServer) setupEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessageHandler
-	m.handlers[EventChangeRoom] = ChatRoomHandler
 }
 
 func (ws *WsServer) Serve(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +71,7 @@ func (ws *WsServer) Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 // routeEvent is used to make sure the correct event goes into the correct handler
+// not used right now but it is there if grows the application
 func (ws *WsServer) routeEvent(event Event, c *WsClient) error {
 	// Check if Handler is present in Map
 	if handler, ok := ws.handlers[event.Type]; ok {

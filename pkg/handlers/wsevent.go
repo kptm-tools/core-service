@@ -19,20 +19,18 @@ type Event struct {
 // depending on the type
 type EventHandler func(event Event, c *WsClient) error
 
+// If we want to add new type of event we start here
 const (
 	// EventSendMessage is the event name for new chat messages sent
 	EventSendMessage = "send_message"
 	// EventNewMessage is a response to send_message
 	EventNewMessage = "new_message"
-	// EventChangeRoom is event when switching rooms
-	EventChangeRoom = "change_room"
 )
 
 // SendMessageEvent is the payload sent in the
 // send_message event
 type SendMessageEvent struct {
 	Message string `json:"message"`
-	From    string `json:"from"`
 }
 
 // NewMessageEvent is returned when responding to send_message
@@ -54,7 +52,6 @@ func SendMessageHandler(event Event, c *WsClient) error {
 
 	broadMessage.Sent = time.Now()
 	broadMessage.Message = chatevent.Message
-	broadMessage.From = chatevent.From
 
 	data, err := json.Marshal(broadMessage)
 	if err != nil {
@@ -73,23 +70,5 @@ func SendMessageHandler(event Event, c *WsClient) error {
 		}
 
 	}
-	return nil
-}
-
-type ChangeRoomEvent struct {
-	Name string `json:"name"`
-}
-
-// ChatRoomHandler will handle switching of chatrooms between clients
-func ChatRoomHandler(event Event, c *WsClient) error {
-	// Marshal Payload into wanted format
-	var changeRoomEvent ChangeRoomEvent
-	if err := json.Unmarshal(event.Payload, &changeRoomEvent); err != nil {
-		return fmt.Errorf("bad payload in request: %v", err)
-	}
-
-	// Add Client to chat room
-	c.tenantID = changeRoomEvent.Name
-
 	return nil
 }
