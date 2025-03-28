@@ -111,7 +111,7 @@ func main() {
 	wsSrv := wss.Init()
 	apiSrv := s.Init()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sigs := make(chan os.Signal, 1)
@@ -136,7 +136,7 @@ func main() {
 	slog.Info("Received signal to shutdown", slog.Any("signal", sig))
 
 	// Create deadline for the shutdown
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := wsSrv.Shutdown(ctx); err != nil {
