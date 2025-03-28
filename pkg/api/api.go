@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 	"log"
 	"net/http"
 	"reflect"
@@ -9,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/middleware"
 )
 
 type APIServer struct {
@@ -53,7 +53,7 @@ func NewAPIServer(
 	}
 }
 
-func (s *APIServer) Init() error {
+func (s *APIServer) Init() http.Server {
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /healthcheck",
@@ -79,7 +79,6 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /tenants", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScan), "createScans"))
-	router.HandleFunc("GET /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilities), "getScanVulnerabilities"))
@@ -103,16 +102,12 @@ func (s *APIServer) Init() error {
 		middleware.Logging,
 		middleware.CheckCORS,
 	)
-
-	server := http.Server{
+	log.Println("Server listening on port: ", s.listenAddr)
+	return http.Server{
 		Addr: s.listenAddr,
 
 		Handler: stack(router),
 	}
-
-	log.Println("Server listening on port: ", s.listenAddr)
-
-	return server.ListenAndServe()
 }
 
 // This function wraps our APIFunc struct so we can handle errors gracefully

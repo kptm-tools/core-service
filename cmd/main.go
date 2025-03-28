@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
@@ -73,6 +76,7 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
+	wsHandler := handlers.NewWsHandlers(scanService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -98,7 +102,47 @@ func main() {
 		scanScheduleHandlers,
 	)
 
-	if err := s.Init(); err != nil {
-		slog.Error("Failed to initialize APIServer", slog.Any("error", err))
+	// Server
+	wss := api.NewWSServer(
+		":8002",
+		wsHandler,
+	)
+
+	wsSrv := wss.Init()
+	apiSrv := s.Init()
+
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT)
+
+	// Start WebSocket Server
+	go func() {
+		if err := wsSrv.ListenAndServe(); err != nil {
+			slog.Error("Failed to initialize WebSocket Server", slog.Any("error", err))
+		}
+	}()
+
+	// Start API Server
+	go func() {
+		if err := apiSrv.ListenAndServe(); err != nil {
+			slog.Error("Failed to initialize APIServer", slog.Any("error", err))
+		}
+	}()
+
+	// Wait for the interrupt signal to gracefully shutdown
+	sig := <-sigs
+	slog.Info("Received signal to shutdown", slog.Any("signal", sig))
+
+	// Create deadline for the shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := wsSrv.Shutdown(ctx); err != nil {
+		slog.Error("Error shutting down WebSocket Server", slog.Any("error", err))
+	}
+	if err := apiSrv.Shutdown(ctx); err != nil {
+		slog.Error("Error shutting down API Server", slog.Any("error", err))
 	}
 }
