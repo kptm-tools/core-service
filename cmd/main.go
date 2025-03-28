@@ -108,36 +108,41 @@ func main() {
 		wsHandler,
 	)
 
+	wsSrv := wss.Init()
+	apiSrv := s.Init()
+
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
 
-	wsSrv := wss.Init()
-	apiSrv := s.Init()
+	// Start WebSocket Server
 	go func() {
-		err := wsSrv.ListenAndServe()
-		if err != nil {
+		if err := wsSrv.ListenAndServe(); err != nil {
 			slog.Error("Failed to initialize WebSocket Server", slog.Any("error", err))
 		}
 	}()
 
+	// Start API Server
 	go func() {
-		err := apiSrv.ListenAndServe()
-		if err != nil {
+		if err := apiSrv.ListenAndServe(); err != nil {
 			slog.Error("Failed to initialize APIServer", slog.Any("error", err))
 		}
 	}()
 
-	defer func() {
-		if err := wsSrv.Shutdown(ctx); err != nil {
-			slog.Error("Error when shutting down the main server: ", slog.Any("error", err))
-		}
-		if err := apiSrv.Shutdown(ctx); err != nil {
-			slog.Error("Error when shutting down the admin server: ", slog.Any("error", err))
-		}
-	}()
-
+	// Wait for the interrupt signal to gracefully shutdown
 	sig := <-sigs
-	slog.Error("Received signal to shutdown", slog.Any("signal", sig))
-	cancel()
+	slog.Info("Received signal to shutdown", slog.Any("signal", sig))
+
+	// Create deadline for the shutdown
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := wsSrv.Shutdown(ctx); err != nil {
+		slog.Error("Error shutting down WebSocket Server", slog.Any("error", err))
+	}
+	if err := apiSrv.Shutdown(ctx); err != nil {
+		slog.Error("Error shutting down API Server", slog.Any("error", err))
+	}
 }
