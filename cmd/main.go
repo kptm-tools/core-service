@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/kptm-tools/core-service/pkg/ws"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -76,7 +77,7 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
-	wsHandler := handlers.NewWsHandlers(scanService)
+	hub := ws.NewHub(scanService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -105,7 +106,7 @@ func main() {
 	// Server
 	wss := api.NewWSServer(
 		":8002",
-		wsHandler,
+		hub,
 	)
 
 	wsSrv := wss.Init()

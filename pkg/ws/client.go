@@ -1,4 +1,4 @@
-package handlers
+package ws
 
 import (
 	"encoding/json"
@@ -9,18 +9,19 @@ import (
 	"time"
 )
 
-type WsClientList map[*WsClient]bool
+type HubClientList map[*HubClient]bool
 
-type WsClient struct {
+type HubClient struct {
 	// the websocket connection
 	connection *websocket.Conn
 
 	// manager is the manager used to manage the client
-	manager *WsServer
+	manager *Hub
 	// egress is used to avoid concurrent writes on the WebSocket
 	egress chan Event
 	// tenantID is used to know what room user is in
 	tenantID string
+	scanID   *string
 }
 
 var (
@@ -32,9 +33,9 @@ var (
 	pingInterval = (pongWait * 9) / 10
 )
 
-// NewWsClient is used to initialize a new Client with all required values initialized
-func NewWsClient(conn *websocket.Conn, manager *WsServer, tenantID string) *WsClient {
-	return &WsClient{
+// NewHubClient is used to initialize a new Client with all required values initialized
+func NewHubClient(conn *websocket.Conn, manager *Hub, tenantID string) *HubClient {
+	return &HubClient{
 		connection: conn,
 		manager:    manager,
 		egress:     make(chan Event),
@@ -42,10 +43,20 @@ func NewWsClient(conn *websocket.Conn, manager *WsServer, tenantID string) *WsCl
 	}
 }
 
+func NewHubClientWithScanID(conn *websocket.Conn, manager *Hub, tenantID string, scanID string) *HubClient {
+	return &HubClient{
+		connection: conn,
+		manager:    manager,
+		egress:     make(chan Event),
+		tenantID:   tenantID,
+		scanID:     &scanID,
+	}
+}
+
 // readMessages will start the client to read messages and handle them
 // appropriatly.
 // This is suppose to be ran as a goroutine
-func (c *WsClient) readMessages() {
+func (c *HubClient) readMessages() {
 	defer func() {
 		// Graceful Close the Connection once this
 		// function is done
@@ -90,13 +101,13 @@ func (c *WsClient) readMessages() {
 }
 
 // pongHandler is used to handle PongMessages for the Client
-func (c *WsClient) pongHandler(pongMsg string) error {
+func (c *HubClient) pongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
 
 // writeMessages is a process that listens for new messages to output to the Client
-func (c *WsClient) writeMessages() {
+func (c *HubClient) writeMessages() {
 	// Create a ticker that triggers a ping at given interval
 	ticker := time.NewTicker(pingInterval)
 	scanInterval, _ := strconv.Atoi(c.manager.cfg.Websocket.IntervalScanRefresh)

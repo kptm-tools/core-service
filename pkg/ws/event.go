@@ -1,4 +1,4 @@
-package handlers
+package ws
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ type Event struct {
 
 // EventHandler is a function signature that is used to affect messages on the socket and triggered
 // depending on the type
-type EventHandler func(event Event, c *WsClient) error
+type EventHandler func(event Event, c *HubClient) error
 
 // If we want to add new type of event we start here
 const (
@@ -40,7 +40,7 @@ type NewMessageEvent struct {
 }
 
 // SendMessageHandler will send out a message to all other participants in the chat
-func SendMessageHandler(event Event, c *WsClient) error {
+func SendMessageHandler(event Event, c *HubClient) error {
 	// Marshal Payload into wanted format
 	var chatevent SendMessageEvent
 	if err := json.Unmarshal(event.Payload, &chatevent); err != nil {

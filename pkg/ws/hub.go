@@ -1,20 +1,21 @@
-package handlers
+package ws
 
 import (
 	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/ws/handler"
 	"net/http"
 	"sync"
 )
 
-type WsServer struct {
+type Hub struct {
 	cfg *config.Config
 	sync.RWMutex
 	// handlers are functions that are used to handle Events
 	handlers    map[string]EventHandler
-	clients     WsClientList
+	clients     HubClientList
 	scanService interfaces.IScanService
 }
 
@@ -39,32 +40,48 @@ func checkOrigin(r *http.Request) bool {
 	return true
 }
 
-var _ interfaces.IWsHandler = (*WsServer)(nil)
+var _ handler.WebSocketMessageHandler = (*Hub)(nil)
 
-func NewWsHandlers(scanService interfaces.IScanService) *WsServer {
-	server := &WsServer{
+func NewHub(scanService interfaces.IScanService) *Hub {
+	server := &Hub{
 		cfg:         config.LoadConfig(),
-		clients:     make(WsClientList),
+		clients:     make(HubClientList),
 		handlers:    make(map[string]EventHandler),
 		scanService: scanService,
 	}
 	server.setupEventHandlers()
 	return server
 }
-func (ws *WsServer) setupEventHandlers() {
-	ws.handlers[EventSendMessage] = SendMessageHandler
+func (h *Hub) setupEventHandlers() {
+	h.handlers[EventSendMessage] = SendMessageHandler
 }
 
-func (ws *WsServer) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID, _ := GetTenantIDFromHeader(r)
+func (h *Hub) ServeScan(w http.ResponseWriter, r *http.Request) {
+	tenantID := "" //handlers.GetTenantIDFromHeader(r)
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 	// Create New Client
-	client := NewWsClient(conn, ws, tenantID)
+	client := NewHubClient(conn, h, tenantID)
 	// Add the newly created client to the manager
-	ws.addClient(client)
+	h.addClient(client)
+
+	go client.readMessages()
+	go client.writeMessages()
+}
+
+func (h *Hub) ServeReport(w http.ResponseWriter, r *http.Request) {
+	tenantID := "" //handlers.GetTenantIDFromHeader(r)
+	scanID := ""
+	conn, err := websocketUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	// Create New Client
+	client := NewHubClientWithScanID(conn, h, tenantID, scanID)
+	// Add the newly created client to the manager
+	h.addClient(client)
 
 	go client.readMessages()
 	go client.writeMessages()
@@ -72,9 +89,9 @@ func (ws *WsServer) Serve(w http.ResponseWriter, r *http.Request) {
 
 // routeEvent is used to make sure the correct event goes into the correct handler
 // not used right now but it is there if grows the application
-func (ws *WsServer) routeEvent(event Event, c *WsClient) error {
+func (h *Hub) routeEvent(event Event, c *HubClient) error {
 	// Check if Handler is present in Map
-	if handler, ok := ws.handlers[event.Type]; ok {
+	if handler, ok := h.handlers[event.Type]; ok {
 		// Execute the handler and return any err
 		if err := handler(event, c); err != nil {
 			return err
@@ -86,25 +103,25 @@ func (ws *WsServer) routeEvent(event Event, c *WsClient) error {
 }
 
 // addClient will add clients to our clientList
-func (ws *WsServer) addClient(client *WsClient) {
+func (h *Hub) addClient(client *HubClient) {
 	// Lock so we can manipulate
-	ws.Lock()
-	defer ws.Unlock()
+	h.Lock()
+	defer h.Unlock()
 
 	// Add Client
-	ws.clients[client] = true
+	h.clients[client] = true
 }
 
 // removeClient will remove the client and clean up
-func (ws *WsServer) removeClient(client *WsClient) {
-	ws.Lock()
-	defer ws.Unlock()
+func (h *Hub) removeClient(client *HubClient) {
+	h.Lock()
+	defer h.Unlock()
 
 	// Check if Client exists, then delete it
-	if _, ok := ws.clients[client]; ok {
+	if _, ok := h.clients[client]; ok {
 		// close connection
 		client.connection.Close()
 		// remove
-		delete(ws.clients, client)
+		delete(h.clients, client)
 	}
 }
