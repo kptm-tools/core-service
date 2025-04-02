@@ -9,54 +9,31 @@ import (
 	"time"
 )
 
-type HubClientList map[*HubClient]bool
+type HubClientScanList map[*HubClientScan]bool
 
-type HubClient struct {
+type HubClientScan struct {
 	// the websocket connection
 	connection *websocket.Conn
 
 	// manager is the manager used to manage the client
-	manager *Hub
-	// egress is used to avoid concurrent writes on the WebSocket
-	egress chan Event
+	manager *HubScan
 	// tenantID is used to know what room user is in
 	tenantID string
-	scanID   *string
 }
 
-var (
-	// pongWait is how long we will await a pong response from client
-	pongWait = 10 * time.Second
-	// pingInterval has to be less than pongWait, We cant multiply by 0.9 to get 90% of time
-	// Because that can make decimals, so instead *9 / 10 to get 90%
-	// The reason why it has to be less than PingRequency is becuase otherwise it will send a new Ping before getting response
-	pingInterval = (pongWait * 9) / 10
-)
-
-// NewHubClient is used to initialize a new Client with all required values initialized
-func NewHubClient(conn *websocket.Conn, manager *Hub, tenantID string) *HubClient {
-	return &HubClient{
+// NewHubScanClient is used to initialize a new Client with all required values initialized
+func NewHubScanClient(conn *websocket.Conn, manager *HubScan, tenantID string) *HubClientScan {
+	return &HubClientScan{
 		connection: conn,
 		manager:    manager,
-		egress:     make(chan Event),
 		tenantID:   tenantID,
-	}
-}
-
-func NewHubClientWithScanID(conn *websocket.Conn, manager *Hub, tenantID string, scanID string) *HubClient {
-	return &HubClient{
-		connection: conn,
-		manager:    manager,
-		egress:     make(chan Event),
-		tenantID:   tenantID,
-		scanID:     &scanID,
 	}
 }
 
 // readMessages will start the client to read messages and handle them
 // appropriatly.
 // This is suppose to be ran as a goroutine
-func (c *HubClient) readMessages() {
+func (c *HubClientScan) readMessages() {
 	defer func() {
 		// Graceful Close the Connection once this
 		// function is done
@@ -77,7 +54,7 @@ func (c *HubClient) readMessages() {
 	for {
 		// ReadMessage is used to read the next message in queue
 		// in the connection
-		_, payload, err := c.connection.ReadMessage()
+		_, _, err := c.connection.ReadMessage()
 
 		if err != nil {
 			// If Connection is closed, we will Recieve an error here
@@ -87,27 +64,17 @@ func (c *HubClient) readMessages() {
 			}
 			break // Break the loop to close conn & Cleanup
 		}
-		// Marshal incoming data into a Event struct
-		var request Event
-		if err := json.Unmarshal(payload, &request); err != nil {
-			log.Printf("error marshalling message: %v", err)
-			break // Breaking the connection here might be harsh xD
-		}
-		// Route the Event
-		if err := c.manager.routeEvent(request, c); err != nil {
-			log.Println("Error handeling Message: ", err)
-		}
 	}
 }
 
 // pongHandler is used to handle PongMessages for the Client
-func (c *HubClient) pongHandler(pongMsg string) error {
+func (c *HubClientScan) pongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
 	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
 }
 
 // writeMessages is a process that listens for new messages to output to the Client
-func (c *HubClient) writeMessages() {
+func (c *HubClientScan) writeMessages() {
 	// Create a ticker that triggers a ping at given interval
 	ticker := time.NewTicker(pingInterval)
 	scanInterval, _ := strconv.Atoi(c.manager.cfg.Websocket.IntervalScanRefresh)
@@ -121,28 +88,6 @@ func (c *HubClient) writeMessages() {
 
 	for {
 		select {
-		case message, ok := <-c.egress:
-			// Ok will be false Incase the egress channel is closed
-			if !ok {
-				// Manager has closed this connection channel, so communicate that to frontend
-				if err := c.connection.WriteMessage(websocket.CloseMessage, nil); err != nil {
-					// Log that the connection is closed and the reason
-					log.Println("connection closed: ", err)
-				}
-				// Return to close the goroutine
-				return
-			}
-
-			data, err := json.Marshal(message)
-			if err != nil {
-				log.Println(err)
-				return // closes the connection, should we really
-			}
-			// Write a Regular text message to the connection
-			if err := c.connection.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Println(err)
-			}
-			log.Println("sent message")
 		case <-ticker.C:
 			log.Println("ping")
 			// Send the Ping

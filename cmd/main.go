@@ -77,7 +77,8 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
-	hub := ws.NewHub(scanService)
+	hubScan := ws.NewHubScan(scanService)
+	hubReport := ws.NewHubReport(vulnService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -106,7 +107,8 @@ func main() {
 	// Server
 	wss := api.NewWSServer(
 		":8002",
-		hub,
+		hubScan,
+		hubReport,
 	)
 
 	wsSrv := wss.Init()

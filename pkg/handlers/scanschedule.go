@@ -111,7 +111,7 @@ func (h *ScanScheduleHandlers) GetScanSchedules(w http.ResponseWriter, r *http.R
 	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedules(tenantUUID)
 	if errGetData != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-			Error: "TenantID does not exist",
+			Error: "tenantID does not exist",
 		})
 	}
 	return api.WriteJSON(w, http.StatusOK, scanSchedules)

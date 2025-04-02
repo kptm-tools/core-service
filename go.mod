@@ -9,9 +9,8 @@ require (
 	github.com/lib/pq v1.10.9
 )
 
-require github.com/FusionAuth/go-client v0.0.0-20241126020005-1254a936741f
-
 require (
+	github.com/FusionAuth/go-client v0.0.0-20250328163231-59fbbfbb80fa
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3

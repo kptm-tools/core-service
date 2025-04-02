@@ -1,31 +1,35 @@
 package api
 
 import (
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
-	"github.com/kptm-tools/core-service/pkg/ws"
 	"log"
 	"net/http"
 )
 
 type WSServer struct {
-	listenAddr string
-	hub        *ws.Hub
+	listenAddr       string
+	hubScanHandler   interfaces.IHubScanHandlers
+	hubReportHandler interfaces.IHubReportHandlers
 }
 
 func NewWSServer(
 	listenAddr string,
-	hub *ws.Hub,
+	hubScanHandler interfaces.IHubScanHandlers,
+	hubReportHandler interfaces.IHubReportHandlers,
 ) *WSServer {
+
 	return &WSServer{
-		listenAddr: listenAddr,
-		hub:        hub,
+		listenAddr:       listenAddr,
+		hubScanHandler:   hubScanHandler,
+		hubReportHandler: hubReportHandler,
 	}
 }
 
 func (wss *WSServer) Init() http.Server {
 	router := http.NewServeMux()
-	router.HandleFunc("/ws/scan", wss.hub.ServeScan)
-	router.HandleFunc("/ws/report/{scanId}", wss.hub.ServeScan)
+	router.HandleFunc("/ws/scan", wss.hubScanHandler.Serve)
+	router.HandleFunc("/ws/report/{scanId}", wss.hubReportHandler.Serve)
 	stack := middleware.CreateStack(
 		middleware.Logging,
 		middleware.CheckCORS,
