@@ -2,6 +2,8 @@ package ws
 
 import (
 	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"net/http"
 	"time"
@@ -35,4 +37,23 @@ var (
 // checkOrigin will check origin and return true if its allowed
 func checkOrigin(r *http.Request) bool {
 	return true
+}
+
+func GetTenantIDFromHeader(req *http.Request) (string, error) {
+	tenantID := req.Header.Get("X-TenantId")
+
+	if err := uuid.Validate(tenantID); err != nil {
+		return "", fmt.Errorf("invalid UUID: `%s`", tenantID)
+	}
+	return tenantID, nil
+}
+
+func GetScanID(req *http.Request) (uuid.UUID, error) {
+	reqUUID := req.PathValue("scanId")
+
+	u, err := uuid.Parse(reqUUID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse uuid: %w", err)
+	}
+	return u, nil
 }

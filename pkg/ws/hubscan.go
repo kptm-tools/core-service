@@ -3,6 +3,7 @@ package ws
 import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"log/slog"
 	"net/http"
 	"sync"
 )
@@ -27,7 +28,11 @@ func NewHubScan(scanService interfaces.IScanService) *HubScan {
 }
 
 func (h *HubScan) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID := "" //messages.GetTenantIDFromHeader(r)
+	tenantID, errGetTenantID := GetTenantIDFromHeader(r)
+	if errGetTenantID != nil {
+		slog.Error("Error obtaining tenantID from header", slog.Any("error", errGetTenantID))
+		return
+	}
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return

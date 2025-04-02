@@ -4,6 +4,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"log/slog"
 	"net/http"
 	"sync"
 )
@@ -35,14 +36,23 @@ func (h *HubReport) setupEventHandlers() {
 }
 
 func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID := "" //messages.GetTenantIDFromHeader(r)
-	scanID := ""
+	tenantID, errGetTenantID := GetTenantIDFromHeader(r)
+	if errGetTenantID != nil {
+		slog.Error("Error obtaining tenantID from header", slog.Any("error", errGetTenantID))
+		return
+	}
+	scanID, errGetScanID := GetScanID(r)
+	if errGetScanID != nil {
+		slog.Error("Error obtaining scanID from path", slog.Any("error", errGetScanID))
+		return
+	}
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
+		slog.Error("Error upgrading websocket", slog.Any("error", err))
 		return
 	}
 	// Create New Client
-	client := NewHubReportClient(conn, h, tenantID, scanID)
+	client := NewHubReportClient(conn, h, tenantID, scanID.String())
 	// Add the newly created client to the manager
 	h.addClient(client)
 
