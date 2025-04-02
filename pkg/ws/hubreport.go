@@ -32,7 +32,8 @@ func NewHubReport(vulnService interfaces.IVulnerabilityService) *HubReport {
 }
 func (h *HubReport) setupEventHandlers() {
 	messageHandlers := NewMessageReportHandlers()
-	h.handlers[EventSendMessage] = messageHandlers.InitialRequest
+	h.handlers[EventInitialRequest] = messageHandlers.InitialRequest
+	h.handlers[EventVectorUpdate] = messageHandlers.VectorUpdate
 }
 
 func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +52,10 @@ func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Error upgrading websocket", slog.Any("error", err))
 		return
 	}
+	//dataVulnerability := h.vulnService.GetScanVulnerabilities(scanID)
+	dataVulnerability := []*VulnerabilityTypeData{}
 	// Create New Client
-	client := NewHubReportClient(conn, h, tenantID, scanID.String())
+	client := NewHubReportClient(conn, h, tenantID, scanID.String(), dataVulnerability)
 	// Add the newly created client to the manager
 	h.addClient(client)
 

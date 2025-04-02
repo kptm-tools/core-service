@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+type VulnerabilityTypeData struct {
+	Name                string    `json:"name"`
+	HighestCvss         float64   `json:"highest_cvss"`
+	Count               int       `json:"count"`
+	Percentage          float64   `json:"percentage"`
+	AvailableCvssValues []float64 `json:"available_cvss_values"`
+}
+
 type HubClientReportList map[*HubClientReport]bool
 
 type HubClientReport struct {
@@ -21,16 +29,18 @@ type HubClientReport struct {
 	// tenantID is used to know what room user is in
 	tenantID string
 	scanID   string
+	data     []*VulnerabilityTypeData
 }
 
 // NewHubScanClient is used to initialize a new Client with all required values initialized
-func NewHubReportClient(conn *websocket.Conn, manager *HubReport, tenantID string, scanID string) *HubClientReport {
+func NewHubReportClient(conn *websocket.Conn, manager *HubReport, tenantID string, scanID string, data []*VulnerabilityTypeData) *HubClientReport {
 	return &HubClientReport{
 		connection: conn,
 		manager:    manager,
 		egress:     make(chan domain.Event),
 		tenantID:   tenantID,
 		scanID:     scanID,
+		data:       data,
 	}
 }
 
@@ -131,4 +141,15 @@ func (c *HubClientReport) writeMessages() {
 		}
 
 	}
+}
+
+// CountClientsByScanID counts the number clients connected to scanID this will be the room
+func (c *HubClientReport) CountClientsByScanID(scanID string) int {
+	size := 0
+	for client := range c.manager.clients {
+		if client.scanID == scanID {
+			size += 1
+		}
+	}
+	return size
 }
