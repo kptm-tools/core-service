@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
-	"github.com/kptm-tools/core-service/pkg/ws"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/scan"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/cmd/migrations"
@@ -77,8 +81,17 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
-	hubScan := ws.NewHubScan(scanService)
-	hubReport := ws.NewHubReport(vulnService)
+
+	wsConfig := &common.Config{
+		Upgrader: websocket.Upgrader{
+			CheckOrigin:     func(r *http.Request) bool { return true },
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+		},
+		PongWait:     10 * time.Second,
+		PingInterval: (10 * time.Second * 9) / 10,
+	}
+	scanHub := scan.NewScanHub(wsConfig, scanService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -107,8 +120,7 @@ func main() {
 	// Server
 	wss := api.NewWSServer(
 		":8002",
-		hubScan,
-		hubReport,
+		scanHub,
 	)
 
 	wsSrv := wss.Init()

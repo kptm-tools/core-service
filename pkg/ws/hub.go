@@ -2,28 +2,24 @@ package ws
 
 import (
 	"errors"
-	"fmt"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
-var (
-	ErrEventNotSupported = errors.New("this event type is not supported")
-)
+var ErrEventNotSupported = errors.New("this event type is not supported")
 
-var (
-	/**
-	websocketUpgrader is used to upgrade incomming HTTP requests into a persitent websocket connection
-	*/
-	websocketUpgrader = websocket.Upgrader{
-		// Apply the Origin Checker
-		CheckOrigin:     checkOrigin,
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-)
+/*
+*
+websocketUpgrader is used to upgrade incomming HTTP requests into a persitent websocket connection
+*/
+var websocketUpgrader = websocket.Upgrader{
+	// Apply the Origin Checker
+	CheckOrigin:     checkOrigin,
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
 var (
 	// pongWait is how long we will await a pong response from client
@@ -37,23 +33,4 @@ var (
 // checkOrigin will check origin and return true if its allowed
 func checkOrigin(r *http.Request) bool {
 	return true
-}
-
-func GetTenantIDFromHeader(req *http.Request) (string, error) {
-	tenantID := req.Header.Get("X-TenantId")
-
-	if err := uuid.Validate(tenantID); err != nil {
-		return "", fmt.Errorf("invalid UUID: `%s`", tenantID)
-	}
-	return tenantID, nil
-}
-
-func GetScanID(req *http.Request) (uuid.UUID, error) {
-	reqUUID := req.PathValue("scanId")
-
-	u, err := uuid.Parse(reqUUID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse uuid: %w", err)
-	}
-	return u, nil
 }

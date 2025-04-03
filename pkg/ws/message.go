@@ -1,10 +1,10 @@
-package domain
+package ws
 
 import "encoding/json"
 
-// Event is the Messages sent over the websocket
+// Message represents the DTO struct being sent over WebSocket
 // Used to differ between different actions
-type Event struct {
+type Message struct {
 	// Type is the message type sent
 	Type string `json:"type"`
 	// Payload is the data Based on the Type
