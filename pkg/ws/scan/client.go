@@ -23,7 +23,8 @@ type ScanClient struct {
 	hub *ScanHub
 	// tenantID is used to know what room user is in
 	tenantID string
-	// send
+
+	// send is the channel used to send data to the client
 	send chan []byte
 }
 
@@ -81,7 +82,7 @@ func (c *ScanClient) ReadMessages() {
 	}
 }
 
-// writeMessages is a process that listens for new messages to output to the Client
+// WriteMessages is a process that listens for new messages to output to the Client
 func (c *ScanClient) WriteMessages() {
 	// Create a ticker that triggers a ping at given interval
 	ticker := time.NewTicker(c.config.PingInterval)

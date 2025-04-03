@@ -1,4 +1,4 @@
-package ws
+package common
 
 import "encoding/json"
 

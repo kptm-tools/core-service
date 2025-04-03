@@ -66,11 +66,11 @@ func (h *ScanHub) Run() {
 			h.clients[client.GetID()] = client
 		case client := <-h.unregister:
 			if client, ok := h.clients[client.GetID()]; ok {
+				slog.Info("Client unregistered", slog.String("client_id", client.GetID()))
 				if err := client.Close(); err != nil {
 					slog.Error("Failed to close client",
 						slog.String("client_id", client.GetID()),
 						slog.Any("error", err))
-					return
 				}
 				delete(h.clients, client.GetID())
 			}
