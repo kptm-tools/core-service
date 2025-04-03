@@ -1,12 +1,9 @@
-package scan
+package ws
 
 import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/ws"
-	_ "github.com/kptm-tools/core-service/pkg/ws/interfaces"
-	interfaces2 "github.com/kptm-tools/core-service/pkg/ws/interfaces"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -20,7 +17,7 @@ type HubScan struct {
 	scanService interfaces.IScanService
 }
 
-var _ interfaces2.IHub = (*HubScan)(nil)
+var _ IHub = (*HubScan)(nil)
 
 func NewHubScan(scanService interfaces.IScanService) *HubScan {
 	server := &HubScan{
@@ -32,18 +29,18 @@ func NewHubScan(scanService interfaces.IScanService) *HubScan {
 }
 
 func (h *HubScan) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID, errGetTenantID := ws.GetTenantIDFromHeader(r)
+	tenantID, errGetTenantID := GetTenantIDFromHeader(r)
 	if errGetTenantID != nil {
 		slog.Error("Error obtaining tenantID from header", slog.Any("error", errGetTenantID))
 		return
 	}
-	conn, err := ws.WebsocketUpgrader.Upgrade(w, r, nil)
+	conn, err := WebsocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 	// Create New Client
 	client := NewHubScanClient(conn, h, tenantID)
-	var iclient interfaces2.IClient = client
+	var iclient IClient = client
 	// Add the newly created client to the hub
 	h.AddClient(&iclient)
 
@@ -52,7 +49,7 @@ func (h *HubScan) Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddClient will add clients to our clientList
-func (h *HubScan) AddClient(client *interfaces2.IClient) {
+func (h *HubScan) AddClient(client *IClient) {
 	// Lock so we can manipulate
 	h.Lock()
 	defer h.Unlock()
@@ -62,7 +59,7 @@ func (h *HubScan) AddClient(client *interfaces2.IClient) {
 }
 
 // RemoveClient will remove the client and clean up
-func (h *HubScan) RemoveClient(client *interfaces2.IClient) {
+func (h *HubScan) RemoveClient(client *IClient) {
 	h.Lock()
 	defer h.Unlock()
 
@@ -77,6 +74,6 @@ func (h *HubScan) RemoveClient(client *interfaces2.IClient) {
 
 // RouteEvent is used to make sure the correct event goes into the correct handler
 // not used right now but it is there if grows the application
-func (h *HubScan) RouteEvent(event domain.Event, c *interfaces2.IClient) error {
+func (h *HubScan) RouteEvent(event domain.Event, c *IClient) error {
 	return nil
 }

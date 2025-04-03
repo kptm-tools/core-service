@@ -1,11 +1,9 @@
-package report
+package ws
 
 import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/ws"
-	interfaces2 "github.com/kptm-tools/core-service/pkg/ws/interfaces"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -15,18 +13,18 @@ type HubReport struct {
 	cfg *config.Config
 	sync.RWMutex
 	// handlers are functions that are used to handle Events
-	handlers    map[string]ws.EventReportHandler
+	handlers    map[string]EventReportHandler
 	clients     HubClientReportList
 	vulnService interfaces.IVulnerabilityService
 }
 
-var _ interfaces2.IHub = (*HubReport)(nil)
+var _ IHub = (*HubReport)(nil)
 
 func NewHubReport(vulnService interfaces.IVulnerabilityService) *HubReport {
 	server := &HubReport{
 		cfg:         config.LoadConfig(),
 		clients:     make(HubClientReportList),
-		handlers:    make(map[string]ws.EventReportHandler),
+		handlers:    make(map[string]EventReportHandler),
 		vulnService: vulnService,
 	}
 	server.setupEventHandlers()
@@ -34,22 +32,22 @@ func NewHubReport(vulnService interfaces.IVulnerabilityService) *HubReport {
 }
 func (h *HubReport) setupEventHandlers() {
 	messageHandlers := NewMessageReportHandlers()
-	h.handlers[ws.EventInitialRequest] = messageHandlers.InitialRequest
-	h.handlers[ws.EventVectorUpdate] = messageHandlers.VectorUpdate
+	h.handlers[EventInitialRequest] = messageHandlers.InitialRequest
+	h.handlers[EventVectorUpdate] = messageHandlers.VectorUpdate
 }
 
 func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID, errGetTenantID := ws.GetTenantIDFromHeader(r)
+	tenantID, errGetTenantID := GetTenantIDFromHeader(r)
 	if errGetTenantID != nil {
 		slog.Error("Error obtaining tenantID from header", slog.Any("error", errGetTenantID))
 		return
 	}
-	scanID, errGetScanID := ws.GetScanID(r)
+	scanID, errGetScanID := GetScanID(r)
 	if errGetScanID != nil {
 		slog.Error("Error obtaining scanID from path", slog.Any("error", errGetScanID))
 		return
 	}
-	conn, err := ws.WebsocketUpgrader.Upgrade(w, r, nil)
+	conn, err := WebsocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("Error upgrading websocket", slog.Any("error", err))
 		return
@@ -58,7 +56,7 @@ func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
 	dataVulnerability := []*VulnerabilityTypeData{}
 	// Create New Client
 	client := NewHubReportClient(conn, h, tenantID, scanID.String(), dataVulnerability)
-	var interfaceClient interfaces2.IClient = client
+	var interfaceClient IClient = client
 	// Add the newly created client to the hub
 	h.AddClient(&interfaceClient)
 
@@ -68,7 +66,7 @@ func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
 
 // routeEvent is used to make sure the correct event goes into the correct handler
 // not used right now but it is there if grows the application
-func (h *HubReport) RouteEvent(event domain.Event, c *interfaces2.IClient) error {
+func (h *HubReport) RouteEvent(event domain.Event, c *IClient) error {
 	// Check if Handler is present in Map
 	if handler, ok := h.handlers[event.Type]; ok {
 		// Execute the handler and return any err
@@ -77,12 +75,12 @@ func (h *HubReport) RouteEvent(event domain.Event, c *interfaces2.IClient) error
 		}
 		return nil
 	} else {
-		return ws.ErrEventNotSupported
+		return ErrEventNotSupported
 	}
 }
 
 // addClient will add Clients to our clientList
-func (h *HubReport) AddClient(client *interfaces2.IClient) {
+func (h *HubReport) AddClient(client *IClient) {
 	// Lock so we can manipulate
 	h.Lock()
 	defer h.Unlock()
@@ -92,7 +90,7 @@ func (h *HubReport) AddClient(client *interfaces2.IClient) {
 }
 
 // removeClient will remove the client and clean up
-func (h *HubReport) RemoveClient(client *interfaces2.IClient) {
+func (h *HubReport) RemoveClient(client *IClient) {
 	h.Lock()
 	defer h.Unlock()
 

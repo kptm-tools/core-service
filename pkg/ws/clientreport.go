@@ -1,12 +1,9 @@
-package report
+package ws
 
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/ws"
-	"github.com/kptm-tools/core-service/pkg/ws/interfaces"
-	"github.com/kptm-tools/core-service/pkg/ws/scan"
 	"log"
 	"time"
 )
@@ -35,7 +32,7 @@ type HubClientReport struct {
 	data     []*VulnerabilityTypeData
 }
 
-var _ interfaces.IClient = (*HubClientReport)(nil)
+var _ IClient = (*HubClientReport)(nil)
 
 // NewHubReportClient is used to initialize a new Client with all required values initialized
 func NewHubReportClient(conn *websocket.Conn, hub *HubReport, tenantID string, scanID string, data []*VulnerabilityTypeData) *HubClientReport {
@@ -56,14 +53,14 @@ func (c *HubClientReport) ReadMessages() {
 	defer func() {
 		// Graceful Close the Connection once this
 		// function is done
-		var interfaceClient interfaces.IClient = c
+		var interfaceClient IClient = c
 		c.hub.RemoveClient(&interfaceClient)
 	}()
 	// Set Max Size of Messages in Bytes
 	c.connection.SetReadLimit(512)
 	// Configure Wait time for Pong response, use Current time + pongWait
 	// This has to be done here to set the first initial timer.
-	if err := c.connection.SetReadDeadline(time.Now().Add(ws.PongWait)); err != nil {
+	if err := c.connection.SetReadDeadline(time.Now().Add(PongWait)); err != nil {
 		log.Println(err)
 		return
 	}
@@ -91,7 +88,7 @@ func (c *HubClientReport) ReadMessages() {
 			break // Breaking the connection here might be harsh xD
 		}
 		// Route the Event
-		var interfaceClient interfaces.IClient = c
+		var interfaceClient IClient = c
 		if err := c.hub.RouteEvent(request, &interfaceClient); err != nil {
 			log.Println("Error handeling Message: ", err)
 		}
@@ -101,17 +98,17 @@ func (c *HubClientReport) ReadMessages() {
 // PongHandler is used to handle PongMessages for the Client
 func (c *HubClientReport) PongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	return c.connection.SetReadDeadline(time.Now().Add(ws.PongWait))
+	return c.connection.SetReadDeadline(time.Now().Add(PongWait))
 }
 
 // WriteMessages is a process that listens for new messages to output to the Client
 func (c *HubClientReport) WriteMessages() {
 	// Create a ticker that triggers a ping at given interval
-	ticker := time.NewTicker(ws.PingInterval)
+	ticker := time.NewTicker(PingInterval)
 	defer func() {
 		ticker.Stop()
 		// Graceful close if this triggers a closing
-		var interfaceClient interfaces.IClient = c
+		var interfaceClient IClient = c
 		c.hub.RemoveClient(&interfaceClient)
 	}()
 
@@ -166,6 +163,6 @@ func (c *HubClientReport) GetReportClient() *HubClientReport {
 	return c
 }
 
-func (c *HubClientReport) GetScanClient() *scan.HubClientScan {
+func (c *HubClientReport) GetScanClient() *HubClientScan {
 	return nil
 }

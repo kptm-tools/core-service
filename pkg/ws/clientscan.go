@@ -1,11 +1,8 @@
-package scan
+package ws
 
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
-	"github.com/kptm-tools/core-service/pkg/ws"
-	interfaces2 "github.com/kptm-tools/core-service/pkg/ws/interfaces"
-	"github.com/kptm-tools/core-service/pkg/ws/report"
 	"log"
 	"log/slog"
 	"strconv"
@@ -23,7 +20,7 @@ type HubClientScan struct {
 	tenantID string
 }
 
-var _ interfaces2.IClient = (*HubClientScan)(nil)
+var _ IClient = (*HubClientScan)(nil)
 
 // NewHubScanClient is used to initialize a new Client with all required values initialized
 func NewHubScanClient(conn *websocket.Conn, hubScan *HubScan, tenantID string) *HubClientScan {
@@ -45,14 +42,14 @@ func (c *HubClientScan) ReadMessages() {
 	defer func() {
 		// Graceful Close the Connection once this
 		// function is done
-		var iclient interfaces2.IClient = c
+		var iclient IClient = c
 		c.GetHub().RemoveClient(&iclient)
 	}()
 	// Set Max Size of Messages in Bytes
 	c.connection.SetReadLimit(512)
 	// Configure Wait time for Pong response, use Current time + pongWait
 	// This has to be done here to set the first initial timer.
-	if err := c.connection.SetReadDeadline(time.Now().Add(ws.PongWait)); err != nil {
+	if err := c.connection.SetReadDeadline(time.Now().Add(PongWait)); err != nil {
 		log.Println(err)
 		return
 	}
@@ -79,20 +76,20 @@ func (c *HubClientScan) ReadMessages() {
 // PongHandler is used to handle PongMessages for the Client
 func (c *HubClientScan) PongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	return c.connection.SetReadDeadline(time.Now().Add(ws.PongWait))
+	return c.connection.SetReadDeadline(time.Now().Add(PongWait))
 }
 
 // WriteMessages is a process that listens for new messages to output to the Client
 func (c *HubClientScan) WriteMessages() {
 	// Create a ticker that triggers a ping at given interval
-	ticker := time.NewTicker(ws.PingInterval)
+	ticker := time.NewTicker(PingInterval)
 	scanInterval, _ := strconv.Atoi(c.hub.cfg.Websocket.IntervalScanRefresh)
 	scanIntervalDuration := time.Duration(scanInterval) * time.Second
 	tickerScan := time.NewTicker(scanIntervalDuration)
 	defer func() {
 		ticker.Stop()
 		// Graceful close if this triggers a closing
-		var interfaceClient interfaces2.IClient = c
+		var interfaceClient IClient = c
 		c.hub.RemoveClient(&interfaceClient)
 	}()
 
@@ -127,6 +124,6 @@ func (c *HubClientScan) GetScanClient() *HubClientScan {
 	return c
 }
 
-func (c *HubClientScan) GetReportClient() *report.HubClientReport {
+func (c *HubClientScan) GetReportClient() *HubClientReport {
 	return nil
 }

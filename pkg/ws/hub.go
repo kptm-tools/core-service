@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"net/http"
 	"time"
 )
@@ -46,6 +47,13 @@ func GetTenantIDFromHeader(req *http.Request) (string, error) {
 		return "", fmt.Errorf("invalid UUID: `%s`", tenantID)
 	}
 	return tenantID, nil
+}
+
+type IHub interface {
+	Serve(w http.ResponseWriter, req *http.Request)
+	AddClient(c *IClient)
+	RemoveClient(c *IClient)
+	RouteEvent(event domain.Event, c *IClient) error
 }
 
 func GetScanID(req *http.Request) (uuid.UUID, error) {

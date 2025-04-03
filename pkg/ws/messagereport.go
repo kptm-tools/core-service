@@ -1,4 +1,4 @@
-package report
+package ws
 
 import (
 	"github.com/kptm-tools/core-service/pkg/domain"
