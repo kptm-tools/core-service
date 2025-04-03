@@ -1,7 +1,6 @@
 package scan
 
 import (
-	"encoding/json"
 	"log"
 	"log/slog"
 	"time"
@@ -45,18 +44,20 @@ func NewScanClient(
 	}
 }
 
-// ReadMessages will start the client to read messages and handle them
-// appropriatly.
-// This is meant to be ran as a goroutine. In this case, we have a broadcast.
+// ReadMessages will start the client to read messages and handle pongs.
+// This is meant to be ran as a go routine
 func (c *ScanClient) ReadMessages() {
-	slog.Debug("Reading messages...")
+	defer func() {
+		c.hub.Unregister(c)
+	}()
 
 	// Set Max Size of Messages in Bytes
 	c.connection.SetReadLimit(512)
 	// Configure Wait time for Pong response, use Current time + pongWait
 	// This has to be done here to set the first initial timer.
 	if err := c.connection.SetReadDeadline(time.Now().Add(c.config.PongWait)); err != nil {
-		slog.Error("Error setting read deadline for client", slog.String("client_id", c.ID), slog.Any("error", err))
+		slog.Error("Error setting intitial read deadline for client", slog.String("client_id", c.ID), slog.Any("error", err))
+		return
 	}
 	// Configure how to handle Pong responses
 	c.connection.SetPongHandler(c.pongHandler)
@@ -65,7 +66,7 @@ func (c *ScanClient) ReadMessages() {
 	for {
 		// ReadMessage is used to read the next message in queue
 		// in the connection
-		_, message, err := c.connection.ReadMessage()
+		_, _, err := c.connection.ReadMessage()
 		if err != nil {
 			// If Connection is closed, we will Recieve an error here
 			// We only want to log Strange errors, but simple Disconnection
@@ -74,8 +75,9 @@ func (c *ScanClient) ReadMessages() {
 			}
 			break // Break the loop to close conn & Cleanup
 		}
-		// Broadcast the message
-		c.hub.broadcast <- message
+
+		// We are not expecting any client messages for scans, so we just read and discard them.
+		slog.Debug("Received a non-pong message, discarding", slog.String("client_id", c.ID))
 	}
 }
 
@@ -83,10 +85,6 @@ func (c *ScanClient) ReadMessages() {
 func (c *ScanClient) WriteMessages() {
 	// Create a ticker that triggers a ping at given interval
 	ticker := time.NewTicker(c.config.PingInterval)
-
-	scanInterval := 2
-	scanIntervalDuration := time.Duration(scanInterval) * time.Second
-	tickerScan := time.NewTicker(scanIntervalDuration)
 
 	defer func() {
 		ticker.Stop()
@@ -102,22 +100,23 @@ func (c *ScanClient) WriteMessages() {
 				log.Println("writemsg: ", err)
 				return // return to break this goroutine triggeing cleanup
 			}
-		case <-tickerScan.C:
-			scans, errGetScans := c.hub.scanService.GetCurrentScans(c.tenantID)
-			if errGetScans != nil {
-				slog.Error("Not able to get scans", slog.Any("tenantID", c.tenantID), slog.Any("error", errGetScans))
+		case message, ok := <-c.send:
+			if !ok {
+				c.connection.WriteMessage(websocket.CloseMessage, []byte{})
+				return
 			}
-			scanData, err := json.Marshal(scans)
+
+			w, err := c.connection.NextWriter(websocket.TextMessage)
 			if err != nil {
-				slog.Error("Failed to marshal scanData",
-					slog.Any("client_id", c.ID),
-					slog.Any("error", err))
-				log.Println(err)
-				return // closes the connection, should we really
+				slog.Error("Failed to create a Writer for the next message to send", slog.Any("error", err))
+				return
 			}
-			if err := c.connection.WriteMessage(websocket.TextMessage, scanData); err != nil {
-				slog.Error("Error writing scan message", slog.String("client_id", c.ID), slog.Any("error", err))
+			w.Write(message)
+
+			if err := w.Close(); err != nil {
+				return
 			}
+
 		}
 	}
 }
@@ -125,6 +124,7 @@ func (c *ScanClient) WriteMessages() {
 // pongHandler is used to handle PongMessages for the Client
 func (c *ScanClient) pongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
+	slog.Debug("Received pong from server", slog.String("client_id", c.ID))
 	return c.connection.SetReadDeadline(time.Now().Add(c.config.PongWait))
 }
 

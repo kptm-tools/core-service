@@ -91,7 +91,7 @@ func main() {
 		PongWait:     10 * time.Second,
 		PingInterval: (10 * time.Second * 9) / 10,
 	}
-	scanHub := scan.NewScanHub(wsConfig, scanService)
+	scanHub := scan.NewScanHub(wsConfig, scanService, 5)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {

@@ -1,8 +1,10 @@
 package scan
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
@@ -10,24 +12,24 @@ import (
 )
 
 type ScanHub struct {
-	cfg         *common.Config
-	clients     map[string]common.IClient
-	broadcast   chan []byte
-	register    chan common.IClient
-	unregister  chan common.IClient
-	scanService interfaces.IScanService
+	cfg          *common.Config
+	clients      map[string]common.IClient
+	register     chan common.IClient
+	unregister   chan common.IClient
+	scanService  interfaces.IScanService
+	scanInterval time.Duration
 }
 
 var _ common.IHub = (*ScanHub)(nil)
 
-func NewScanHub(config *common.Config, scanService interfaces.IScanService) *ScanHub {
+func NewScanHub(config *common.Config, scanService interfaces.IScanService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
-		cfg:         config,
-		clients:     make(map[string]common.IClient),
-		broadcast:   make(chan []byte),
-		register:    make(chan common.IClient),
-		unregister:  make(chan common.IClient),
-		scanService: scanService,
+		cfg:          config,
+		clients:      make(map[string]common.IClient),
+		register:     make(chan common.IClient),
+		unregister:   make(chan common.IClient),
+		scanService:  scanService,
+		scanInterval: time.Duration(scanIntervalSeconds) * time.Second,
 	}
 	return server
 }
@@ -48,12 +50,16 @@ func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
 	// Add the newly created client to the Hub
 	h.Register(client)
 
-	go client.ReadMessages()
+	// Since clients don't send messages to this hub, we don't need to read their messages
 	go client.WriteMessages()
+	go client.ReadMessages()
 }
 
-// Run spins up the select statement for reading and writing from the Hub's go routines.
+// Run spins up the select statement for managing clients and periodically sending scan data.
 func (h *ScanHub) Run() {
+	ticker := time.NewTicker(h.scanInterval)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -68,19 +74,26 @@ func (h *ScanHub) Run() {
 				}
 				delete(h.clients, client.GetID())
 			}
-		case message := <-h.broadcast:
+		case <-ticker.C:
 			for _, client := range h.clients {
-				select {
-				case client.GetSend() <- message:
-				default:
-					if err := client.Close(); err != nil {
-						slog.Error("Failed to close client",
-							slog.String("client_id", client.GetID()),
-							slog.Any("error", err))
-						return
-					}
-					delete(h.clients, client.GetID())
+				scanClient := client.(*ScanClient) // Assert back to ScanClient struct
+
+				scans, err := h.scanService.GetCurrentScans(scanClient.tenantID)
+				if err != nil {
+					slog.Error("Failed to get scans",
+						slog.String("client_id", client.GetID()),
+						slog.String("tenant_id", scanClient.tenantID),
+						slog.Any("error", err))
 				}
+
+				scanData, err := json.Marshal(scans)
+				if err != nil {
+					slog.Error("Failed to marshal scanData",
+						slog.String("client_id", client.GetID()),
+						slog.Any("error", err))
+					continue
+				}
+				client.GetSend() <- scanData
 			}
 		}
 	}
