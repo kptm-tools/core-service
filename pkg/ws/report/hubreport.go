@@ -1,9 +1,11 @@
-package ws
+package report
 
 import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/ws"
+	interfaces2 "github.com/kptm-tools/core-service/pkg/ws/interfaces"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -13,18 +15,18 @@ type HubReport struct {
 	cfg *config.Config
 	sync.RWMutex
 	// handlers are functions that are used to handle Events
-	handlers    map[string]EventReportHandler
+	handlers    map[string]ws.EventReportHandler
 	clients     HubClientReportList
 	vulnService interfaces.IVulnerabilityService
 }
 
-var _ interfaces.IHubReportHandlers = (*HubReport)(nil)
+var _ interfaces2.IHub = (*HubReport)(nil)
 
 func NewHubReport(vulnService interfaces.IVulnerabilityService) *HubReport {
 	server := &HubReport{
 		cfg:         config.LoadConfig(),
 		clients:     make(HubClientReportList),
-		handlers:    make(map[string]EventReportHandler),
+		handlers:    make(map[string]ws.EventReportHandler),
 		vulnService: vulnService,
 	}
 	server.setupEventHandlers()
@@ -32,22 +34,22 @@ func NewHubReport(vulnService interfaces.IVulnerabilityService) *HubReport {
 }
 func (h *HubReport) setupEventHandlers() {
 	messageHandlers := NewMessageReportHandlers()
-	h.handlers[EventInitialRequest] = messageHandlers.InitialRequest
-	h.handlers[EventVectorUpdate] = messageHandlers.VectorUpdate
+	h.handlers[ws.EventInitialRequest] = messageHandlers.InitialRequest
+	h.handlers[ws.EventVectorUpdate] = messageHandlers.VectorUpdate
 }
 
 func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID, errGetTenantID := GetTenantIDFromHeader(r)
+	tenantID, errGetTenantID := ws.GetTenantIDFromHeader(r)
 	if errGetTenantID != nil {
 		slog.Error("Error obtaining tenantID from header", slog.Any("error", errGetTenantID))
 		return
 	}
-	scanID, errGetScanID := GetScanID(r)
+	scanID, errGetScanID := ws.GetScanID(r)
 	if errGetScanID != nil {
 		slog.Error("Error obtaining scanID from path", slog.Any("error", errGetScanID))
 		return
 	}
-	conn, err := websocketUpgrader.Upgrade(w, r, nil)
+	conn, err := ws.WebsocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("Error upgrading websocket", slog.Any("error", err))
 		return
@@ -56,48 +58,49 @@ func (h *HubReport) Serve(w http.ResponseWriter, r *http.Request) {
 	dataVulnerability := []*VulnerabilityTypeData{}
 	// Create New Client
 	client := NewHubReportClient(conn, h, tenantID, scanID.String(), dataVulnerability)
-	// Add the newly created client to the manager
-	h.addClient(client)
+	var interfaceClient interfaces2.IClient = client
+	// Add the newly created client to the hub
+	h.AddClient(&interfaceClient)
 
-	go client.readMessages()
-	go client.writeMessages()
+	go client.ReadMessages()
+	go client.WriteMessages()
 }
 
 // routeEvent is used to make sure the correct event goes into the correct handler
 // not used right now but it is there if grows the application
-func (h *HubReport) routeEvent(event domain.Event, c *HubClientReport) error {
+func (h *HubReport) RouteEvent(event domain.Event, c *interfaces2.IClient) error {
 	// Check if Handler is present in Map
 	if handler, ok := h.handlers[event.Type]; ok {
 		// Execute the handler and return any err
-		if err := handler(event, c.tenantID, c.scanID); err != nil {
+		if err := handler(event, (*c).GetReportClient().tenantID, (*c).GetReportClient().scanID); err != nil {
 			return err
 		}
 		return nil
 	} else {
-		return ErrEventNotSupported
+		return ws.ErrEventNotSupported
 	}
 }
 
 // addClient will add Clients to our clientList
-func (h *HubReport) addClient(client *HubClientReport) {
+func (h *HubReport) AddClient(client *interfaces2.IClient) {
 	// Lock so we can manipulate
 	h.Lock()
 	defer h.Unlock()
 
 	// Add Client
-	h.clients[client] = true
+	h.clients[(*client).GetReportClient()] = true
 }
 
 // removeClient will remove the client and clean up
-func (h *HubReport) removeClient(client *HubClientReport) {
+func (h *HubReport) RemoveClient(client *interfaces2.IClient) {
 	h.Lock()
 	defer h.Unlock()
 
 	// Check if Client exists, then delete it
-	if _, ok := h.clients[client]; ok {
+	if _, ok := h.clients[(*client).GetReportClient()]; ok {
 		// close connection
-		client.connection.Close()
+		(*client).GetReportClient().connection.Close()
 		// remove
-		delete(h.clients, client)
+		delete(h.clients, (*client).GetReportClient())
 	}
 }

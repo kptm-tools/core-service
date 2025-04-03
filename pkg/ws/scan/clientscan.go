@@ -1,8 +1,11 @@
-package ws
+package scan
 
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/core-service/pkg/ws"
+	interfaces2 "github.com/kptm-tools/core-service/pkg/ws/interfaces"
+	"github.com/kptm-tools/core-service/pkg/ws/report"
 	"log"
 	"log/slog"
 	"strconv"
@@ -14,41 +17,47 @@ type HubClientScanList map[*HubClientScan]bool
 type HubClientScan struct {
 	// the websocket connection
 	connection *websocket.Conn
-
-	// manager is the manager used to manage the client
-	manager *HubScan
+	// hub is the hub used to manage the client
+	hub *HubScan
 	// tenantID is used to know what room user is in
 	tenantID string
 }
 
+var _ interfaces2.IClient = (*HubClientScan)(nil)
+
 // NewHubScanClient is used to initialize a new Client with all required values initialized
-func NewHubScanClient(conn *websocket.Conn, manager *HubScan, tenantID string) *HubClientScan {
+func NewHubScanClient(conn *websocket.Conn, hubScan *HubScan, tenantID string) *HubClientScan {
 	return &HubClientScan{
 		connection: conn,
-		manager:    manager,
+		hub:        hubScan,
 		tenantID:   tenantID,
 	}
 }
 
-// readMessages will start the client to read messages and handle them
+func (c *HubClientScan) GetHub() *HubScan {
+	return c.hub
+}
+
+// ReadMessages will start the client to read messages and handle them
 // appropriatly.
 // This is suppose to be ran as a goroutine
-func (c *HubClientScan) readMessages() {
+func (c *HubClientScan) ReadMessages() {
 	defer func() {
 		// Graceful Close the Connection once this
 		// function is done
-		c.manager.removeClient(c)
+		var iclient interfaces2.IClient = c
+		c.GetHub().RemoveClient(&iclient)
 	}()
 	// Set Max Size of Messages in Bytes
 	c.connection.SetReadLimit(512)
 	// Configure Wait time for Pong response, use Current time + pongWait
 	// This has to be done here to set the first initial timer.
-	if err := c.connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+	if err := c.connection.SetReadDeadline(time.Now().Add(ws.PongWait)); err != nil {
 		log.Println(err)
 		return
 	}
 	// Configure how to handle Pong responses
-	c.connection.SetPongHandler(c.pongHandler)
+	c.connection.SetPongHandler(c.PongHandler)
 
 	// Loop Forever
 	for {
@@ -67,23 +76,24 @@ func (c *HubClientScan) readMessages() {
 	}
 }
 
-// pongHandler is used to handle PongMessages for the Client
-func (c *HubClientScan) pongHandler(pongMsg string) error {
+// PongHandler is used to handle PongMessages for the Client
+func (c *HubClientScan) PongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
+	return c.connection.SetReadDeadline(time.Now().Add(ws.PongWait))
 }
 
-// writeMessages is a process that listens for new messages to output to the Client
-func (c *HubClientScan) writeMessages() {
+// WriteMessages is a process that listens for new messages to output to the Client
+func (c *HubClientScan) WriteMessages() {
 	// Create a ticker that triggers a ping at given interval
-	ticker := time.NewTicker(pingInterval)
-	scanInterval, _ := strconv.Atoi(c.manager.cfg.Websocket.IntervalScanRefresh)
+	ticker := time.NewTicker(ws.PingInterval)
+	scanInterval, _ := strconv.Atoi(c.hub.cfg.Websocket.IntervalScanRefresh)
 	scanIntervalDuration := time.Duration(scanInterval) * time.Second
 	tickerScan := time.NewTicker(scanIntervalDuration)
 	defer func() {
 		ticker.Stop()
 		// Graceful close if this triggers a closing
-		c.manager.removeClient(c)
+		var interfaceClient interfaces2.IClient = c
+		c.hub.RemoveClient(&interfaceClient)
 	}()
 
 	for {
@@ -96,7 +106,7 @@ func (c *HubClientScan) writeMessages() {
 				return // return to break this goroutine triggeing cleanup
 			}
 		case <-tickerScan.C:
-			scans, errGetScans := c.manager.scanService.GetCurrentScans(c.tenantID)
+			scans, errGetScans := c.hub.scanService.GetCurrentScans(c.tenantID)
 			if errGetScans != nil {
 				slog.Error("Not able to get scans", slog.Any("tenantID", c.tenantID), slog.Any("error", errGetScans))
 			}
@@ -111,4 +121,12 @@ func (c *HubClientScan) writeMessages() {
 		}
 
 	}
+}
+
+func (c *HubClientScan) GetScanClient() *HubClientScan {
+	return c
+}
+
+func (c *HubClientScan) GetReportClient() *report.HubClientReport {
+	return nil
 }

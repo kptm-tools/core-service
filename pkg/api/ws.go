@@ -1,22 +1,22 @@
 package api
 
 import (
-	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/ws/interfaces"
 	"log"
 	"net/http"
 )
 
 type WSServer struct {
 	listenAddr       string
-	hubScanHandler   interfaces.IHubScanHandlers
-	hubReportHandler interfaces.IHubReportHandlers
+	hubScanHandler   interfaces.IHub
+	hubReportHandler interfaces.IHub
 }
 
 func NewWSServer(
 	listenAddr string,
-	hubScanHandler interfaces.IHubScanHandlers,
-	hubReportHandler interfaces.IHubReportHandlers,
+	hubScanHandler interfaces.IHub,
+	hubReportHandler interfaces.IHub,
 ) *WSServer {
 
 	return &WSServer{

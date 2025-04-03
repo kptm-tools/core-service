@@ -1,9 +1,12 @@
-package ws
+package report
 
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/ws"
+	"github.com/kptm-tools/core-service/pkg/ws/interfaces"
+	"github.com/kptm-tools/core-service/pkg/ws/scan"
 	"log"
 	"time"
 )
@@ -22,8 +25,8 @@ type HubClientReport struct {
 	// the websocket connection
 	connection *websocket.Conn
 
-	// manager is the manager used to manage the client
-	manager *HubReport
+	// hub is the hub used to manage the client
+	hub *HubReport
 	// egress is used to avoid concurrent writes on the WebSocket
 	egress chan domain.Event
 	// tenantID is used to know what room user is in
@@ -32,11 +35,13 @@ type HubClientReport struct {
 	data     []*VulnerabilityTypeData
 }
 
-// NewHubScanClient is used to initialize a new Client with all required values initialized
-func NewHubReportClient(conn *websocket.Conn, manager *HubReport, tenantID string, scanID string, data []*VulnerabilityTypeData) *HubClientReport {
+var _ interfaces.IClient = (*HubClientReport)(nil)
+
+// NewHubReportClient is used to initialize a new Client with all required values initialized
+func NewHubReportClient(conn *websocket.Conn, hub *HubReport, tenantID string, scanID string, data []*VulnerabilityTypeData) *HubClientReport {
 	return &HubClientReport{
 		connection: conn,
-		manager:    manager,
+		hub:        hub,
 		egress:     make(chan domain.Event),
 		tenantID:   tenantID,
 		scanID:     scanID,
@@ -44,25 +49,26 @@ func NewHubReportClient(conn *websocket.Conn, manager *HubReport, tenantID strin
 	}
 }
 
-// readMessages will start the client to read messages and handle them
+// ReadMessages will start the client to read messages and handle them
 // appropriatly.
 // This is suppose to be ran as a goroutine
-func (c *HubClientReport) readMessages() {
+func (c *HubClientReport) ReadMessages() {
 	defer func() {
 		// Graceful Close the Connection once this
 		// function is done
-		c.manager.removeClient(c)
+		var interfaceClient interfaces.IClient = c
+		c.hub.RemoveClient(&interfaceClient)
 	}()
 	// Set Max Size of Messages in Bytes
 	c.connection.SetReadLimit(512)
 	// Configure Wait time for Pong response, use Current time + pongWait
 	// This has to be done here to set the first initial timer.
-	if err := c.connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+	if err := c.connection.SetReadDeadline(time.Now().Add(ws.PongWait)); err != nil {
 		log.Println(err)
 		return
 	}
 	// Configure how to handle Pong responses
-	c.connection.SetPongHandler(c.pongHandler)
+	c.connection.SetPongHandler(c.PongHandler)
 
 	// Loop Forever
 	for {
@@ -85,26 +91,28 @@ func (c *HubClientReport) readMessages() {
 			break // Breaking the connection here might be harsh xD
 		}
 		// Route the Event
-		if err := c.manager.routeEvent(request, c); err != nil {
+		var interfaceClient interfaces.IClient = c
+		if err := c.hub.RouteEvent(request, &interfaceClient); err != nil {
 			log.Println("Error handeling Message: ", err)
 		}
 	}
 }
 
-// pongHandler is used to handle PongMessages for the Client
-func (c *HubClientReport) pongHandler(pongMsg string) error {
+// PongHandler is used to handle PongMessages for the Client
+func (c *HubClientReport) PongHandler(pongMsg string) error {
 	// Current time + Pong Wait time
-	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
+	return c.connection.SetReadDeadline(time.Now().Add(ws.PongWait))
 }
 
-// writeMessages is a process that listens for new messages to output to the Client
-func (c *HubClientReport) writeMessages() {
+// WriteMessages is a process that listens for new messages to output to the Client
+func (c *HubClientReport) WriteMessages() {
 	// Create a ticker that triggers a ping at given interval
-	ticker := time.NewTicker(pingInterval)
+	ticker := time.NewTicker(ws.PingInterval)
 	defer func() {
 		ticker.Stop()
 		// Graceful close if this triggers a closing
-		c.manager.removeClient(c)
+		var interfaceClient interfaces.IClient = c
+		c.hub.RemoveClient(&interfaceClient)
 	}()
 
 	for {
@@ -112,7 +120,7 @@ func (c *HubClientReport) writeMessages() {
 		case message, ok := <-c.egress:
 			// Ok will be false Incase the egress channel is closed
 			if !ok {
-				// manager has closed this connection channel, so communicate that to frontend
+				// hub has closed this connection channel, so communicate that to frontend
 				if err := c.connection.WriteMessage(websocket.CloseMessage, nil); err != nil {
 					// Log that the connection is closed and the reason
 					log.Println("connection closed: ", err)
@@ -146,10 +154,18 @@ func (c *HubClientReport) writeMessages() {
 // CountClientsByScanID counts the number clients connected to scanID this will be the room
 func (c *HubClientReport) CountClientsByScanID(scanID string) int {
 	size := 0
-	for client := range c.manager.clients {
+	for client := range c.hub.clients {
 		if client.scanID == scanID {
 			size += 1
 		}
 	}
 	return size
+}
+
+func (c *HubClientReport) GetReportClient() *HubClientReport {
+	return c
+}
+
+func (c *HubClientReport) GetScanClient() *scan.HubClientScan {
+	return nil
 }

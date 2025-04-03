@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"github.com/kptm-tools/core-service/pkg/ws"
+	"github.com/kptm-tools/core-service/pkg/ws/report"
+	"github.com/kptm-tools/core-service/pkg/ws/scan"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -77,8 +78,8 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
-	hubScan := ws.NewHubScan(scanService)
-	hubReport := ws.NewHubReport(vulnService)
+	hubScan := scan.NewHubScan(scanService)
+	hubReport := report.NewHubReport(vulnService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
