@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -25,6 +26,10 @@ type ReportClient struct {
 	// It represents the data that the Client is about to send out through it's connection.
 	// It's the queue of messages destined to leave the Client process.
 	outgoing chan []byte
+
+	// vectorStatus represents the currently selected vectors by the client. This map must be initially
+	// populated on an initial connection, and updated on each vector_update message.
+	vectorStatus map[enums.WeaknessType]float64
 }
 
 func NewReportClient(
@@ -33,11 +38,12 @@ func NewReportClient(
 	hub *ReportHub,
 ) *ReportClient {
 	return &ReportClient{
-		ID:         uuid.NewString(),
-		config:     cfg,
-		connection: conn,
-		hub:        hub,
-		outgoing:   make(chan []byte, 256),
+		ID:           uuid.NewString(),
+		config:       cfg,
+		connection:   conn,
+		hub:          hub,
+		outgoing:     make(chan []byte, 256),
+		vectorStatus: make(map[enums.WeaknessType]float64),
 	}
 }
 
@@ -114,4 +120,17 @@ func (c *ReportClient) GetHub() common.IHub {
 func (c *ReportClient) Close() error {
 	close(c.outgoing)
 	return c.connection.Close()
+}
+
+func (c *ReportClient) GetVectorStatus() map[enums.WeaknessType]float64 {
+	return c.vectorStatus
+}
+
+func (c *ReportClient) SetVectorStatus(newVectorStatus map[enums.WeaknessType]float64) {
+	c.vectorStatus = newVectorStatus
+	slog.Debug("New vector status set", slog.Any("vector_status", c.vectorStatus))
+}
+
+func (c *ReportClient) UpdateVector(weakness enums.WeaknessType, newVal float64) {
+	c.vectorStatus[weakness] = newVal
 }

@@ -24,7 +24,7 @@ func NewApplyVectorsHandler() *ApplyVectorsHandler {
 	return &ApplyVectorsHandler{}
 }
 
-func (h *ApplyVectorsHandler) Handle(msg common.Message, client common.IClient) error {
+func (h *ApplyVectorsHandler) Handle(msg common.Message, client common.IReportClient) error {
 	slog.Debug("Handling Apply Vectors message...")
 	return nil
 }

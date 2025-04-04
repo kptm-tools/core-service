@@ -19,7 +19,7 @@ func NewSelectVectorHandler() *SelectVectorHandler {
 	return &SelectVectorHandler{}
 }
 
-func (h *SelectVectorHandler) Handle(msg common.Message, client common.IClient) error {
+func (h *SelectVectorHandler) Handle(msg common.Message, client common.IReportClient) error {
 	slog.Debug("Handling Select Vector message...")
 	return nil
 }

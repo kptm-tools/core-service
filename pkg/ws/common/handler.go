@@ -6,6 +6,6 @@ import (
 
 var ErrMessageNotSupported = errors.New("this message type is not supported")
 
-type IHandler interface {
-	Handle(Message, IClient) error
+type IReportHandler interface {
+	Handle(Message, IReportClient) error
 }

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
 )
@@ -13,7 +14,7 @@ type ReportHub struct {
 	clients    map[string]common.IClient
 	register   chan common.IClient
 	unregister chan common.IClient
-	handlers   map[string]common.IHandler
+	handlers   map[string]common.IReportHandler
 }
 
 var _ common.IHub = (*ReportHub)(nil)
@@ -24,9 +25,10 @@ var _ common.IHub = (*ReportHub)(nil)
 // making main.go too bloated with code.
 func NewReportHub(
 	config *common.Config,
+	scanService interfaces.IScanService,
 ) *ReportHub {
-	handlers := map[string]common.IHandler{
-		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(),
+	handlers := map[string]common.IReportHandler{
+		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(scanService),
 		wshandlers.MessageVectorUpdate:   wshandlers.NewVectorUpdateHandler(),
 		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
 		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
@@ -87,7 +89,7 @@ func (h *ReportHub) Unregister(client common.IClient) {
 	h.unregister <- client
 }
 
-func (h *ReportHub) routeMessage(msg common.Message, client *ReportClient) error {
+func (h *ReportHub) routeMessage(msg common.Message, client common.IReportClient) error {
 	handler, ok := h.handlers[msg.Type]
 	if !ok {
 		return common.ErrMessageNotSupported

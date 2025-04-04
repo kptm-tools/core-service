@@ -93,7 +93,7 @@ func main() {
 	}
 
 	scanHub := scan.NewScanHub(wsConfig, scanService, 5)
-	reportHub := report.NewReportHub(wsConfig)
+	reportHub := report.NewReportHub(wsConfig, scanService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
