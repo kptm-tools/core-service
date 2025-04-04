@@ -8,6 +8,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/report"
+	"github.com/kptm-tools/core-service/pkg/ws/scan"
+
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/cmd/migrations"
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -63,7 +68,7 @@ func main() {
 		c.SMTP.Password,
 		c.SMTP.FromEmail)
 
-	// Handlers
+	// Handlers - REST
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
@@ -76,7 +81,19 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
-	wsHandler := handlers.NewWsHandlers(scanService)
+
+	// Handlers - WS
+	wsConfig := &common.Config{
+		Upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+		},
+		PongWait:     10 * time.Second,
+		PingInterval: (10 * time.Second * 9) / 10,
+	}
+
+	scanHub := scan.NewScanHub(wsConfig, scanService, 5)
+	reportHub := report.NewReportHub(wsConfig)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -102,10 +119,12 @@ func main() {
 		scanScheduleHandlers,
 	)
 
-	// Server
+	// WS Server
 	wss := api.NewWSServer(
 		":8002",
-		wsHandler,
+		authHandlers,
+		scanHub,
+		reportHub,
 	)
 
 	wsSrv := wss.Init()

@@ -46,7 +46,7 @@ func (s *PostgreSQLStore) CreateTenant(t *domain.Tenant) (*domain.Tenant, error)
 	}
 
 	if exists {
-		return nil, fmt.Errorf("TenantID already exists: %s", t.ProviderID)
+		return nil, fmt.Errorf("tenantID already exists: %s", t.ProviderID)
 	}
 	query := `
     INSERT INTO tenants (provider_id, application_id, created_at, updated_at)

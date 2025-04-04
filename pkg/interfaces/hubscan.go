@@ -2,6 +2,6 @@ package interfaces
 
 import "net/http"
 
-type IWsHandler interface {
+type IHubScanHandlers interface {
 	Serve(w http.ResponseWriter, req *http.Request)
 }

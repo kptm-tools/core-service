@@ -101,15 +101,6 @@ func GetID(req *http.Request) (int, error) {
 	return intID, nil
 }
 
-func GetTenantIDFromHeader(req *http.Request) (string, error) {
-	tenantID := req.Header.Get("X-TenantId")
-
-	if err := uuid.Validate(tenantID); err != nil {
-		return "", fmt.Errorf("invalid UUID: `%s`", tenantID)
-	}
-	return tenantID, nil
-}
-
 func GetVerificationIDAndTenantID(req *http.Request) (string, string, error) {
 	verificationID := req.URL.Query().Get("verificationId")
 	tenantID := req.URL.Query().Get("tenantId")
