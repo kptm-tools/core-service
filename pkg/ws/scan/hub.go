@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
-	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
 
 type ScanHub struct {
@@ -35,12 +35,8 @@ func NewScanHub(config *common.Config, scanService interfaces.IScanService, scan
 }
 
 func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID, errGetTenantID := utils.GetTenantIDFromHeader(r)
-	if errGetTenantID != nil {
-		slog.Error("Error obtaining tenantID from header", slog.Any("error", errGetTenantID))
-		http.Error(w, "Invalid or missing X-TenantId header", http.StatusBadRequest)
-		return
-	}
+	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
