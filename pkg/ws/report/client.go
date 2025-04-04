@@ -21,8 +21,10 @@ type ReportClient struct {
 	// hub is the hub used to manage the client
 	hub *ReportHub
 
-	// send is the channel used to send data to the client
-	send chan []byte
+	// outgoing is the channel used to outgoing data to the client
+	// It represents the data that the Client is about to send out through it's connection.
+	// It's the queue of messages destined to leave the Client process.
+	outgoing chan []byte
 }
 
 func NewReportClient(
@@ -35,7 +37,7 @@ func NewReportClient(
 		config:     cfg,
 		connection: conn,
 		hub:        hub,
-		send:       make(chan []byte, 256),
+		outgoing:   make(chan []byte, 256),
 	}
 }
 
@@ -73,7 +75,7 @@ func (c *ReportClient) WriteMessages() {
 	defer c.hub.Unregister(c)
 
 	for {
-		msg, ok := <-c.send
+		msg, ok := <-c.outgoing
 		if !ok {
 			if err := c.connection.WriteMessage(websocket.CloseMessage, nil); err != nil {
 				slog.Warn("connection closed", slog.Any("error", err))
@@ -98,7 +100,7 @@ func (c *ReportClient) pongHandler() error {
 }
 
 func (c *ReportClient) GetSend() chan []byte {
-	return c.send
+	return c.outgoing
 }
 
 func (c *ReportClient) GetID() string {
@@ -110,6 +112,6 @@ func (c *ReportClient) GetHub() common.IHub {
 }
 
 func (c *ReportClient) Close() error {
-	close(c.send)
+	close(c.outgoing)
 	return c.connection.Close()
 }

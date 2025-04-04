@@ -24,8 +24,10 @@ type ScanClient struct {
 	// tenantID is used to know what room user is in
 	tenantID string
 
-	// send is the channel used to send data to the client
-	send chan []byte
+	// outgoing is the channel used to outgoing data to the client.
+	// It represents the data that the Client is about to send out through it's connection.
+	// It's the queue of messages destined to leave the Client process.
+	outgoing chan []byte
 }
 
 // NewScanClient is used to initialize a new Client with all required values initialized
@@ -41,7 +43,7 @@ func NewScanClient(
 		connection: conn,
 		hub:        hub,
 		tenantID:   tenantID,
-		send:       make(chan []byte, 256),
+		outgoing:   make(chan []byte, 256),
 	}
 }
 
@@ -101,7 +103,7 @@ func (c *ScanClient) WriteMessages() {
 				log.Println("writemsg: ", err)
 				return // return to break this goroutine triggeing cleanup
 			}
-		case message, ok := <-c.send:
+		case message, ok := <-c.outgoing:
 			if !ok {
 				c.connection.WriteMessage(websocket.CloseMessage, []byte{})
 				return
@@ -130,7 +132,7 @@ func (c *ScanClient) pongHandler(pongMsg string) error {
 }
 
 func (c *ScanClient) GetSend() chan []byte {
-	return c.send
+	return c.outgoing
 }
 
 func (c *ScanClient) GetID() string {
@@ -142,6 +144,6 @@ func (c *ScanClient) GetHub() common.IHub {
 }
 
 func (c *ScanClient) Close() error {
-	close(c.send)
+	close(c.outgoing)
 	return c.connection.Close()
 }
