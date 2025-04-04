@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	"github.com/kptm-tools/core-service/pkg/ws/report"
-	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
 	"github.com/kptm-tools/core-service/pkg/ws/scan"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
@@ -94,13 +93,9 @@ func main() {
 		PongWait:     10 * time.Second,
 		PingInterval: (10 * time.Second * 9) / 10,
 	}
-	initialRequestHandler := wshandlers.NewInitialRequestHandler()
-	vectorUpdateHandler := wshandlers.NewVectorUpdateHandler()
-	selectVectorHandler := wshandlers.NewSelectVectorHandler()
-	applyVectorsHandler := wshandlers.NewApplyVectorsHandler()
 
 	scanHub := scan.NewScanHub(wsConfig, scanService, 5)
-	reportHub := report.NewReportHub(wsConfig, initialRequestHandler, vectorUpdateHandler, selectVectorHandler, applyVectorsHandler)
+	reportHub := report.NewReportHub(wsConfig)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {

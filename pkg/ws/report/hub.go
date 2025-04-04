@@ -18,15 +18,18 @@ type ReportHub struct {
 
 var _ common.IHub = (*ReportHub)(nil)
 
+// NewReportHub creates a ReportHub. If we use a particular service which we wish
+// to inject to our services, we would ask for it as a parameter in NewReportHub()
+// and pass it during handler initialization. This decision was made to avoid
+// making main.go too bloated with code.
 func NewReportHub(
 	config *common.Config,
-	initialRequestHandler, vectorUpdateHandler, selectVectorHandler, applyVectorsHandler common.IHandler,
 ) *ReportHub {
 	handlers := map[string]common.IHandler{
-		wshandlers.MessageInitialRequest: initialRequestHandler,
-		wshandlers.MessageVectorUpdate:   vectorUpdateHandler,
-		wshandlers.MessageSelectVector:   selectVectorHandler,
-		wshandlers.MessageApplyVectors:   applyVectorsHandler,
+		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(),
+		wshandlers.MessageVectorUpdate:   wshandlers.NewVectorUpdateHandler(),
+		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
+		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
 	}
 
 	return &ReportHub{
