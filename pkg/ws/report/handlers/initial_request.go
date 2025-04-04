@@ -16,7 +16,7 @@ func NewInitialRequestHandler() *InitialRequestHandler {
 	return &InitialRequestHandler{}
 }
 
-// InitialDataRequestMessageEvent is the payload sent in EventInitialRequest
+// InitialDataRequestMessage is the payload sent in EventInitialRequest
 type InitialDataRequestMessage struct {
 	ScanID string `json:"scan_id"`
 }

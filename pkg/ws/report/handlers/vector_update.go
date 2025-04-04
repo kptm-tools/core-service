@@ -8,7 +8,7 @@ import (
 
 const MessageVectorUpdate = "vector_update"
 
-// VectorUpdateMessageEvent is the payload sent in EventVectorUpdate
+// VectorUpdateMessage is the payload sent in EventVectorUpdate
 type VectorUpdateMessage struct {
 	VulnerabilityTypeName string `json:"vulnerability_type_name"`
 	NewValue              string `json:"new_value"`

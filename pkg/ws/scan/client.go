@@ -28,7 +28,7 @@ type ScanClient struct {
 	send chan []byte
 }
 
-// NewHubScanClient is used to initialize a new Client with all required values initialized
+// NewScanClient is used to initialize a new Client with all required values initialized
 func NewScanClient(
 	cfg *common.Config,
 	conn *websocket.Conn,
