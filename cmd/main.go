@@ -70,7 +70,7 @@ func main() {
 		c.SMTP.Password,
 		c.SMTP.FromEmail)
 
-	// Handlers
+	// Handlers - REST
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
@@ -84,6 +84,7 @@ func main() {
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
 
+	// Handlers - WS
 	wsConfig := &common.Config{
 		Upgrader: websocket.Upgrader{
 			CheckOrigin:     func(r *http.Request) bool { return true },
@@ -95,9 +96,11 @@ func main() {
 	}
 	initialRequestHandler := wshandlers.NewInitialRequestHandler()
 	vectorUpdateHandler := wshandlers.NewVectorUpdateHandler()
+	selectVectorHandler := wshandlers.NewSelectVectorHandler()
+	applyVectorsHandler := wshandlers.NewApplyVectorsHandler()
 
 	scanHub := scan.NewScanHub(wsConfig, scanService, 5)
-	reportHub := report.NewReportHub(wsConfig, initialRequestHandler, vectorUpdateHandler)
+	reportHub := report.NewReportHub(wsConfig, initialRequestHandler, vectorUpdateHandler, selectVectorHandler, applyVectorsHandler)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {

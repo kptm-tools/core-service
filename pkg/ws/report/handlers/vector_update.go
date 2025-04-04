@@ -8,17 +8,17 @@ import (
 
 const MessageVectorUpdate = "vector_update"
 
-// VectorUpdateMessage is the payload sent in EventVectorUpdate
+// VectorUpdateMessage is the payload sent in MessageVectorUpdate
 type VectorUpdateMessage struct {
 	VulnerabilityTypeName string `json:"vulnerability_type_name"`
 	NewValue              string `json:"new_value"`
 }
 
+type VectorUpdateHandler struct{}
+
 func NewVectorUpdateHandler() *VectorUpdateHandler {
 	return &VectorUpdateHandler{}
 }
-
-type VectorUpdateHandler struct{}
 
 func (h *VectorUpdateHandler) Handle(msg common.Message, client common.IClient) error {
 	slog.Debug("Handling Vector Update message...")

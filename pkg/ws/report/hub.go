@@ -18,10 +18,15 @@ type ReportHub struct {
 
 var _ common.IHub = (*ReportHub)(nil)
 
-func NewReportHub(config *common.Config, initialRequestHandler, vectorUpdateHandler common.IHandler) *ReportHub {
+func NewReportHub(
+	config *common.Config,
+	initialRequestHandler, vectorUpdateHandler, selectVectorHandler, applyVectorsHandler common.IHandler,
+) *ReportHub {
 	handlers := map[string]common.IHandler{
 		wshandlers.MessageInitialRequest: initialRequestHandler,
 		wshandlers.MessageVectorUpdate:   vectorUpdateHandler,
+		wshandlers.MessageSelectVector:   selectVectorHandler,
+		wshandlers.MessageApplyVectors:   applyVectorsHandler,
 	}
 
 	return &ReportHub{

@@ -10,6 +10,11 @@ const (
 	MessageInitialRequest = "initial_data_request"
 )
 
+// InitialRequestMessage is the payload sent in a MessageInitialRequest
+type InitialRequestMessage struct {
+	ScanID string `json:"scan_id"`
+}
+
 type InitialRequestHandler struct{}
 
 func NewInitialRequestHandler() *InitialRequestHandler {
