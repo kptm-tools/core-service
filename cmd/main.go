@@ -126,6 +126,7 @@ func main() {
 	// WS Server
 	wss := api.NewWSServer(
 		":8002",
+		authHandlers,
 		scanHub,
 		reportHub,
 	)
