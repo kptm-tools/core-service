@@ -49,8 +49,7 @@ func (rm RetentionMap) VerifyOTP(otp string) bool {
 
 // Retention is a go routine which periodically checks to see which OTP's are no longer valid.
 func (rm RetentionMap) Retention(ctx context.Context, retentionPeriod time.Duration) {
-	ticker := time.NewTicker(400 * time.Millisecond)
-
+	ticker := time.NewTicker(1000 * time.Millisecond)
 	for {
 		select {
 		case <-ticker.C:
