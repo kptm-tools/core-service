@@ -58,7 +58,7 @@ func main() {
 
 	// Services
 	healthService := services.NewHealthcheckService(c, coreStore)
-	authService := services.NewAuthService(coreStore)
+	authService := services.NewAuthService(ctx, coreStore)
 	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore)
@@ -95,7 +95,7 @@ func main() {
 		PingInterval: (10 * time.Second * 9) / 10,
 	}
 
-	scanHub := scan.NewScanHub(ctx, wsConfig, scanService, 5)
+	scanHub := scan.NewScanHub(ctx, wsConfig, scanService, authService, 5)
 	reportHub := report.NewReportHub(wsConfig, scanService)
 
 	// Event Subscriptions

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kptm-tools/core-service/pkg/auth"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	"github.com/kptm-tools/core-service/pkg/ws/utils"
@@ -19,36 +18,36 @@ type ScanHub struct {
 	register     chan common.IClient
 	unregister   chan common.IClient
 	scanService  interfaces.IScanService
+	authService  interfaces.IAuthService
 	scanInterval time.Duration
-	otps         auth.RetentionMap
 }
 
 var _ common.IHub = (*ScanHub)(nil)
 
-func NewScanHub(ctx context.Context, config *common.Config, scanService interfaces.IScanService, scanIntervalSeconds int) *ScanHub {
+func NewScanHub(ctx context.Context, config *common.Config, scanService interfaces.IScanService, authService interfaces.IAuthService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
 		cfg:          config,
 		clients:      make(map[string]common.IClient),
 		register:     make(chan common.IClient),
 		unregister:   make(chan common.IClient),
 		scanService:  scanService,
+		authService:  authService,
 		scanInterval: time.Duration(scanIntervalSeconds) * time.Second,
-		otps:         auth.NewRetentionMap(ctx, 60*time.Minute),
 	}
 	return server
 }
 
 func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
-	// otp, err := utils.GetOTPFromQuery(r)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusUnauthorized)
-	// 	return
-	// }
-	//
-	// if !h.otps.VerifyOTP(otp) {
-	// 	w.WriteHeader(http.StatusUnauthorized)
-	// 	return
-	// }
+	otp, err := utils.GetOTPFromQuery(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if !h.authService.VerifyOTP(otp) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	tenantID, err := utils.GetTenantIDFromQuery(r)
 	if err != nil {
