@@ -1,4 +1,4 @@
-package common
+package interfaces
 
 import "github.com/kptm-tools/common/common/pkg/enums"
 

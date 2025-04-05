@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/kptm-tools/core-service/pkg/middleware"
-	"github.com/kptm-tools/core-service/pkg/ws/common"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -24,8 +23,8 @@ type APIServer struct {
 	scanHandlers         interfaces.IScanHandlers
 	vulnHandlers         interfaces.IVulnerabilityHandlers
 	scanScheduleHandlers interfaces.IScanScheduleHandlers
-	scanHub              common.IHub
-	reportHub            common.IHub
+	scanHub              interfaces.IHub
+	reportHub            interfaces.IHub
 }
 
 type APIError struct {
@@ -43,8 +42,8 @@ func NewAPIServer(
 	sHandlers interfaces.IScanHandlers,
 	vHandlers interfaces.IVulnerabilityHandlers,
 	ssHandlers interfaces.IScanScheduleHandlers,
-	scanHub common.IHub,
-	reportHub common.IHub,
+	scanHub interfaces.IHub,
+	reportHub interfaces.IHub,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,

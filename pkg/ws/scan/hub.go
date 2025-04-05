@@ -14,22 +14,22 @@ import (
 
 type ScanHub struct {
 	cfg          *common.Config
-	clients      map[string]common.IClient
-	register     chan common.IClient
-	unregister   chan common.IClient
+	clients      map[string]interfaces.IClient
+	register     chan interfaces.IClient
+	unregister   chan interfaces.IClient
 	scanService  interfaces.IScanService
 	authService  interfaces.IAuthService
 	scanInterval time.Duration
 }
 
-var _ common.IHub = (*ScanHub)(nil)
+var _ interfaces.IHub = (*ScanHub)(nil)
 
 func NewScanHub(ctx context.Context, config *common.Config, scanService interfaces.IScanService, authService interfaces.IAuthService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
 		cfg:          config,
-		clients:      make(map[string]common.IClient),
-		register:     make(chan common.IClient),
-		unregister:   make(chan common.IClient),
+		clients:      make(map[string]interfaces.IClient),
+		register:     make(chan interfaces.IClient),
+		unregister:   make(chan interfaces.IClient),
 		scanService:  scanService,
 		authService:  authService,
 		scanInterval: time.Duration(scanIntervalSeconds) * time.Second,
@@ -115,12 +115,12 @@ func (h *ScanHub) Run() {
 }
 
 // Register will add clients to our clientList
-func (h *ScanHub) Register(client common.IClient) {
+func (h *ScanHub) Register(client interfaces.IClient) {
 	// Add Client
 	h.register <- client
 }
 
 // Unregister will remove clients from the clientList
-func (h *ScanHub) Unregister(client common.IClient) {
+func (h *ScanHub) Unregister(client interfaces.IClient) {
 	h.unregister <- client
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -113,7 +114,7 @@ func (c *ReportClient) GetID() string {
 	return c.ID
 }
 
-func (c *ReportClient) GetHub() common.IHub {
+func (c *ReportClient) GetHub() interfaces.IHub {
 	return c.hub
 }
 

@@ -35,7 +35,7 @@ type InitialDataRequestMessage struct {
 	ScanID string `json:"scan_id"`
 }
 
-func (h *InitialRequestHandler) Handle(msg common.Message, client common.IReportClient) error {
+func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IReportClient) error {
 	slog.Debug("Handling initial request message...")
 
 	var initialRequestMessage InitialRequestMessage

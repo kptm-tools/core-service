@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -23,7 +24,7 @@ func NewVectorUpdateHandler() *VectorUpdateHandler {
 	return &VectorUpdateHandler{}
 }
 
-func (h *VectorUpdateHandler) Handle(msg common.Message, client common.IReportClient) error {
+func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IReportClient) error {
 	slog.Debug("Handling Vector Update message...")
 
 	var vectorUpdateMsg VectorUpdateMessage
