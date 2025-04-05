@@ -1,15 +1,18 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
 	"github.com/google/uuid"
+	"github.com/kptm-tools/core-service/pkg/auth"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -39,17 +42,21 @@ type AuthService struct {
 	client  *http.Client
 	storage interfaces.IStorage
 	cfg     *config.Config
+	otps    auth.RetentionMap
+	mu      sync.Mutex
 }
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
 
-func NewAuthService(storage interfaces.IStorage) *AuthService {
+func NewAuthService(ctx context.Context, storage interfaces.IStorage) *AuthService {
 	return &AuthService{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 		storage: storage,
 		cfg:     config.LoadConfig(),
+		otps:    auth.NewRetentionMap(ctx, 60*time.Minute),
+		mu:      sync.Mutex{},
 	}
 }
 
@@ -74,7 +81,6 @@ func (s *AuthService) Login(email, password, applicationID string) (*fusionauth.
 		return nil, err
 	}
 	if faErr != nil {
-
 		return nil, NewFaError(loginResponse.StatusCode, faErr.Error())
 	}
 
@@ -464,7 +470,6 @@ func (s *AuthService) VerifyEmail(verificationID, tenantID string) (*fusionauth.
 
 	// Use FusionAuth Go client to log in the user
 	verificationResponse, faErr, err := client.VerifyUserRegistration(verifyEmailReq)
-
 	if err != nil {
 		slog.Error("Error with fusionauth api verify registration", slog.Any("verificationId", verificationID), slog.Any("tenantId", tenantID), slog.Any("error", err))
 		return nil, err
@@ -476,4 +481,16 @@ func (s *AuthService) VerifyEmail(verificationID, tenantID string) (*fusionauth.
 	}
 
 	return verificationResponse, nil
+}
+
+func (s *AuthService) GenerateOTP() auth.OTP {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.otps.NewOTP()
+}
+
+func (s *AuthService) VerifyOTP(otp string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.otps.VerifyOTP(otp)
 }

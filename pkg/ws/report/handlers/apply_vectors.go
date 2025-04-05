@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -24,7 +25,7 @@ func NewApplyVectorsHandler() *ApplyVectorsHandler {
 	return &ApplyVectorsHandler{}
 }
 
-func (h *ApplyVectorsHandler) Handle(msg common.Message, client common.IClient) error {
+func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IReportClient) error {
 	slog.Debug("Handling Apply Vectors message...")
 	return nil
 }

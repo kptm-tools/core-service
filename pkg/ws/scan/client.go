@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -139,7 +140,7 @@ func (c *ScanClient) GetID() string {
 	return c.ID
 }
 
-func (c *ScanClient) GetHub() common.IHub {
+func (c *ScanClient) GetHub() interfaces.IHub {
 	return c.hub
 }
 

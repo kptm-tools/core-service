@@ -4,19 +4,23 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
+	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
 
 type ReportHub struct {
-	cfg        *common.Config
-	clients    map[string]common.IClient
-	register   chan common.IClient
-	unregister chan common.IClient
-	handlers   map[string]common.IHandler
+	cfg         *common.Config
+	clients     map[string]interfaces.IClient
+	register    chan interfaces.IClient
+	unregister  chan interfaces.IClient
+	handlers    map[string]interfaces.IReportHandler
+	authService interfaces.IAuthService
 }
 
-var _ common.IHub = (*ReportHub)(nil)
+var _ interfaces.IHub = (*ReportHub)(nil)
 
 // NewReportHub creates a ReportHub. If we use a particular service which we wish
 // to inject to our services, we would ask for it as a parameter in NewReportHub()
@@ -24,9 +28,10 @@ var _ common.IHub = (*ReportHub)(nil)
 // making main.go too bloated with code.
 func NewReportHub(
 	config *common.Config,
+	scanService interfaces.IScanService,
 ) *ReportHub {
-	handlers := map[string]common.IHandler{
-		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(),
+	handlers := map[string]interfaces.IReportHandler{
+		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(scanService),
 		wshandlers.MessageVectorUpdate:   wshandlers.NewVectorUpdateHandler(),
 		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
 		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
@@ -34,14 +39,26 @@ func NewReportHub(
 
 	return &ReportHub{
 		cfg:        config,
-		clients:    make(map[string]common.IClient),
-		register:   make(chan common.IClient),
-		unregister: make(chan common.IClient),
+		clients:    make(map[string]interfaces.IClient),
+		register:   make(chan interfaces.IClient),
+		unregister: make(chan interfaces.IClient),
 		handlers:   handlers,
 	}
 }
 
 func (h *ReportHub) Serve(w http.ResponseWriter, r *http.Request) {
+	otp, err := utils.GetOTPFromQuery(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if !h.authService.VerifyOTP(otp) {
+		slog.Warn("Client OTP has expired")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -77,20 +94,20 @@ func (h *ReportHub) Run() {
 }
 
 // Register will add clients to our clientList
-func (h *ReportHub) Register(client common.IClient) {
+func (h *ReportHub) Register(client interfaces.IClient) {
 	// Add Client
 	h.register <- client
 }
 
 // Unregister will remove clients from the clientList
-func (h *ReportHub) Unregister(client common.IClient) {
+func (h *ReportHub) Unregister(client interfaces.IClient) {
 	h.unregister <- client
 }
 
-func (h *ReportHub) routeMessage(msg common.Message, client *ReportClient) error {
+func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportClient) error {
 	handler, ok := h.handlers[msg.Type]
 	if !ok {
-		return common.ErrMessageNotSupported
+		return customerrors.ErrMessageNotSupported
 	}
 
 	if err := handler.Handle(msg, client); err != nil {

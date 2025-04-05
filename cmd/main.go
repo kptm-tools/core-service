@@ -25,6 +25,9 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	c := config.LoadConfig()
 
 	// Configure logging
@@ -55,7 +58,7 @@ func main() {
 
 	// Services
 	healthService := services.NewHealthcheckService(c, coreStore)
-	authService := services.NewAuthService(coreStore)
+	authService := services.NewAuthService(ctx, coreStore)
 	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore)
@@ -92,8 +95,8 @@ func main() {
 		PingInterval: (10 * time.Second * 9) / 10,
 	}
 
-	scanHub := scan.NewScanHub(wsConfig, scanService, 5)
-	reportHub := report.NewReportHub(wsConfig)
+	scanHub := scan.NewScanHub(ctx, wsConfig, scanService, authService, 5)
+	reportHub := report.NewReportHub(wsConfig, scanService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -117,31 +120,14 @@ func main() {
 		scanHandlers,
 		vulnHandlers,
 		scanScheduleHandlers,
-	)
-
-	// WS Server
-	wss := api.NewWSServer(
-		":8002",
-		authHandlers,
 		scanHub,
 		reportHub,
 	)
 
-	wsSrv := wss.Init()
 	apiSrv := s.Init()
-
-	_, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
-
-	// Start WebSocket Server
-	go func() {
-		if err := wsSrv.ListenAndServe(); err != nil {
-			slog.Error("Failed to initialize WebSocket Server", slog.Any("error", err))
-		}
-	}()
 
 	// Start API Server
 	go func() {
@@ -155,13 +141,10 @@ func main() {
 	slog.Info("Received signal to shutdown", slog.Any("signal", sig))
 
 	// Create deadline for the shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctxDeadline, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := wsSrv.Shutdown(ctx); err != nil {
-		slog.Error("Error shutting down WebSocket Server", slog.Any("error", err))
-	}
-	if err := apiSrv.Shutdown(ctx); err != nil {
+	if err := apiSrv.Shutdown(ctxDeadline); err != nil {
 		slog.Error("Error shutting down API Server", slog.Any("error", err))
 	}
 }

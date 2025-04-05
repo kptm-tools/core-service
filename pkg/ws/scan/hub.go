@@ -1,41 +1,60 @@
 package scan
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
 
 type ScanHub struct {
 	cfg          *common.Config
-	clients      map[string]common.IClient
-	register     chan common.IClient
-	unregister   chan common.IClient
+	clients      map[string]interfaces.IClient
+	register     chan interfaces.IClient
+	unregister   chan interfaces.IClient
 	scanService  interfaces.IScanService
+	authService  interfaces.IAuthService
 	scanInterval time.Duration
 }
 
-var _ common.IHub = (*ScanHub)(nil)
+var _ interfaces.IHub = (*ScanHub)(nil)
 
-func NewScanHub(config *common.Config, scanService interfaces.IScanService, scanIntervalSeconds int) *ScanHub {
+func NewScanHub(ctx context.Context, config *common.Config, scanService interfaces.IScanService, authService interfaces.IAuthService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
 		cfg:          config,
-		clients:      make(map[string]common.IClient),
-		register:     make(chan common.IClient),
-		unregister:   make(chan common.IClient),
+		clients:      make(map[string]interfaces.IClient),
+		register:     make(chan interfaces.IClient),
+		unregister:   make(chan interfaces.IClient),
 		scanService:  scanService,
+		authService:  authService,
 		scanInterval: time.Duration(scanIntervalSeconds) * time.Second,
 	}
 	return server
 }
 
 func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	otp, err := utils.GetOTPFromQuery(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if !h.authService.VerifyOTP(otp) {
+		slog.Warn("Client OTP has expired")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	tenantID, err := utils.GetTenantIDFromQuery(r)
+	if err != nil {
+		slog.Warn("Query is missing tenantID", slog.Any("error", err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
 
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -96,12 +115,12 @@ func (h *ScanHub) Run() {
 }
 
 // Register will add clients to our clientList
-func (h *ScanHub) Register(client common.IClient) {
+func (h *ScanHub) Register(client interfaces.IClient) {
 	// Add Client
 	h.register <- client
 }
 
 // Unregister will remove clients from the clientList
-func (h *ScanHub) Unregister(client common.IClient) {
+func (h *ScanHub) Unregister(client interfaces.IClient) {
 	h.unregister <- client
 }

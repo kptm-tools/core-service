@@ -3,6 +3,7 @@ package wshandlers
 import (
 	"log/slog"
 
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -19,7 +20,7 @@ func NewSelectVectorHandler() *SelectVectorHandler {
 	return &SelectVectorHandler{}
 }
 
-func (h *SelectVectorHandler) Handle(msg common.Message, client common.IClient) error {
+func (h *SelectVectorHandler) Handle(msg common.Message, client interfaces.IReportClient) error {
 	slog.Debug("Handling Select Vector message...")
 	return nil
 }
