@@ -45,6 +45,7 @@ func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !h.authService.VerifyOTP(otp) {
+		slog.Warn("Client OTP has expired")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}

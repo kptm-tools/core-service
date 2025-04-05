@@ -7,14 +7,16 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
+	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
 
 type ReportHub struct {
-	cfg        *common.Config
-	clients    map[string]common.IClient
-	register   chan common.IClient
-	unregister chan common.IClient
-	handlers   map[string]common.IReportHandler
+	cfg         *common.Config
+	clients     map[string]common.IClient
+	register    chan common.IClient
+	unregister  chan common.IClient
+	handlers    map[string]common.IReportHandler
+	authService interfaces.IAuthService
 }
 
 var _ common.IHub = (*ReportHub)(nil)
@@ -44,6 +46,18 @@ func NewReportHub(
 }
 
 func (h *ReportHub) Serve(w http.ResponseWriter, r *http.Request) {
+	otp, err := utils.GetOTPFromQuery(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if !h.authService.VerifyOTP(otp) {
+		slog.Warn("Client OTP has expired")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
