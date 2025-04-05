@@ -20,6 +20,26 @@ func GetScanID(req *http.Request) (uuid.UUID, error) {
 	return u, nil
 }
 
+func GetTenantIDFromQuery(req *http.Request) (string, error) {
+	tenantID := req.URL.Query().Get("tenantId")
+
+	if tenantID == "" {
+		return "", fmt.Errorf("tenantId missing in query params")
+	}
+
+	return tenantID, nil
+}
+
+func GetOTPFromQuery(req *http.Request) (string, error) {
+	otpKey := req.URL.Query().Get("otp")
+
+	if otpKey == "" {
+		return "", fmt.Errorf("otp missing in query params")
+	}
+
+	return otpKey, nil
+}
+
 func GetMaxCVSSPerType(vulns []*domain.Vulnerability) map[enums.WeaknessType]float64 {
 	weaknessMap := make(map[enums.WeaknessType]float64)
 

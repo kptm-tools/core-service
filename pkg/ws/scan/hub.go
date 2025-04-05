@@ -1,14 +1,16 @@
 package scan
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/kptm-tools/core-service/pkg/auth"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
 
 type ScanHub struct {
@@ -18,11 +20,12 @@ type ScanHub struct {
 	unregister   chan common.IClient
 	scanService  interfaces.IScanService
 	scanInterval time.Duration
+	otps         auth.RetentionMap
 }
 
 var _ common.IHub = (*ScanHub)(nil)
 
-func NewScanHub(config *common.Config, scanService interfaces.IScanService, scanIntervalSeconds int) *ScanHub {
+func NewScanHub(ctx context.Context, config *common.Config, scanService interfaces.IScanService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
 		cfg:          config,
 		clients:      make(map[string]common.IClient),
@@ -30,12 +33,28 @@ func NewScanHub(config *common.Config, scanService interfaces.IScanService, scan
 		unregister:   make(chan common.IClient),
 		scanService:  scanService,
 		scanInterval: time.Duration(scanIntervalSeconds) * time.Second,
+		otps:         auth.NewRetentionMap(ctx, 60*time.Minute),
 	}
 	return server
 }
 
 func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	// otp, err := utils.GetOTPFromQuery(r)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusUnauthorized)
+	// 	return
+	// }
+	//
+	// if !h.otps.VerifyOTP(otp) {
+	// 	w.WriteHeader(http.StatusUnauthorized)
+	// 	return
+	// }
+
+	tenantID, err := utils.GetTenantIDFromQuery(r)
+	if err != nil {
+		slog.Warn("Query is missing tenantID", slog.Any("error", err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
 
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
