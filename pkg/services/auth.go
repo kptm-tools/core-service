@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
@@ -42,6 +43,7 @@ type AuthService struct {
 	storage interfaces.IStorage
 	cfg     *config.Config
 	otps    auth.RetentionMap
+	mu      sync.Mutex
 }
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
@@ -54,6 +56,7 @@ func NewAuthService(ctx context.Context, storage interfaces.IStorage) *AuthServi
 		storage: storage,
 		cfg:     config.LoadConfig(),
 		otps:    auth.NewRetentionMap(ctx, 60*time.Minute),
+		mu:      sync.Mutex{},
 	}
 }
 
@@ -481,9 +484,13 @@ func (s *AuthService) VerifyEmail(verificationID, tenantID string) (*fusionauth.
 }
 
 func (s *AuthService) GenerateOTP() auth.OTP {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.otps.NewOTP()
 }
 
 func (s *AuthService) VerifyOTP(otp string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.otps.VerifyOTP(otp)
 }
