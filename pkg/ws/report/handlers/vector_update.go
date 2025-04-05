@@ -29,7 +29,7 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 
 	var vectorUpdateMsg VectorUpdateMessage
 	if err := json.Unmarshal(msg.Payload, &vectorUpdateMsg); err != nil {
-		return fmt.Errorf("failed to unmarshal VectorUpdateMessge payload: %w", err)
+		return fmt.Errorf("failed to unmarshal VectorUpdateMessage payload: %w", err)
 	}
 
 	wt, ok := enums.ParseWeaknessFromString(vectorUpdateMsg.VulnerabilityTypeName)
