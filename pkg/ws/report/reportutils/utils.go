@@ -44,6 +44,7 @@ func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataRe
 		maxCVSSPerType[i] = 0.0
 		vulnCountPerType[i] = 0
 		uniqueCVSSValuesPerType[i] = make(uniqueCVSSValues)
+		uniqueCVSSValuesPerType[i][0.0] = true // The user can always opt for 0.0
 	}
 
 	for _, vuln := range vulns {
@@ -219,6 +220,7 @@ func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) uniqueCVSSValuesB
 	// Initialize the map with all possible WeaknessType enums and empty float 64 slices
 	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
 		uniqueWeaknessCVSSValuesMap[i] = make(uniqueCVSSValues)
+		uniqueWeaknessCVSSValuesMap[i][0.0] = true
 	}
 
 	// Iterate through vulnerabilities
