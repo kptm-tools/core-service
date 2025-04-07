@@ -1,0 +1,236 @@
+package reportutils
+
+import (
+	"log/slog"
+	"sort"
+
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
+)
+
+type (
+	// maxCVSSPerType maps each WeaknessType to its maximum observed CVSS score
+	maxCVSSPerType map[enums.WeaknessType]float64
+	// vulnerabilityCountByType maps each WeaknessType to the number of vulnerabilities of that type.
+	vulnerabilityCountByType map[enums.WeaknessType]int
+	// uniqueCVSSValues represents a set of unique CVSS scores.
+	uniqueCVSSValues map[float64]bool
+	// uniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
+	uniqueCVSSValuesByType map[enums.WeaknessType]uniqueCVSSValues
+)
+
+// BuildVulnerabilityTypeData processes a slice of vulnerabilities to calculate and format data for the initial report response.
+// It calculates the highest CVSS score, count, percentage, and unique CVSS values for each vulnerability type,
+// as well as the global total vulnerabilities and global CVSS score.
+//
+// Parameters:
+//
+//	vulns: A slice of domain.Vulnerability objects to process.
+//
+// Returns:
+//
+//	A dto.InitialDataReponse struct containing the processed vulnerability data.
+func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataReponse {
+	maxCVSSPerType := make(maxCVSSPerType)
+	vulnCountPerType := make(vulnerabilityCountByType)
+	uniqueCVSSValuesPerType := make(uniqueCVSSValuesByType)
+	globalTotalVulnerabilities := GetGlobalTotalVulnerabilities(vulns)
+	globalCVSSScore := 0.0
+	vulnerabilityTypesData := make([]dto.VulnerabilityTypeData, 0)
+
+	// Initialize maps with all possible WeaknessType enums and default values
+	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
+		maxCVSSPerType[i] = 0.0
+		vulnCountPerType[i] = 0
+		uniqueCVSSValuesPerType[i] = make(uniqueCVSSValues)
+	}
+
+	for _, vuln := range vulns {
+		if vuln == nil {
+			continue
+		}
+		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type while processing report data", slog.String("vuln_type", vuln.Type))
+			continue
+		}
+
+		// 1. Increase the vuln count for that type
+		vulnCountPerType[wt]++
+
+		// 2. Check for max CVSS score
+		if vuln.BaseCVSSScore > maxCVSSPerType[wt] {
+			maxCVSSPerType[wt] = vuln.BaseCVSSScore
+		}
+
+		// 3. Check for unique CVSS values for that type
+		uniqueCVSSValuesPerType[wt][vuln.BaseCVSSScore] = true
+
+		// 4. Check and update GlobalCVSSScore
+		if vuln.BaseCVSSScore > globalCVSSScore {
+			globalCVSSScore = vuln.BaseCVSSScore
+		}
+	}
+
+	// Format the reponse data
+	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
+		count := vulnCountPerType[i]
+		percentage := 0.0
+		if globalTotalVulnerabilities > 0 {
+			percentage = float64(count) / float64(globalTotalVulnerabilities)
+		}
+
+		availableCvssValues := make([]float64, 0, len(uniqueCVSSValuesPerType))
+		for cvss := range uniqueCVSSValuesPerType[i] {
+			availableCvssValues = append(availableCvssValues, cvss)
+		}
+		sort.Float64s(availableCvssValues)
+
+		vulnerabilityTypesData = append(vulnerabilityTypesData, dto.VulnerabilityTypeData{
+			Name:                i.String(),
+			HighestCvss:         maxCVSSPerType[i],
+			Count:               count,
+			Percentage:          percentage,
+			AvailableCvssValues: availableCvssValues,
+		})
+	}
+
+	return dto.InitialDataReponse{
+		VulnerabilityTypes:         vulnerabilityTypesData,
+		GlobalTotalVulnerabilities: globalTotalVulnerabilities,
+		GlobalCVSSScore:            globalCVSSScore,
+	}
+}
+
+// GetMaxCVSSPerType iterates through a slice of vulnerabilities and returns a map
+// where each WeaknessType is associated with the highest CVSS score found for that type.
+//
+// Parameters:
+//
+//	vulns: A slice of domain.Vulnerability objects to process.
+//
+// Returns:
+//
+//	A map where keys are enums.WeaknessType and values are the maximum CVSS score for that type.
+func GetMaxCVSSPerType(vulns []*domain.Vulnerability) map[enums.WeaknessType]float64 {
+	weaknessMap := make(map[enums.WeaknessType]float64)
+
+	// Initialize the map with all possible WeaknessType enums and default values
+	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
+		weaknessMap[i] = 0.0
+	}
+
+	// Iterate through vulnerabilities and update the map with maximum CVSS values
+	for _, vuln := range vulns {
+		if vuln == nil {
+			continue
+		}
+		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type while calculating MaxCVSS per type", slog.String("vuln_type", vuln.Type))
+			continue
+		}
+
+		currentCVSS := vuln.BaseCVSSScore
+		if maxCVSS, exists := weaknessMap[wt]; exists {
+			if currentCVSS > maxCVSS {
+				weaknessMap[wt] = currentCVSS
+			}
+		} else {
+			weaknessMap[wt] = currentCVSS
+		}
+	}
+
+	return weaknessMap
+}
+
+// GetVulnCountPerType iterates through a slice of vulnerabilities and returns a map
+// where each WeaknessType is associated with the total count of vulnerabilities of that type.
+//
+// Parameters:
+//
+//	vulns: A slice of domain.Vulnerability objects to process.
+//
+// Returns:
+//
+//	A map where keys are enums.WeaknessType and values are the count of vulnerabilities for that type.
+func GetVulnCountPerType(vulns []*domain.Vulnerability) map[enums.WeaknessType]int {
+	weaknessMap := make(map[enums.WeaknessType]int)
+
+	// Initialize the map with all possible WeaknessType enums and 0 values
+	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
+		weaknessMap[i] = 0
+	}
+
+	// Iterate through vulnerabilities and update the map
+	for _, vuln := range vulns {
+		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type while counting vulnerability types", slog.String("vuln_type", vuln.Type))
+			continue
+		}
+		if _, exists := weaknessMap[wt]; exists {
+			weaknessMap[wt]++
+		} else {
+			slog.Warn("Weakness not found in weakness map while counting vulnerability typs", slog.String("vuln_type", vuln.Type), slog.Any("weakness_map", weaknessMap))
+		}
+	}
+
+	return weaknessMap
+}
+
+// GetGlobalCVSSScore iterates through a slice of vulnerabilities and returns the highest CVSS score found across all vulnerabilities.
+//
+// Parameters:
+//
+//	vulns: A slice of domain.Vulnerability objects to process.
+//
+// Returns:
+//
+//	The highest BaseCVSSScore found in the provided vulnerabilities.
+func GetGlobalCVSSScore(vulns []*domain.Vulnerability) float64 {
+	maxCVSS := 0.0
+	for _, vuln := range vulns {
+		if vuln.BaseCVSSScore > maxCVSS {
+			maxCVSS = vuln.BaseCVSSScore
+		}
+	}
+
+	return maxCVSS
+}
+
+// GetGlobalTotalVulnerabilities returns the total number of vulnerabilities in the provided slice.
+//
+// Parameters:
+//
+//	vulns: A slice of domain.Vulnerability objects.
+//
+// Returns:
+//
+//	The number of vulnerabilities in the slice.
+func GetGlobalTotalVulnerabilities(vulns []*domain.Vulnerability) int {
+	return len(vulns)
+}
+
+func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) uniqueCVSSValuesByType {
+	uniqueWeaknessCVSSValuesMap := make(uniqueCVSSValuesByType)
+
+	// Initialize the map with all possible WeaknessType enums and empty float 64 slices
+	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
+		uniqueWeaknessCVSSValuesMap[i] = make(uniqueCVSSValues)
+	}
+
+	// Iterate through vulnerabilities
+	// For each type, check if the CVSS value has not yet been assigned in the slice
+	for _, vuln := range vulns {
+		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type while counting vulnerability types", slog.String("vuln_type", vuln.Type))
+			continue
+		}
+		uniqueWeaknessCVSSValuesMap[wt][vuln.BaseCVSSScore] = true
+	}
+
+	return uniqueWeaknessCVSSValuesMap
+}
