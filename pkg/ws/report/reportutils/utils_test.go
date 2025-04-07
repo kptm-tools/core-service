@@ -125,3 +125,49 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetGlobalCVSSScore(t *testing.T) {
+	testCases := []struct {
+		name  string
+		vulns []*domain.Vulnerability
+		want  float64
+	}{
+		{
+			name:  "Empty Vulnerabilities",
+			vulns: []*domain.Vulnerability{},
+			want:  0.0,
+		},
+		{
+			name: "Single vulnerability",
+			vulns: []*domain.Vulnerability{
+				{BaseCVSSScore: 7.5},
+			},
+			want: 7.5,
+		},
+		{
+			name: "Multiple Vulnerabilities",
+			vulns: []*domain.Vulnerability{
+				{BaseCVSSScore: 7.5},
+				{BaseCVSSScore: 1.5},
+				{BaseCVSSScore: 2.5},
+			},
+			want: 7.5,
+		},
+		{
+			name: "Vulnerability with cero CVSS",
+			vulns: []*domain.Vulnerability{
+				{BaseCVSSScore: 0.0},
+				{BaseCVSSScore: 1.5},
+				{BaseCVSSScore: 2.5},
+			},
+			want: 2.5,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.GetGlobalCVSSScore(tc.vulns)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
