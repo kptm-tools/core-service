@@ -19,3 +19,8 @@ type InitialDataReponse struct {
 	GlobalCVSSScore            float64                 `json:"global_cvss_score"`
 	GlobalTotalVulnerabilities int                     `json:"global_total_vulnerabilities"`
 }
+
+// ErrorResponse is the payload sent in an error message (Server -> Client)
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
