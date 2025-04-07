@@ -10,8 +10,8 @@ import (
 )
 
 type (
-	// maxCVSSPerType maps each WeaknessType to its maximum observed CVSS score
-	maxCVSSPerType map[enums.WeaknessType]float64
+	// MaxCVSSPerType maps each WeaknessType to its maximum observed CVSS score
+	MaxCVSSPerType map[enums.WeaknessType]float64
 	// vulnerabilityCountByType maps each WeaknessType to the number of vulnerabilities of that type.
 	vulnerabilityCountByType map[enums.WeaknessType]int
 	// uniqueCVSSValues represents a set of unique CVSS scores.
@@ -32,7 +32,7 @@ type (
 //
 //	A dto.InitialDataReponse struct containing the processed vulnerability data.
 func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataReponse {
-	maxCVSSPerType := make(maxCVSSPerType)
+	maxCVSSPerType := make(MaxCVSSPerType)
 	vulnCountPerType := make(vulnerabilityCountByType)
 	uniqueCVSSValuesPerType := make(uniqueCVSSValuesByType)
 	globalTotalVulnerabilities := GetGlobalTotalVulnerabilities(vulns)

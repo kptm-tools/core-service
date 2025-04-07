@@ -114,7 +114,7 @@ func (h *ReportHub) Unregister(client interfaces.IClient) {
 func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportClient) error {
 	handler, ok := h.handlers[msg.Type]
 	if !ok {
-		return customerrors.ErrMessageNotSupported
+		return customerrors.NewMessageNotSupportedError(msg.Type)
 	}
 
 	if err := handler.Handle(msg, client); err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 )
 
 type ReportClient struct {
@@ -68,11 +69,13 @@ func (c *ReportClient) ReadMessages() {
 		var msg common.Message
 		if err := json.Unmarshal(payload, &msg); err != nil {
 			slog.Error("failed to unmarshal message", slog.Any("error", err))
+			c.sendErrorMessage("Failed to parse message")
 			continue
 		}
 		routeErr := c.hub.routeMessage(msg, c)
 		if routeErr != nil {
 			slog.Error("Failed to route message", slog.Any("error", routeErr))
+			c.sendErrorMessage(routeErr.Error())
 		}
 	}
 }
@@ -134,4 +137,27 @@ func (c *ReportClient) SetVectorStatus(newVectorStatus map[enums.WeaknessType]fl
 
 func (c *ReportClient) UpdateVector(weakness enums.WeaknessType, newVal float64) {
 	c.vectorStatus[weakness] = newVal
+}
+
+func (c *ReportClient) sendErrorMessage(message string) {
+	errorPayload := dto.ErrorResponse{
+		Message: message,
+	}
+	errrPayloadBytes, err := json.Marshal(errorPayload)
+	if err != nil {
+		slog.Error("Failed to marshal error response paylaod", slog.Any("error", err))
+		return
+	}
+
+	errorMessage := common.Message{
+		Type:    "error",
+		Payload: errrPayloadBytes,
+	}
+	errMessageBytes, err := json.Marshal(errorMessage)
+	if err != nil {
+		slog.Error("Failed to marshal error message", slog.Any("error", err))
+		return
+	}
+
+	c.outgoing <- errMessageBytes
 }
