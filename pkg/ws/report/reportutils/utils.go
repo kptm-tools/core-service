@@ -17,7 +17,7 @@ type (
 	// uniqueCVSSValues represents a set of unique CVSS scores.
 	uniqueCVSSValues map[float64]bool
 	// uniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
-	uniqueCVSSValuesByType map[enums.WeaknessType]uniqueCVSSValues
+	UniqueCVSSValuesByType map[enums.WeaknessType]uniqueCVSSValues
 )
 
 // BuildVulnerabilityTypeData processes a slice of vulnerabilities to calculate and format data for the initial report response.
@@ -34,7 +34,7 @@ type (
 func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataReponse {
 	maxCVSSPerType := make(MaxCVSSPerType)
 	vulnCountPerType := make(vulnerabilityCountByType)
-	uniqueCVSSValuesPerType := make(uniqueCVSSValuesByType)
+	uniqueCVSSValuesPerType := make(UniqueCVSSValuesByType)
 	globalTotalVulnerabilities := GetGlobalTotalVulnerabilities(vulns)
 	globalCVSSScore := 0.0
 	vulnerabilityTypesData := make([]dto.VulnerabilityTypeData, 0)
@@ -214,8 +214,8 @@ func GetGlobalTotalVulnerabilities(vulns []*domain.Vulnerability) int {
 	return len(vulns)
 }
 
-func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) uniqueCVSSValuesByType {
-	uniqueWeaknessCVSSValuesMap := make(uniqueCVSSValuesByType)
+func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) UniqueCVSSValuesByType {
+	uniqueWeaknessCVSSValuesMap := make(UniqueCVSSValuesByType)
 
 	// Initialize the map with all possible WeaknessType enums and empty float 64 slices
 	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {

@@ -171,3 +171,38 @@ func Test_GetGlobalCVSSScore(t *testing.T) {
 		})
 	}
 }
+
+func TestGetUniqueCVSSValuesPerType(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns []*domain.Vulnerability
+		want  reportutils.UniqueCVSSValuesByType
+	}{
+		{
+			name:  "Empty Vulnerabilities",
+			vulns: []*domain.Vulnerability{},
+			want: reportutils.UniqueCVSSValuesByType{
+				enums.WeaknessSSRF: map[float64]bool{0.0: true},
+				enums.WeaknessSoftwareAndDataIntegrityFailures:        map[float64]bool{0.0: true},
+				enums.WeaknessCryptographicFailures:                   map[float64]bool{0.0: true},
+				enums.WeaknessIdentificationAndAuthenticationFailures: map[float64]bool{0.0: true},
+				enums.WeaknessBrokenAccessControl:                     map[float64]bool{0.0: true},
+				enums.WeaknessSecurityLoggingAndMonitoringFailures:    map[float64]bool{0.0: true},
+				enums.WeaknessInjection:                               map[float64]bool{0.0: true},
+				enums.WeaknessVulnerableAndOutdatedComponents:         map[float64]bool{0.0: true},
+				enums.WeaknessInsecureDesign:                          map[float64]bool{0.0: true},
+				enums.WeaknessSecurityMisconfiguration:                map[float64]bool{0.0: true},
+				enums.WeaknessOther:                                   map[float64]bool{0.0: true},
+				enums.WeaknessNoInfo:                                  map[float64]bool{0.0: true},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.GetUniqueCVSSValuesPerType(tc.vulns)
+
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
