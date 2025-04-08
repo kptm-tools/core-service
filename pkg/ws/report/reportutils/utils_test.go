@@ -206,3 +206,92 @@ func TestGetUniqueCVSSValuesPerType(t *testing.T) {
 		})
 	}
 }
+
+func TestFilterVulnerabilitiesByStatus(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns         []*domain.Vulnerability
+		status        map[string]float64
+		wantSolved    []*domain.Vulnerability
+		wantNotSolved []*domain.Vulnerability
+	}{
+		{
+			name:          "Empty vulnerability slice",
+			vulns:         []*domain.Vulnerability{},
+			status:        map[string]float64{},
+			wantSolved:    []*domain.Vulnerability{},
+			wantNotSolved: []*domain.Vulnerability{},
+		},
+		{
+			name: "Vulnerability slice with empty status",
+			vulns: []*domain.Vulnerability{
+				{Type: "SSRF"},
+				{Type: "Injection"},
+			},
+			status:     map[string]float64{},
+			wantSolved: []*domain.Vulnerability{},
+			wantNotSolved: []*domain.Vulnerability{
+				{Type: "SSRF"},
+				{Type: "Injection"},
+			},
+		},
+		{
+			name: "Vulnerability slice with non-empty status",
+			vulns: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+			status: map[string]float64{
+				"SSRF":      6.5,
+				"Injection": 4.0,
+			},
+			wantSolved: []*domain.Vulnerability{
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+			wantNotSolved: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+			},
+		},
+		{
+			name: "Vulnerability slice with status equal to the CVSS",
+			vulns: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+			status: map[string]float64{
+				"SSRF":      5.0,
+				"Injection": 5.0,
+			},
+			wantSolved: []*domain.Vulnerability{},
+			wantNotSolved: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+		},
+		{
+			name: "Status with 0.0 Desired CVSS",
+			vulns: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+			status: map[string]float64{
+				"SSRF":      0.0,
+				"Injection": 0.0,
+			},
+			wantSolved: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+			wantNotSolved: []*domain.Vulnerability{},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotSolved, gotNotSolved := reportutils.FilterVulnerabilitiesByStatus(tc.vulns, tc.status)
+
+			assert.Equal(t, gotSolved, tc.wantSolved, "FilterVulnerabilitiesByStatus() = %v, want %v", gotSolved, tc.wantSolved)
+			assert.Equal(t, gotNotSolved, tc.wantNotSolved, "FilterVulnerabilitiesByStatus() = %v, want %v", gotNotSolved, tc.wantNotSolved)
+		})
+	}
+}
