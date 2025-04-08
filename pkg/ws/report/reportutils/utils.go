@@ -242,14 +242,14 @@ func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) UniqueCVSSValuesB
 // It returns two slices:
 //   - solved: A slice containing vulnerabilities that would be considered solved
 //     if the provided status was applied. A vulnerability is considered solved if
-//     its WeaknessType exists in the status map and its BaseCVSSScore is strictly
+//     its Type exists in the status map and its BaseCVSSScore is strictly
 //     greater than the corresponding CVSS threshold.
 //   - notSolved: A slice containing vulnerabilities that would not be considered
 //     solved if the provided status were applied. This includes vulnerabilities
 //     where either:
 //   - Their WeaknessType exists in the status map and their BaseCVSS Score
 //     is less than or equal to the corresponding CVSS threshold.
-//   - Their WeaknessType does not exists as a key in the status map.
+//   - Their WeaknessType does not exist as a key in the status map.
 func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[string]float64) (
 	solved []*domain.Vulnerability,
 	notSolved []*domain.Vulnerability,
