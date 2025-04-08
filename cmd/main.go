@@ -88,6 +88,7 @@ func main() {
 	// Handlers - WS
 	wsConfig := &common.Config{
 		Upgrader: websocket.Upgrader{
+			CheckOrigin:     authService.VerifyCORSOrigin,
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 		},
