@@ -18,6 +18,7 @@ type IAuthService interface {
 	VerifyEmail(verificationID, tenantID string) (*fusionauth.BaseHTTPResponse, error)
 	GenerateOTP() auth.OTP
 	VerifyOTP(otp string) bool
+	CheckOriginAllowed(r *http.Request) bool
 }
 
 type IAuthHandlers interface {

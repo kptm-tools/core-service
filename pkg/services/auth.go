@@ -494,3 +494,15 @@ func (s *AuthService) VerifyOTP(otp string) bool {
 	defer s.mu.Unlock()
 	return s.otps.VerifyOTP(otp)
 }
+
+func (s *AuthService) CheckOriginAllowed(r *http.Request) bool {
+	allowedOrigins := s.cfg.GetAllowedOrigins()
+	origin := r.Header.Get("Origin")
+
+	for _, allowedOrigin := range allowedOrigins {
+		if origin == allowedOrigin {
+			return true
+		}
+	}
+	return false
+}
