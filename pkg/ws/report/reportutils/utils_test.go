@@ -285,6 +285,25 @@ func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 			},
 			wantNotSolved: []*domain.Vulnerability{},
 		},
+		{
+			name: "Vulnerability with Type not included in map",
+			vulns: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+				{Type: "Another WeaknessType", BaseCVSSScore: 5.0},
+			},
+			status: map[string]float64{
+				"SSRF":      0.0,
+				"Injection": 0.0,
+			},
+			wantSolved: []*domain.Vulnerability{
+				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Injection", BaseCVSSScore: 5.0},
+			},
+			wantNotSolved: []*domain.Vulnerability{
+				{Type: "Another WeaknessType", BaseCVSSScore: 5.0},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
