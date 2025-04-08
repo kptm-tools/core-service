@@ -495,7 +495,7 @@ func (s *AuthService) VerifyOTP(otp string) bool {
 	return s.otps.VerifyOTP(otp)
 }
 
-func (s *AuthService) VerifyCORSOrigin(r *http.Request) bool {
+func (s *AuthService) CheckOriginAllowed(r *http.Request) bool {
 	allowedOrigins := s.cfg.GetAllowedOrigins()
 	origin := r.Header.Get("Origin")
 
