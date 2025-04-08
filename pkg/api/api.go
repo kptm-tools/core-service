@@ -109,7 +109,7 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), "getDashboard"))
 
 	router.HandleFunc("/ws/scan", s.scanHub.Serve)
-	router.HandleFunc("/ws/report/{scanId}", s.reportHub.Serve)
+	router.HandleFunc("/ws/report/", s.reportHub.Serve)
 
 	stack := middleware.CreateStack(
 		middleware.Logging,

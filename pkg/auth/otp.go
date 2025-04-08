@@ -43,7 +43,7 @@ func (rm RetentionMap) VerifyOTP(otp string) bool {
 		return false
 	}
 
-	delete(rm, otp) // Delete it because it's a ONE time password
+	// delete(rm, otp) // Delete it because it's a ONE time password
 	return true
 }
 

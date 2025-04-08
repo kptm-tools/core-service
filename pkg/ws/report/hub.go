@@ -18,6 +18,7 @@ type ReportHub struct {
 	unregister  chan interfaces.IClient
 	handlers    map[string]interfaces.IReportHandler
 	authService interfaces.IAuthService
+	scanService interfaces.IScanService
 }
 
 var _ interfaces.IHub = (*ReportHub)(nil)
@@ -29,6 +30,7 @@ var _ interfaces.IHub = (*ReportHub)(nil)
 func NewReportHub(
 	config *common.Config,
 	scanService interfaces.IScanService,
+	authService interfaces.IAuthService,
 ) *ReportHub {
 	handlers := map[string]interfaces.IReportHandler{
 		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(scanService),
@@ -38,11 +40,13 @@ func NewReportHub(
 	}
 
 	return &ReportHub{
-		cfg:        config,
-		clients:    make(map[string]interfaces.IClient),
-		register:   make(chan interfaces.IClient),
-		unregister: make(chan interfaces.IClient),
-		handlers:   handlers,
+		cfg:         config,
+		clients:     make(map[string]interfaces.IClient),
+		register:    make(chan interfaces.IClient),
+		unregister:  make(chan interfaces.IClient),
+		handlers:    handlers,
+		authService: authService,
+		scanService: scanService,
 	}
 }
 
@@ -52,12 +56,15 @@ func (h *ReportHub) Serve(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	slog.Debug("REPORTS: Got OTP from header successfully", slog.String("otp", otp))
 
 	if !h.authService.VerifyOTP(otp) {
 		slog.Warn("Client OTP has expired")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
+	slog.Debug("REPORTS: Verified OTP successfully")
 
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -107,7 +114,7 @@ func (h *ReportHub) Unregister(client interfaces.IClient) {
 func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportClient) error {
 	handler, ok := h.handlers[msg.Type]
 	if !ok {
-		return customerrors.ErrMessageNotSupported
+		return customerrors.NewMessageNotSupportedError(msg.Type)
 	}
 
 	if err := handler.Handle(msg, client); err != nil {
