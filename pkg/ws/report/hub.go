@@ -118,8 +118,7 @@ func (h *ReportHub) Run() {
 				delete(h.clients, client.GetID())
 			}
 		case scanID := <-h.disconnectRoom:
-			h.ExecuteAfterDelay(5*time.Second, scanID)
-
+			go h.ExecuteAfterDelay(5*time.Second, scanID)
 		}
 	}
 }
@@ -172,8 +171,10 @@ func (h *ReportHub) AddToRoom(scanID string) {
 func (h *ReportHub) RemoveFromRoom(scanID string) {
 	room, ok := h.rooms.Load(scanID)
 	if ok {
+		slog.Info("Removing client from room", slog.String("scanID", scanID))
 		room.AmountOfClients = room.AmountOfClients - 1
 		if room.AmountOfClients == 0 {
+			slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
 			h.disconnectRoom <- scanID
 		}
 	}
@@ -184,6 +185,7 @@ func (h *ReportHub) ExecuteAfterDelay(delay time.Duration, scanID string) {
 		room, ok := h.rooms.Load(scanID)
 		if ok {
 			if room.AmountOfClients == 0 {
+				slog.Info("Removing scanID from room", slog.String("scanID", scanID))
 				h.rooms.Delete(scanID)
 			}
 		}

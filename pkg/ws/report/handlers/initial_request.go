@@ -47,8 +47,9 @@ func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IRe
 	// Obtain from room but room is not in IHub
 	//vulns, err := h.scanService.GetScanVulnerabilities(scanID)
 	client.GetHubReport().AddToRoom(scanID.String())
+	client.SetRoomID(scanID.String())
 	vulns := client.GetHubReport().GetRoomVulnerabilities(scanID.String())
-	if len(vulns) == 0 {
+	if vulns == nil {
 		slog.Error("Failed to get vulnerabilities for scan", slog.String("scan_id", scanID.String()), slog.Any("error", err))
 		return customerrors.NewServerSideError("failed to get vulnerabilities for scan")
 	}

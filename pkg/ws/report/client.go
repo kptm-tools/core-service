@@ -32,6 +32,8 @@ type ReportClient struct {
 	// vectorStatus represents the currently selected vectors by the client. This map must be initially
 	// populated on an initial connection, and updated on each vector_update message.
 	vectorStatus map[enums.WeaknessType]float64
+
+	roomID string
 }
 
 func NewReportClient(
@@ -57,6 +59,7 @@ func (c *ReportClient) ReadMessages() {
 		messageType, payload, err := c.connection.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				c.GetHubReport().RemoveFromRoom(c.roomID)
 				slog.Error("Error reading message", slog.Any("error", err))
 			}
 			break
@@ -164,4 +167,7 @@ func (c *ReportClient) sendErrorMessage(message string) {
 
 func (c *ReportClient) GetHubReport() interfaces.IHubReport {
 	return c.hub
+}
+func (c *ReportClient) SetRoomID(scanID string) {
+	c.roomID = scanID
 }
