@@ -161,3 +161,7 @@ func (c *ReportClient) sendErrorMessage(message string) {
 
 	c.outgoing <- errMessageBytes
 }
+
+func (c *ReportClient) GetHubReport() interfaces.IHubReport {
+	return c.hub
+}
