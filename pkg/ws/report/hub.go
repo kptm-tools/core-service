@@ -1,24 +1,30 @@
 package report
 
 import (
+	"github.com/google/uuid"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
 	"github.com/kptm-tools/core-service/pkg/ws/utils"
+	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 type ReportHub struct {
-	cfg         *common.Config
-	clients     map[string]interfaces.IClient
-	register    chan interfaces.IClient
-	unregister  chan interfaces.IClient
-	handlers    map[string]interfaces.IReportHandler
-	authService interfaces.IAuthService
-	scanService interfaces.IScanService
+	cfg            *common.Config
+	clients        map[string]interfaces.IClient
+	register       chan interfaces.IClient
+	unregister     chan interfaces.IClient
+	handlers       map[string]interfaces.IReportHandler
+	authService    interfaces.IAuthService
+	scanService    interfaces.IScanService
+	rooms          csmap.CsMap[string, common.Room]
+	disconnectRoom chan string
 }
 
 var _ interfaces.IHub = (*ReportHub)(nil)
@@ -96,6 +102,9 @@ func (h *ReportHub) Run() {
 				}
 				delete(h.clients, client.GetID())
 			}
+		case scanID := <-h.disconnectRoom:
+			h.ExecuteAfterDelay(5*time.Second, scanID)
+
 		}
 	}
 }
@@ -121,5 +130,55 @@ func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportCl
 		return err
 	}
 
+	return nil
+}
+
+func (h *ReportHub) AddToRoom(scanID string) {
+	room, ok := h.rooms.Load(scanID)
+	if ok {
+		room.AmountOfClients = room.AmountOfClients + 1
+	} else {
+		scanIDUUID, errParsing := uuid.Parse(scanID)
+		if errParsing != nil {
+			slog.Error("Failed to parse scan ID", slog.String("scanID", scanID))
+		}
+		data, errGet := h.scanService.GetScanVulnerabilities(scanIDUUID)
+		if errGet != nil {
+			slog.Error("Failed to get scan vulnerabilities", slog.String("scanID", scanID))
+		}
+		roomScan := common.Room{
+			Vulnerabilities: data,
+			AmountOfClients: 1,
+		}
+		h.rooms.Store(scanID, roomScan)
+	}
+}
+
+func (h *ReportHub) RemoveFromRoom(scanID string) {
+	room, ok := h.rooms.Load(scanID)
+	if ok {
+		room.AmountOfClients = room.AmountOfClients - 1
+		if room.AmountOfClients == 0 {
+			h.disconnectRoom <- scanID
+		}
+	}
+}
+
+func (h *ReportHub) ExecuteAfterDelay(delay time.Duration, scanID string) {
+	time.AfterFunc(delay, func() {
+		room, ok := h.rooms.Load(scanID)
+		if ok {
+			if room.AmountOfClients == 0 {
+				h.rooms.Delete(scanID)
+			}
+		}
+	})
+}
+
+func (h *ReportHub) GetRoomVulnerabilities(scanID string) []*domain.Vulnerability {
+	val, ok := h.rooms.Load(scanID)
+	if ok {
+		return val.Vulnerabilities
+	}
 	return nil
 }

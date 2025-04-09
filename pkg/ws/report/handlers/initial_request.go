@@ -44,7 +44,7 @@ func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IRe
 	if err != nil {
 		return customerrors.NewParseError("scanID is an invalid UUID", nil)
 	}
-
+	// Obtain from room but room is not in IHub
 	vulns, err := h.scanService.GetScanVulnerabilities(scanID)
 	if err != nil {
 		slog.Error("Failed to get vulnerabilities for scan", slog.String("scan_id", scanID.String()), slog.Any("error", err))

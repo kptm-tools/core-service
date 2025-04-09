@@ -1,6 +1,8 @@
 package interfaces
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type IHub interface {
 	Run()
