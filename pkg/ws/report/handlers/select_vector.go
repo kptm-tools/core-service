@@ -33,7 +33,7 @@ func (h *SelectVectorHandler) Handle(msg common.Message, client interfaces.IRepo
 	weaknessType, ok := enums.ParseWeaknessFromString(selectVectorRequest.VulnerabilityTypeName)
 	if !ok {
 		slog.Error("Selected vulnerability type is invalid WeaknessType", slog.String("vulnerability_type", selectVectorRequest.VulnerabilityTypeName))
-		return customerrors.NewParseError("Vulnerabiilty type is invalid", nil)
+		return customerrors.NewParseError("Vulnerability type is invalid", nil)
 	}
 
 	// 1. Get the current status
