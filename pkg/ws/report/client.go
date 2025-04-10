@@ -168,6 +168,11 @@ func (c *ReportClient) sendErrorMessage(message string) {
 func (c *ReportClient) GetHubReport() interfaces.IHubReport {
 	return c.hub
 }
+
 func (c *ReportClient) SetRoomID(scanID string) {
 	c.roomID = scanID
+}
+
+func (c *ReportClient) GetRoomID() string {
+	return c.roomID
 }
