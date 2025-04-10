@@ -236,3 +236,38 @@ func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) UniqueCVSSValuesB
 
 	return uniqueWeaknessCVSSValuesMap
 }
+
+// FilterVulnerabilitiesByStatus filters a slice of vulnerabilities based on a client's current status.
+//
+// It returns two slices:
+//   - solved: A slice containing vulnerabilities that would be considered solved
+//     if the provided status was applied. A vulnerability is considered solved if
+//     its Type exists in the status map and its BaseCVSSScore is strictly
+//     greater than the corresponding CVSS threshold.
+//   - notSolved: A slice containing vulnerabilities that would not be considered
+//     solved if the provided status were applied. This includes vulnerabilities
+//     where either:
+//   - Their WeaknessType exists in the status map and their BaseCVSS Score
+//     is less than or equal to the corresponding CVSS threshold.
+//   - Their WeaknessType does not exist as a key in the status map.
+func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[string]float64) (
+	solved []*domain.Vulnerability,
+	notSolved []*domain.Vulnerability,
+) {
+	solved = make([]*domain.Vulnerability, 0)
+	notSolved = make([]*domain.Vulnerability, 0)
+
+	for _, vuln := range vulns {
+		if cvssThreshold, ok := status[vuln.Type]; ok {
+			if vuln.BaseCVSSScore > cvssThreshold {
+				solved = append(solved, vuln)
+			} else {
+				notSolved = append(notSolved, vuln)
+			}
+		} else {
+			notSolved = append(notSolved, vuln)
+		}
+	}
+
+	return solved, notSolved
+}
