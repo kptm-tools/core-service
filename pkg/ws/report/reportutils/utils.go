@@ -271,3 +271,26 @@ func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[str
 
 	return solved, notSolved
 }
+
+// GetHighestCVSSVulnerabilityOfType gets the vulnerability with the highest CVSS of a slice of a particular type.
+func GetHighestCVSSVulnerabilityOfType(vulns []*domain.Vulnerability, vulnType enums.WeaknessType) *domain.Vulnerability {
+	var highestVuln *domain.Vulnerability = nil
+	maxCVSS := -1.0
+	vulnTypeStr := vulnType.String()
+
+	for _, vuln := range vulns {
+		if vuln.Type == vulnTypeStr {
+			if vuln.BaseCVSSScore > maxCVSS {
+				maxCVSS = vuln.BaseCVSSScore
+				highestVuln = vuln
+			} else if vuln.BaseCVSSScore == maxCVSS {
+				// If CVSS is the same, compare ID's alphabetically
+				if vuln.VulnerabilityID > highestVuln.VulnerabilityID {
+					highestVuln = vuln
+				}
+			}
+		}
+	}
+
+	return highestVuln
+}

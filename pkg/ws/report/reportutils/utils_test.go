@@ -314,3 +314,109 @@ func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns    []*domain.Vulnerability
+		vulnType enums.WeaknessType
+		want     *domain.Vulnerability
+	}{
+		{
+			name: "One vulnerability of type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				Type:          "Injection",
+				BaseCVSSScore: 5.5,
+			},
+		},
+		{
+			name: "One vulnerability but not of type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+			},
+			vulnType: enums.WeaknessBrokenAccessControl,
+			want:     nil,
+		},
+		{
+			name: "Multiple vulnerabilities of different type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+				{
+					Type:          "Server-Side Request Forgery (SSRF)",
+					BaseCVSSScore: 5.6,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				Type:          "Injection",
+				BaseCVSSScore: 5.5,
+			},
+		},
+		{
+			name: "Multiple vulnerabilities of same type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.6,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				Type:          "Injection",
+				BaseCVSSScore: 5.6,
+			},
+		},
+		{
+			name: "Multiple vulnerabilities of same type and CVSS",
+			vulns: []*domain.Vulnerability{
+				{
+					VulnerabilityID: "CVE-2024",
+					Type:            "Injection",
+					BaseCVSSScore:   5.5,
+				},
+				{
+					VulnerabilityID: "CVE-2012",
+					Type:            "Injection",
+					BaseCVSSScore:   5.5,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				VulnerabilityID: "CVE-2024",
+				Type:            "Injection",
+				BaseCVSSScore:   5.5,
+			},
+		},
+		{
+			name:     "Empty vulnerabilities",
+			vulns:    []*domain.Vulnerability{},
+			vulnType: enums.WeaknessInjection,
+			want:     nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.GetHighestCVSSVulnerabilityOfType(tc.vulns, tc.vulnType)
+
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
