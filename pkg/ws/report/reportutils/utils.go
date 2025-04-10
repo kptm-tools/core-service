@@ -16,7 +16,7 @@ type (
 	vulnerabilityCountByType map[enums.WeaknessType]int
 	// uniqueCVSSValues represents a set of unique CVSS scores.
 	uniqueCVSSValues map[float64]bool
-	// uniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
+	// UniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
 	UniqueCVSSValuesByType map[enums.WeaknessType]uniqueCVSSValues
 )
 
