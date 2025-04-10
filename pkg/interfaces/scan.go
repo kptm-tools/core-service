@@ -37,7 +37,6 @@ type IScanService interface {
 
 type IScanHandlers interface {
 	CreateScan(writer http.ResponseWriter, request *http.Request) error
-	GetScans(writer http.ResponseWriter, request *http.Request) error
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error

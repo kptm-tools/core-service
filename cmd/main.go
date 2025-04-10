@@ -1,9 +1,17 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/report"
+	"github.com/kptm-tools/core-service/pkg/ws/scan"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/cmd/migrations"
@@ -17,6 +25,9 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	c := config.LoadConfig()
 
 	// Configure logging
@@ -47,7 +58,7 @@ func main() {
 
 	// Services
 	healthService := services.NewHealthcheckService(c, coreStore)
-	authService := services.NewAuthService(coreStore)
+	authService := services.NewAuthService(ctx, coreStore)
 	hostService := services.NewHostService(coreStore)
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore)
@@ -60,7 +71,7 @@ func main() {
 		c.SMTP.Password,
 		c.SMTP.FromEmail)
 
-	// Handlers
+	// Handlers - REST
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
@@ -73,6 +84,20 @@ func main() {
 		eventBus)
 	vulnHandlers := handlers.NewVulnerabilityHandlers(vulnService)
 	scanScheduleHandlers := handlers.NewScanScheduleHandlers(scanScheduleService)
+
+	// Handlers - WS
+	wsConfig := &common.Config{
+		Upgrader: websocket.Upgrader{
+			CheckOrigin:     authService.CheckOriginAllowed,
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+		},
+		PongWait:     10 * time.Second,
+		PingInterval: (10 * time.Second * 9) / 10,
+	}
+
+	scanHub := scan.NewScanHub(ctx, wsConfig, scanService, authService, 5)
+	reportHub := report.NewReportHub(wsConfig, scanService, authService)
 
 	// Event Subscriptions
 	if err := events.SetupEventBus(eventBus, scanService); err != nil {
@@ -96,9 +121,31 @@ func main() {
 		scanHandlers,
 		vulnHandlers,
 		scanScheduleHandlers,
+		scanHub,
+		reportHub,
 	)
 
-	if err := s.Init(); err != nil {
-		slog.Error("Failed to initialize APIServer", slog.Any("error", err))
+	apiSrv := s.Init()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT)
+
+	// Start API Server
+	go func() {
+		if err := apiSrv.ListenAndServe(); err != nil {
+			slog.Error("Failed to initialize APIServer", slog.Any("error", err))
+		}
+	}()
+
+	// Wait for the interrupt signal to gracefully shutdown
+	sig := <-sigs
+	slog.Info("Received signal to shutdown", slog.Any("signal", sig))
+
+	// Create deadline for the shutdown
+	ctxDeadline, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := apiSrv.Shutdown(ctxDeadline); err != nil {
+		slog.Error("Error shutting down API Server", slog.Any("error", err))
 	}
 }

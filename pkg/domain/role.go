@@ -73,6 +73,7 @@ func GetValidRoles(funcName string) ([]Role, error) {
 		"createVulnerabilityComment":      {RoleAnalyst},
 		"editVulnerabilityComment":        {RoleAnalyst},
 		"deleteVulnerabilityComment":      {RoleAnalyst},
+		"dynamicReport":                   {RoleOperator},
 	}
 
 	v, ok := funcRoles[funcName]

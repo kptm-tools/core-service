@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/kptm-tools/core-service/pkg/api"
+	"github.com/kptm-tools/core-service/pkg/auth"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -47,7 +48,7 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	// Write the response from the service
-	resp, err := h.authService.Login(loginRequest.LoginID, loginRequest.Password, loginRequest.ApplicationID)
+	faResp, err := h.authService.Login(loginRequest.LoginID, loginRequest.Password, loginRequest.ApplicationID)
 	if err != nil {
 		var fae *services.FaError
 
@@ -58,7 +59,17 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	return api.WriteJSON(w, http.StatusOK, &resp)
+	otp := h.authService.GenerateOTP()
+
+	loginResp := auth.LoginResponse{
+		Token:                  faResp.Token,
+		TokenExpirationInstant: faResp.TokenExpirationInstant,
+		User:                   faResp.User,
+		TenantID:               faResp.User.TenantId,
+		OTPKey:                 otp.Key,
+	}
+
+	return api.WriteJSON(w, http.StatusOK, &loginResp)
 }
 
 func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) error {

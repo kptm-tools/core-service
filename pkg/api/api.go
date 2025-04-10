@@ -8,8 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
+
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
 type APIServer struct {
@@ -22,6 +23,8 @@ type APIServer struct {
 	scanHandlers         interfaces.IScanHandlers
 	vulnHandlers         interfaces.IVulnerabilityHandlers
 	scanScheduleHandlers interfaces.IScanScheduleHandlers
+	scanHub              interfaces.IHub
+	reportHub            interfaces.IHub
 }
 
 type APIError struct {
@@ -39,6 +42,8 @@ func NewAPIServer(
 	sHandlers interfaces.IScanHandlers,
 	vHandlers interfaces.IVulnerabilityHandlers,
 	ssHandlers interfaces.IScanScheduleHandlers,
+	scanHub interfaces.IHub,
+	reportHub interfaces.IHub,
 ) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
@@ -50,11 +55,16 @@ func NewAPIServer(
 		scanHandlers:         sHandlers,
 		vulnHandlers:         vHandlers,
 		scanScheduleHandlers: ssHandlers,
+		scanHub:              scanHub,
+		reportHub:            reportHub,
 	}
 }
 
-func (s *APIServer) Init() error {
+func (s *APIServer) Init() http.Server {
 	router := http.NewServeMux()
+
+	go s.scanHub.Run()
+	go s.reportHub.Run()
 
 	router.HandleFunc("GET /healthcheck",
 		makeHTTPHandlerFunc(s.healthHandlers.Healthcheck),
@@ -79,7 +89,6 @@ func (s *APIServer) Init() error {
 	router.HandleFunc("GET /tenants", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), "tenants"))
 
 	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScan), "createScans"))
-	router.HandleFunc("GET /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScans), "getScans"))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), "cancelScanByID"))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), "getScanInsightsByID"))
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilities), "getScanVulnerabilities"))
@@ -99,20 +108,19 @@ func (s *APIServer) Init() error {
 
 	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), "getDashboard"))
 
+	router.HandleFunc("/ws/scan", s.scanHub.Serve)
+	router.HandleFunc("/ws/report/", s.reportHub.Serve)
+
 	stack := middleware.CreateStack(
 		middleware.Logging,
 		middleware.CheckCORS,
 	)
-
-	server := http.Server{
+	log.Println("Server listening on port: ", s.listenAddr)
+	return http.Server{
 		Addr: s.listenAddr,
 
 		Handler: stack(router),
 	}
-
-	log.Println("Server listening on port: ", s.listenAddr)
-
-	return server.ListenAndServe()
 }
 
 // This function wraps our APIFunc struct so we can handle errors gracefully

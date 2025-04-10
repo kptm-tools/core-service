@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
+	"github.com/kptm-tools/core-service/pkg/auth"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -15,6 +16,9 @@ type IAuthService interface {
 	RegisterUser(firstname, lastname, email, password, applicationID string, roles []string) (*fusionauth.RegistrationResponse, error)
 	ChangePassword(changePasswordID, password, email, applicationID string) (*fusionauth.ChangePasswordResponse, error)
 	VerifyEmail(verificationID, tenantID string) (*fusionauth.BaseHTTPResponse, error)
+	GenerateOTP() auth.OTP
+	VerifyOTP(otp string) bool
+	CheckOriginAllowed(r *http.Request) bool
 }
 
 type IAuthHandlers interface {
