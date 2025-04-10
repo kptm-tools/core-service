@@ -117,8 +117,6 @@ func (h *ReportHub) Run() {
 				}
 				delete(h.clients, client.GetID())
 			}
-		case scanID := <-h.disconnectRoom:
-			go h.ExecuteAfterDelay(5*time.Second, scanID)
 		}
 	}
 }
@@ -151,6 +149,7 @@ func (h *ReportHub) AddToRoom(scanID string) {
 	room, ok := h.rooms.Load(scanID)
 	if ok {
 		room.AmountOfClients = room.AmountOfClients + 1
+		h.rooms.Store(scanID, room)
 	} else {
 		scanIDUUID, errParsing := uuid.Parse(scanID)
 		if errParsing != nil {
@@ -166,22 +165,26 @@ func (h *ReportHub) AddToRoom(scanID string) {
 		}
 		h.rooms.Store(scanID, roomScan)
 	}
+
 }
 
 func (h *ReportHub) RemoveFromRoom(scanID string) {
 	room, ok := h.rooms.Load(scanID)
+	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
 	if ok {
 		slog.Info("Removing client from room", slog.String("scanID", scanID))
 		room.AmountOfClients = room.AmountOfClients - 1
+		h.rooms.Store(scanID, room)
 		if room.AmountOfClients == 0 {
 			slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
-			h.disconnectRoom <- scanID
+			ExecuteAfterDelay(5*time.Second, scanID, h)
 		}
 	}
 }
 
-func (h *ReportHub) ExecuteAfterDelay(delay time.Duration, scanID string) {
+func ExecuteAfterDelay(delay time.Duration, scanID string, h *ReportHub) {
 	time.AfterFunc(delay, func() {
+		slog.Info("Entering to delete scanID", slog.String("scanID", scanID))
 		room, ok := h.rooms.Load(scanID)
 		if ok {
 			if room.AmountOfClients == 0 {
@@ -197,5 +200,6 @@ func (h *ReportHub) GetRoomVulnerabilities(scanID string) []*domain.Vulnerabilit
 	if ok {
 		return val.Vulnerabilities
 	}
+	slog.Warn("No room value present for scanID", slog.String("scan_id", scanID))
 	return nil
 }
