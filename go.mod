@@ -30,7 +30,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/likexian/gokit v0.25.15 // indirect
-	github.com/mhmtszr/concurrent-swiss-map v1.0.8 // indirect
 	github.com/nats-io/nkeys v0.4.9 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
