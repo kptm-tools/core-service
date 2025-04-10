@@ -3,9 +3,9 @@ package report
 import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"hash/fnv"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
@@ -13,19 +13,17 @@ import (
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
 	"github.com/kptm-tools/core-service/pkg/ws/utils"
-	csmap "github.com/mhmtszr/concurrent-swiss-map"
 )
 
 type ReportHub struct {
-	cfg            *common.Config
-	clients        map[string]interfaces.IClient
-	register       chan interfaces.IClient
-	unregister     chan interfaces.IClient
-	handlers       map[string]interfaces.IReportHandler
-	authService    interfaces.IAuthService
-	scanService    interfaces.IScanService
-	rooms          *csmap.CsMap[string, Room]
-	disconnectRoom chan string
+	cfg         *common.Config
+	clients     map[string]interfaces.IClient
+	register    chan interfaces.IClient
+	unregister  chan interfaces.IClient
+	handlers    map[string]interfaces.IReportHandler
+	authService interfaces.IAuthService
+	scanService interfaces.IScanService
+	rooms       *sync.Map
 }
 
 var _ interfaces.IHubReport = (*ReportHub)(nil)
@@ -45,20 +43,7 @@ func NewReportHub(
 		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
 		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
 	}
-	roomsMap := csmap.Create[string, Room](
-		// set the number of map shards. the default value is 32.
-		csmap.WithShardCount[string, Room](32),
 
-		// if don't set custom hasher, use the built-in maphash.
-		csmap.WithCustomHasher[string, Room](func(key string) uint64 {
-			hash := fnv.New64a()
-			hash.Write([]byte(key))
-			return hash.Sum64()
-		}),
-
-		// set the total capacity, every shard map has total capacity/shard count capacity. the default value is 0.
-		csmap.WithSize[string, Room](1000),
-	)
 	return &ReportHub{
 		cfg:         config,
 		clients:     make(map[string]interfaces.IClient),
@@ -67,7 +52,7 @@ func NewReportHub(
 		handlers:    handlers,
 		authService: authService,
 		scanService: scanService,
-		rooms:       roomsMap,
+		rooms:       &sync.Map{},
 	}
 }
 
@@ -146,32 +131,45 @@ func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportCl
 }
 
 func (h *ReportHub) AddToRoom(scanID string) {
-	room, ok := h.rooms.Load(scanID)
-	if ok {
-		room.AmountOfClients = room.AmountOfClients + 1
-		h.rooms.Store(scanID, room)
-	} else {
-		scanIDUUID, errParsing := uuid.Parse(scanID)
-		if errParsing != nil {
-			slog.Error("Failed to parse scan ID", slog.String("scanID", scanID))
-		}
-		data, errGet := h.scanService.GetScanVulnerabilities(scanIDUUID)
-		if errGet != nil {
-			slog.Error("Failed to get scan vulnerabilities", slog.String("scanID", scanID))
-		}
-		roomScan := Room{
-			Vulnerabilities: data,
-			AmountOfClients: 1,
-		}
-		h.rooms.Store(scanID, roomScan)
+	scanUUID, err := uuid.Parse(scanID)
+	if err != nil {
+		slog.Error("Failed to parse scanID when adding client to room", slog.String("scan_id", scanID), slog.Any("error", err))
+		return
 	}
+	roomInterface, _ := h.rooms.LoadOrStore(scanID, NewReportRoom(scanID))
+	room, ok := roomInterface.(*ReportRoom)
+	if !ok {
+		slog.Error("Hub's room is not of type ReportRoom", slog.String("scan_id", scanID))
+		return
+	}
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	if room.AmountOfClients == 0 {
+		slog.Debug("Fetching vulnerabilities for new room...")
+		vulns, err := h.scanService.GetScanVulnerabilities(scanUUID)
+		if err != nil {
+			slog.Error("Failed to fetch vulnerabilities from DB when adding client to room", slog.Any("error", err))
+			return
+		}
+		room.Vulnerabilities = vulns
+		room.AmountOfClients = 1
+		slog.Info("Vulnerabilities loaded for scanID", slog.String("scan_id", scanID))
+	} else {
+		room.AmountOfClients += 1
+		slog.Info("Increasing the amount of clients for scanID", slog.String("scan_id", scanID))
+	}
+	slog.Info("Client joined room", slog.String("scan_id", scanID))
 
 }
 
 func (h *ReportHub) RemoveFromRoom(scanID string) {
-	room, ok := h.rooms.Load(scanID)
+	roomInterface, _ := h.rooms.Load(scanID)
+	room, ok := roomInterface.(*ReportRoom)
 	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
 	if ok {
+		room.mu.Lock()
+		defer room.mu.Unlock()
 		slog.Info("Removing client from room", slog.String("scanID", scanID))
 		room.AmountOfClients = room.AmountOfClients - 1
 		h.rooms.Store(scanID, room)
@@ -185,9 +183,12 @@ func (h *ReportHub) RemoveFromRoom(scanID string) {
 func ExecuteAfterDelay(delay time.Duration, scanID string, h *ReportHub) {
 	time.AfterFunc(delay, func() {
 		slog.Info("Entering to delete scanID", slog.String("scanID", scanID))
-		room, ok := h.rooms.Load(scanID)
+		roomInterface, _ := h.rooms.Load(scanID)
+		room, ok := roomInterface.(*ReportRoom)
 		if ok {
 			if room.AmountOfClients == 0 {
+				room.mu.Lock()
+				defer room.mu.Unlock()
 				slog.Info("Removing scanID from room", slog.String("scanID", scanID))
 				h.rooms.Delete(scanID)
 			}
@@ -196,9 +197,10 @@ func ExecuteAfterDelay(delay time.Duration, scanID string, h *ReportHub) {
 }
 
 func (h *ReportHub) GetRoomVulnerabilities(scanID string) []*domain.Vulnerability {
-	val, ok := h.rooms.Load(scanID)
+	roomInterface, _ := h.rooms.Load(scanID)
+	room, ok := roomInterface.(*ReportRoom)
 	if ok {
-		return val.Vulnerabilities
+		return room.Vulnerabilities
 	}
 	slog.Warn("No room value present for scanID", slog.String("scan_id", scanID))
 	return nil
