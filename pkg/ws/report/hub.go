@@ -24,7 +24,7 @@ type ReportHub struct {
 	handlers       map[string]interfaces.IReportHandler
 	authService    interfaces.IAuthService
 	scanService    interfaces.IScanService
-	rooms          *csmap.CsMap[string, common.Room]
+	rooms          *csmap.CsMap[string, Room]
 	disconnectRoom chan string
 }
 
@@ -45,19 +45,19 @@ func NewReportHub(
 		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
 		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
 	}
-	roomsMap := csmap.Create[string, common.Room](
+	roomsMap := csmap.Create[string, Room](
 		// set the number of map shards. the default value is 32.
-		csmap.WithShardCount[string, common.Room](32),
+		csmap.WithShardCount[string, Room](32),
 
 		// if don't set custom hasher, use the built-in maphash.
-		csmap.WithCustomHasher[string, common.Room](func(key string) uint64 {
+		csmap.WithCustomHasher[string, Room](func(key string) uint64 {
 			hash := fnv.New64a()
 			hash.Write([]byte(key))
 			return hash.Sum64()
 		}),
 
 		// set the total capacity, every shard map has total capacity/shard count capacity. the default value is 0.
-		csmap.WithSize[string, common.Room](1000),
+		csmap.WithSize[string, Room](1000),
 	)
 	return &ReportHub{
 		cfg:         config,
@@ -159,7 +159,7 @@ func (h *ReportHub) AddToRoom(scanID string) {
 		if errGet != nil {
 			slog.Error("Failed to get scan vulnerabilities", slog.String("scanID", scanID))
 		}
-		roomScan := common.Room{
+		roomScan := Room{
 			Vulnerabilities: data,
 			AmountOfClients: 1,
 		}
