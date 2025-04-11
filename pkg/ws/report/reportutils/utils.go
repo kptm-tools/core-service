@@ -260,7 +260,8 @@ func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[enu
 	for _, vuln := range vulns {
 		vulnTypeStr, ok := enums.ParseWeaknessFromString(vuln.Type)
 		if !ok {
-			slog.Warn("Found an invalid vulnerability type when filtering vulnerabilities by status, skipping vuln...")
+			slog.Warn("Found an invalid vulnerability type when filtering vulnerabilities by status, skipping vuln...",
+				slog.Int("vuln_id", vuln.ID))
 			continue
 		}
 
@@ -290,7 +291,7 @@ func GetHighestCVSSVulnerabilityOfType(vulns []*domain.Vulnerability, vulnType e
 				maxCVSS = vuln.BaseCVSSScore
 				highestVuln = vuln
 			} else if vuln.BaseCVSSScore == maxCVSS {
-				// If CVSS is the same, compare ID's alphabetically
+				// If CVSS is the same, compare ID's (names) alphabetically
 				if vuln.VulnerabilityID > highestVuln.VulnerabilityID {
 					highestVuln = vuln
 				}
