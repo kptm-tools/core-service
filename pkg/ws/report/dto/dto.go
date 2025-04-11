@@ -64,3 +64,15 @@ func NewVulnerabilityDetails(vuln domain.Vulnerability) VulnerabilityDetails {
 		Availability:       vuln.AvailabilityImpact.String(),
 	}
 }
+
+// VectorUpdateReponse (Server -> Client)
+type VectorUpdateReponse struct {
+	ExpectedGlobalCVSSScore            float64 `json:"expected_global_cvss_score"`
+	ExpectedGlobalTotalVulnerabilities int     `json:"expected_global_total_vulnerabilities"`
+}
+
+// VectorUpdateMessage is the payload sent in MessageVectorUpdate
+type VectorUpdateMessage struct {
+	VulnerabilityTypeName string  `json:"vulnerability_type_name"`
+	NewValue              float64 `json:"new_value"`
+}

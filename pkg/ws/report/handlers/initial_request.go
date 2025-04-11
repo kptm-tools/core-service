@@ -26,11 +26,6 @@ func NewInitialRequestHandler(scanService interfaces.IScanService) *InitialReque
 	}
 }
 
-// InitialDataRequestMessage is the payload sent in EventInitialRequest
-type InitialDataRequestMessage struct {
-	ScanID string `json:"scan_id"`
-}
-
 func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IReportClient) error {
 	slog.Debug("Handling initial request message...")
 
