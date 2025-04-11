@@ -1,6 +1,8 @@
 package dto
 
-import "github.com/kptm-tools/core-service/pkg/domain"
+import (
+	"github.com/kptm-tools/core-service/pkg/domain"
+)
 
 // InitialDataRequest is the payload send in a MessageInitialRequest (Client -> Server)
 type InitialDataRequest struct {
@@ -75,4 +77,13 @@ type VectorUpdateReponse struct {
 type VectorUpdateMessage struct {
 	VulnerabilityTypeName string  `json:"vulnerability_type_name"`
 	NewValue              float64 `json:"new_value"`
+}
+
+// ApplyVectorsMessage is the payload sent in a MessageApplyVectors
+type ApplyVectorsMessage struct{}
+
+type ReportDetailsResponse struct {
+	SolvedVulnerabilities     []*domain.Vulnerability `json:"solved_vulnerabilities"`
+	UnattendedVulnerabilities []*domain.Vulnerability `json:"unattended_vulnerabilities"`
+	ExpectedSecurityPosture   float64                 `json:"expected_security_posture"`
 }
