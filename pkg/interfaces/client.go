@@ -18,4 +18,5 @@ type IReportClient interface {
 	UpdateVector(weaknessType enums.WeaknessType, value float64)
 	GetHubReport() IHubReport
 	SetRoomID(string)
+	GetRoomID() string
 }

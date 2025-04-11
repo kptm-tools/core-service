@@ -250,7 +250,7 @@ func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) UniqueCVSSValuesB
 //   - Their WeaknessType exists in the status map and their BaseCVSS Score
 //     is less than or equal to the corresponding CVSS threshold.
 //   - Their WeaknessType does not exist as a key in the status map.
-func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[string]float64) (
+func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[enums.WeaknessType]float64) (
 	solved []*domain.Vulnerability,
 	notSolved []*domain.Vulnerability,
 ) {
@@ -258,7 +258,14 @@ func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[str
 	notSolved = make([]*domain.Vulnerability, 0)
 
 	for _, vuln := range vulns {
-		if cvssThreshold, ok := status[vuln.Type]; ok {
+		vulnTypeStr, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type when filtering vulnerabilities by status, skipping vuln...",
+				slog.Int("vuln_id", vuln.ID))
+			continue
+		}
+
+		if cvssThreshold, ok := status[vulnTypeStr]; ok {
 			if vuln.BaseCVSSScore > cvssThreshold {
 				solved = append(solved, vuln)
 			} else {
@@ -270,4 +277,27 @@ func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[str
 	}
 
 	return solved, notSolved
+}
+
+// GetHighestCVSSVulnerabilityOfType gets the vulnerability with the highest CVSS of a slice of a particular type.
+func GetHighestCVSSVulnerabilityOfType(vulns []*domain.Vulnerability, vulnType enums.WeaknessType) *domain.Vulnerability {
+	var highestVuln *domain.Vulnerability = nil
+	maxCVSS := -1.0
+	vulnTypeStr := vulnType.String()
+
+	for _, vuln := range vulns {
+		if vuln.Type == vulnTypeStr {
+			if vuln.BaseCVSSScore > maxCVSS {
+				maxCVSS = vuln.BaseCVSSScore
+				highestVuln = vuln
+			} else if vuln.BaseCVSSScore == maxCVSS {
+				// If CVSS is the same, compare ID's (names) alphabetically
+				if vuln.VulnerabilityID > highestVuln.VulnerabilityID {
+					highestVuln = vuln
+				}
+			}
+		}
+	}
+
+	return highestVuln
 }

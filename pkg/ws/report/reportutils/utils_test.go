@@ -212,75 +212,75 @@ func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		vulns         []*domain.Vulnerability
-		status        map[string]float64
+		status        map[enums.WeaknessType]float64
 		wantSolved    []*domain.Vulnerability
 		wantNotSolved []*domain.Vulnerability
 	}{
 		{
 			name:          "Empty vulnerability slice",
 			vulns:         []*domain.Vulnerability{},
-			status:        map[string]float64{},
+			status:        map[enums.WeaknessType]float64{},
 			wantSolved:    []*domain.Vulnerability{},
 			wantNotSolved: []*domain.Vulnerability{},
 		},
 		{
 			name: "Vulnerability slice with empty status",
 			vulns: []*domain.Vulnerability{
-				{Type: "SSRF"},
+				{Type: "Server-Side Request Forgery (SSRF)"},
 				{Type: "Injection"},
 			},
-			status:     map[string]float64{},
+			status:     map[enums.WeaknessType]float64{},
 			wantSolved: []*domain.Vulnerability{},
 			wantNotSolved: []*domain.Vulnerability{
-				{Type: "SSRF"},
+				{Type: "Server-Side Request Forgery (SSRF)"},
 				{Type: "Injection"},
 			},
 		},
 		{
 			name: "Vulnerability slice with non-empty status",
 			vulns: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
-			status: map[string]float64{
-				"SSRF":      6.5,
-				"Injection": 4.0,
+			status: map[enums.WeaknessType]float64{
+				enums.WeaknessSSRF:      6.5,
+				enums.WeaknessInjection: 4.0,
 			},
 			wantSolved: []*domain.Vulnerability{
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
 			wantNotSolved: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 			},
 		},
 		{
 			name: "Vulnerability slice with status equal to the CVSS",
 			vulns: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
-			status: map[string]float64{
-				"SSRF":      5.0,
-				"Injection": 5.0,
+			status: map[enums.WeaknessType]float64{
+				enums.WeaknessSSRF:      5.0,
+				enums.WeaknessInjection: 5.0,
 			},
 			wantSolved: []*domain.Vulnerability{},
 			wantNotSolved: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
 		},
 		{
 			name: "Status with 0.0 Desired CVSS",
 			vulns: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
-			status: map[string]float64{
-				"SSRF":      0.0,
-				"Injection": 0.0,
+			status: map[enums.WeaknessType]float64{
+				enums.WeaknessSSRF:      0.0,
+				enums.WeaknessInjection: 0.0,
 			},
 			wantSolved: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
 			wantNotSolved: []*domain.Vulnerability{},
@@ -288,20 +288,20 @@ func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 		{
 			name: "Vulnerability with Type not included in map",
 			vulns: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
-				{Type: "Another WeaknessType", BaseCVSSScore: 5.0},
+				{Type: "Other", BaseCVSSScore: 5.0},
 			},
-			status: map[string]float64{
-				"SSRF":      0.0,
-				"Injection": 0.0,
+			status: map[enums.WeaknessType]float64{
+				enums.WeaknessSSRF:      0.0,
+				enums.WeaknessInjection: 0.0,
 			},
 			wantSolved: []*domain.Vulnerability{
-				{Type: "SSRF", BaseCVSSScore: 5.0},
+				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
 				{Type: "Injection", BaseCVSSScore: 5.0},
 			},
 			wantNotSolved: []*domain.Vulnerability{
-				{Type: "Another WeaknessType", BaseCVSSScore: 5.0},
+				{Type: "Other", BaseCVSSScore: 5.0},
 			},
 		},
 	}
@@ -311,6 +311,112 @@ func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 
 			assert.Equal(t, gotSolved, tc.wantSolved, "FilterVulnerabilitiesByStatus() = %v, want %v", gotSolved, tc.wantSolved)
 			assert.Equal(t, gotNotSolved, tc.wantNotSolved, "FilterVulnerabilitiesByStatus() = %v, want %v", gotNotSolved, tc.wantNotSolved)
+		})
+	}
+}
+
+func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns    []*domain.Vulnerability
+		vulnType enums.WeaknessType
+		want     *domain.Vulnerability
+	}{
+		{
+			name: "One vulnerability of type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				Type:          "Injection",
+				BaseCVSSScore: 5.5,
+			},
+		},
+		{
+			name: "One vulnerability but not of type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+			},
+			vulnType: enums.WeaknessBrokenAccessControl,
+			want:     nil,
+		},
+		{
+			name: "Multiple vulnerabilities of different type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+				{
+					Type:          "Server-Side Request Forgery (SSRF)",
+					BaseCVSSScore: 5.6,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				Type:          "Injection",
+				BaseCVSSScore: 5.5,
+			},
+		},
+		{
+			name: "Multiple vulnerabilities of same type",
+			vulns: []*domain.Vulnerability{
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.5,
+				},
+				{
+					Type:          "Injection",
+					BaseCVSSScore: 5.6,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				Type:          "Injection",
+				BaseCVSSScore: 5.6,
+			},
+		},
+		{
+			name: "Multiple vulnerabilities of same type and CVSS",
+			vulns: []*domain.Vulnerability{
+				{
+					VulnerabilityID: "CVE-2024",
+					Type:            "Injection",
+					BaseCVSSScore:   5.5,
+				},
+				{
+					VulnerabilityID: "CVE-2012",
+					Type:            "Injection",
+					BaseCVSSScore:   5.5,
+				},
+			},
+			vulnType: enums.WeaknessInjection,
+			want: &domain.Vulnerability{
+				VulnerabilityID: "CVE-2024",
+				Type:            "Injection",
+				BaseCVSSScore:   5.5,
+			},
+		},
+		{
+			name:     "Empty vulnerabilities",
+			vulns:    []*domain.Vulnerability{},
+			vulnType: enums.WeaknessInjection,
+			want:     nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.GetHighestCVSSVulnerabilityOfType(tc.vulns, tc.vulnType)
+
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

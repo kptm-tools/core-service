@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/kptm-tools/core-service/pkg/domain"
+
 // InitialDataRequest is the payload send in a MessageInitialRequest (Client -> Server)
 type InitialDataRequest struct {
 	ScanID string `json:"scan_id"`
@@ -23,4 +25,42 @@ type InitialDataReponse struct {
 // ErrorResponse is the payload sent in an error message (Server -> Client)
 type ErrorResponse struct {
 	Message string `json:"message"`
+}
+
+// SelectVectorRequest is the payload sent in a MessageSelectVector (Client -> Server)
+type SelectVectorRequest struct {
+	VulnerabilityTypeName string `json:"vulnerability_type_name"`
+}
+
+// VectorDetailsResponse (Server -> Client)
+type VectorDetailsResponse struct {
+	VulnerabilityDetails VulnerabilityDetails `json:"vulnerability_details"`
+}
+
+// VulnerabilityDetails represents the details of the vulnerability with the
+// highest CVSS for a given vector or vulnerability type selected by the user.
+type VulnerabilityDetails struct {
+	Name               string  `json:"name"`
+	Type               string  `json:"type"`
+	CVSS               float64 `json:"cvss"`
+	Severity           string  `json:"severity"`
+	Description        string  `json:"description"`
+	PrivilegesRequired string  `json:"privileges_required"`
+	Classification     string  `json:"classification"`
+	Integrity          string  `json:"integrity"`
+	Availability       string  `json:"availability"`
+}
+
+func NewVulnerabilityDetails(vuln domain.Vulnerability) VulnerabilityDetails {
+	return VulnerabilityDetails{
+		Name:               vuln.VulnerabilityID,
+		Type:               vuln.Type,
+		CVSS:               vuln.BaseCVSSScore,
+		Severity:           vuln.BaseSeverity.String(),
+		Description:        vuln.Description,
+		PrivilegesRequired: vuln.PrivilegesRequired.String(),
+		Classification:     vuln.AccessType.String(),
+		Integrity:          vuln.IntegrityImpact.String(),
+		Availability:       vuln.AvailabilityImpact.String(),
+	}
 }
