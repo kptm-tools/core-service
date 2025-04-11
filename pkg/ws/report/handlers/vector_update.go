@@ -2,7 +2,7 @@ package wshandlers
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
@@ -32,12 +32,12 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 
 	var vectorUpdateMsg VectorUpdateMessage
 	if err := json.Unmarshal(msg.Payload, &vectorUpdateMsg); err != nil {
-		return fmt.Errorf("failed to unmarshal VectorUpdateMessage payload: %w", err)
+		return customerrors.NewParseError("failed to unmarshal VectorUpdateMessage payload", err)
 	}
 
 	wt, ok := enums.ParseWeaknessFromString(vectorUpdateMsg.VulnerabilityTypeName)
 	if !ok {
-		return fmt.Errorf("weakness type not found: %s", vectorUpdateMsg.VulnerabilityTypeName)
+		return customerrors.NewParseError("weakness type not found", errors.New(vectorUpdateMsg.VulnerabilityTypeName))
 	}
 
 	client.UpdateVector(wt, vectorUpdateMsg.NewValue)
@@ -52,6 +52,8 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 		slog.Error("Failed to marshal vector update response", slog.Any("error", err))
 		return customerrors.NewServerSideError("failed to marshal vector update response")
 	}
+
+	slog.Debug("Sending back response...")
 	client.GetSend() <- responseBytes
 	return nil
 }
