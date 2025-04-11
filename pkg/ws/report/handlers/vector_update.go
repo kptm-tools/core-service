@@ -3,6 +3,9 @@ package wshandlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
+	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 	"log/slog"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -38,5 +41,17 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 	}
 
 	client.UpdateVector(wt, vectorUpdateMsg.NewValue)
+
+	solved, _ := reportutils.FilterVulnerabilitiesByStatus(client.GetHubReport().GetRoomVulnerabilities(client.GetRoomID()), client.GetVectorStatus())
+	vectorUpdateResponse := dto.VectorUpdateReponse{
+		ExpectedGlobalCVSSScore:            reportutils.GetGlobalCVSSScore(solved),
+		ExpectedGlobalTotalVulnerabilities: reportutils.GetGlobalTotalVulnerabilities(solved),
+	}
+	responseBytes, err := json.Marshal(vectorUpdateResponse)
+	if err != nil {
+		slog.Error("Failed to marshal vector update response", slog.Any("error", err))
+		return customerrors.NewServerSideError("failed to marshal vector update response")
+	}
+	client.GetSend() <- responseBytes
 	return nil
 }
