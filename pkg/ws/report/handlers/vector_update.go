@@ -15,12 +15,6 @@ import (
 
 const MessageVectorUpdate = "vector_update"
 
-// VectorUpdateMessage is the payload sent in MessageVectorUpdate
-type VectorUpdateMessage struct {
-	VulnerabilityTypeName string  `json:"vulnerability_type_name"`
-	NewValue              float64 `json:"new_value"`
-}
-
 type VectorUpdateHandler struct{}
 
 func NewVectorUpdateHandler() *VectorUpdateHandler {
@@ -30,7 +24,7 @@ func NewVectorUpdateHandler() *VectorUpdateHandler {
 func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IReportClient) error {
 	slog.Debug("Handling Vector Update message...")
 
-	var vectorUpdateMsg VectorUpdateMessage
+	var vectorUpdateMsg dto.VectorUpdateMessage
 	if err := json.Unmarshal(msg.Payload, &vectorUpdateMsg); err != nil {
 		return customerrors.NewParseError("failed to unmarshal VectorUpdateMessage payload", err)
 	}
@@ -42,10 +36,14 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 
 	client.UpdateVector(wt, vectorUpdateMsg.NewValue)
 
-	solved, _ := reportutils.FilterVulnerabilitiesByStatus(client.GetHubReport().GetRoomVulnerabilities(client.GetRoomID()), client.GetVectorStatus())
+	roomID := client.GetRoomID()
+	if roomID == "" {
+		return customerrors.NewServerSideError("Client has not joined room")
+	}
+	_, notSolved := reportutils.FilterVulnerabilitiesByStatus(client.GetHubReport().GetRoomVulnerabilities(client.GetRoomID()), client.GetVectorStatus())
 	vectorUpdateResponse := dto.VectorUpdateReponse{
-		ExpectedGlobalCVSSScore:            reportutils.GetGlobalCVSSScore(solved),
-		ExpectedGlobalTotalVulnerabilities: reportutils.GetGlobalTotalVulnerabilities(solved),
+		ExpectedGlobalCVSSScore:            reportutils.GetGlobalCVSSScore(notSolved),
+		ExpectedGlobalTotalVulnerabilities: reportutils.GetGlobalTotalVulnerabilities(notSolved),
 	}
 	responseBytes, err := json.Marshal(vectorUpdateResponse)
 	if err != nil {
