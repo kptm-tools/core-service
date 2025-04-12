@@ -1,16 +1,18 @@
 package report
 
 import (
-	"github.com/google/uuid"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/kptm-tools/core-service/pkg/domain"
+
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
 	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
@@ -38,10 +40,10 @@ func NewReportHub(
 	authService interfaces.IAuthService,
 ) *ReportHub {
 	handlers := map[string]interfaces.IReportHandler{
-		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(scanService),
-		wshandlers.MessageVectorUpdate:   wshandlers.NewVectorUpdateHandler(),
-		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
-		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
+		dto.MessageInitialRequest.String(): wshandlers.NewInitialRequestHandler(scanService),
+		dto.MessageVectorUpdate.String():   wshandlers.NewVectorUpdateHandler(),
+		dto.MessageSelectVector.String():   wshandlers.NewSelectVectorHandler(),
+		dto.MessageApplyVectors.String():   wshandlers.NewApplyVectorsHandler(),
 	}
 
 	return &ReportHub{
@@ -160,7 +162,6 @@ func (h *ReportHub) AddToRoom(scanID string) {
 		slog.Info("Increasing the amount of clients for scanID", slog.String("scan_id", scanID))
 	}
 	slog.Info("Client joined room", slog.String("scan_id", scanID))
-
 }
 
 func (h *ReportHub) RemoveFromRoom(scanID string) {

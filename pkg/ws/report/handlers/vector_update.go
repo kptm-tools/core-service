@@ -3,17 +3,16 @@ package wshandlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
+
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
-	"log/slog"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
-
-const MessageVectorUpdate = "vector_update"
 
 type VectorUpdateHandler struct{}
 
@@ -45,13 +44,19 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 		ExpectedGlobalCVSSScore:            reportutils.GetGlobalCVSSScore(notSolved),
 		ExpectedGlobalTotalVulnerabilities: reportutils.GetGlobalTotalVulnerabilities(notSolved),
 	}
-	responseBytes, err := json.Marshal(vectorUpdateResponse)
+	payloadBytes, err := json.Marshal(vectorUpdateResponse)
 	if err != nil {
 		slog.Error("Failed to marshal vector update response", slog.Any("error", err))
 		return customerrors.NewServerSideError("failed to marshal vector update response")
 	}
 
+	msgBytes, err := common.BuildServerMessageBytes(dto.MessageVectorUpdateResponse, payloadBytes)
+	if err != nil {
+		slog.Error("Failed to marshal message", slog.Any("error", err))
+		return customerrors.NewServerSideError("failed to marshal message")
+	}
+
 	slog.Debug("Sending back response...")
-	client.GetSend() <- responseBytes
+	client.GetSend() <- msgBytes
 	return nil
 }

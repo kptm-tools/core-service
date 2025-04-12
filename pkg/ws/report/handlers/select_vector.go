@@ -12,8 +12,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 )
 
-const MessageSelectVector = "select_vector"
-
 type SelectVectorHandler struct{}
 
 func NewSelectVectorHandler() *SelectVectorHandler {
@@ -55,17 +53,23 @@ func (h *SelectVectorHandler) Handle(msg common.Message, client interfaces.IRepo
 		return customerrors.NewServerSideError("Could not find highest CVSS vulnerability of type")
 	}
 
-	// 4. If all is right, build the response
-	response := dto.VectorDetailsResponse{
+	// 4. If all is right, build the payload
+	payload := dto.VectorDetailsResponse{
 		VulnerabilityDetails: dto.NewVulnerabilityDetails(*highestVuln),
 	}
-	responseBytes, err := json.Marshal(response)
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("Failed to marshal vector details response", slog.Any("error", err))
 		return customerrors.NewServerSideError("Failed to marshal vector details response")
 	}
 
+	msgBytes, err := common.BuildServerMessageBytes(dto.MessageVectorDetailsResponse, payloadBytes)
+	if err != nil {
+		slog.Error("Failed to marshal message", slog.Any("error", err))
+		return customerrors.NewServerSideError("failed to marshal message")
+	}
+
 	slog.Debug("Sending back response...")
-	client.GetSend() <- responseBytes
+	client.GetSend() <- msgBytes
 	return nil
 }

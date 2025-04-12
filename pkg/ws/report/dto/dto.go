@@ -4,6 +4,32 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
+type ClientMessageType string
+
+const (
+	MessageInitialRequest ClientMessageType = "initial_data_request"
+	MessageVectorUpdate   ClientMessageType = "vector_update"
+	MessageSelectVector   ClientMessageType = "select_vector"
+	MessageApplyVectors   ClientMessageType = "apply_vectors_request"
+)
+
+func (s ClientMessageType) String() string {
+	return string(s)
+}
+
+type ServerMessageType string
+
+const (
+	MessageInitialDataResponse   ServerMessageType = "initial_data_response"
+	MessageVectorUpdateResponse  ServerMessageType = "vector_update_response"
+	MessageVectorDetailsResponse ServerMessageType = "vector_details_response"
+	MessageReportDataResponse    ServerMessageType = "report_data_response"
+)
+
+func (s ServerMessageType) String() string {
+	return string(s)
+}
+
 // InitialDataRequest is the payload send in a MessageInitialRequest (Client -> Server)
 type InitialDataRequest struct {
 	ScanID string `json:"scan_id"`
