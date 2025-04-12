@@ -33,7 +33,7 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		slog.Error("Failed to marshal vector update response", slog.Any("error", err))
+		slog.Error("Failed to marshal report data response", slog.Any("error", err))
 		return customerrors.NewServerSideError("failed to marshal vector update response")
 	}
 
