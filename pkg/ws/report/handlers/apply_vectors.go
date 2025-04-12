@@ -2,16 +2,15 @@ package wshandlers
 
 import (
 	"encoding/json"
+	"log/slog"
+
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
-	"log/slog"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
-
-const MessageApplyVectors = "apply_vectors_request"
 
 type ApplyVectorsHandler struct{}
 
@@ -27,18 +26,24 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 		return customerrors.NewServerSideError("Client has not joined room")
 	}
 	solved, notSolved := reportutils.FilterVulnerabilitiesByStatus(client.GetHubReport().GetRoomVulnerabilities(roomID), client.GetVectorStatus())
-	reportResponse := dto.ReportDetailsResponse{
+	payload := dto.ReportDetailsResponse{
 		SolvedVulnerabilities:     solved,
 		UnattendedVulnerabilities: notSolved,
 		ExpectedSecurityPosture:   reportutils.GetGlobalCVSSScore(notSolved),
 	}
-	responseBytes, err := json.Marshal(reportResponse)
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		slog.Error("Failed to marshal vector update response", slog.Any("error", err))
+		slog.Error("Failed to marshal report data response", slog.Any("error", err))
 		return customerrors.NewServerSideError("failed to marshal vector update response")
 	}
 
+	msgBytes, err := common.BuildServerMessageBytes(dto.MessageReportDataResponse, payloadBytes)
+	if err != nil {
+		slog.Error("Failed to marshal message", slog.Any("error", err))
+		return customerrors.NewServerSideError("failed to marshal message")
+	}
+
 	slog.Debug("Sending back response...")
-	client.GetSend() <- responseBytes
+	client.GetSend() <- msgBytes
 	return nil
 }

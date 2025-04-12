@@ -12,10 +12,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 )
 
-const (
-	MessageInitialRequest = "initial_data_request"
-)
-
 type InitialRequestHandler struct {
 	scanService interfaces.IScanService
 }
@@ -47,14 +43,20 @@ func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IRe
 		return customerrors.NewServerSideError("failed to get vulnerabilities for scan")
 	}
 
-	response := reportutils.BuildVulnerabilityTypeData(vulns)
-	responseBytes, err := json.Marshal(response)
+	payload := reportutils.BuildVulnerabilityTypeData(vulns)
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("Failed to marshal initial data response", slog.Any("error", err))
 		return customerrors.NewServerSideError("failed to marshal initial data response")
 	}
 
+	msgBytes, err := common.BuildServerMessageBytes(dto.MessageInitialDataResponse, payloadBytes)
+	if err != nil {
+		slog.Error("Failed to marshal message", slog.Any("error", err))
+		return customerrors.NewServerSideError("failed to marshal message")
+	}
+
 	client.SetVectorStatus(reportutils.GetMaxCVSSPerType(vulns))
-	client.GetSend() <- responseBytes
+	client.GetSend() <- msgBytes
 	return nil
 }
