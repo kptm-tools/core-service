@@ -25,11 +25,16 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	if roomID == "" {
 		return customerrors.NewServerSideError("Client has not joined room")
 	}
-	solved, notSolved := reportutils.FilterVulnerabilitiesByStatus(client.GetHubReport().GetRoomVulnerabilities(roomID), client.GetVectorStatus())
+
+	scanVulns := client.GetHubReport().GetRoomVulnerabilities(roomID)
+	clientStatus := client.GetVectorStatus()
+
+	solved, notSolved := reportutils.FilterVulnerabilitiesByStatus(scanVulns, clientStatus)
 	payload := dto.ReportDetailsResponse{
 		SolvedVulnerabilities:     solved,
 		UnattendedVulnerabilities: notSolved,
 		ExpectedSecurityPosture:   reportutils.GetGlobalCVSSScore(notSolved),
+		GraphData:                 reportutils.BuildVulnerabilityGraph(scanVulns, notSolved),
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {

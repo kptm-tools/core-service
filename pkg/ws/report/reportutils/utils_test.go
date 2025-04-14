@@ -420,3 +420,127 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 		})
 	}
 }
+
+func TestGetUniqueVulnTypes(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns []*domain.Vulnerability
+		want  []enums.WeaknessType
+	}{
+		{
+			name: "Slice with one vulnerability type",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String()},
+			},
+			want: []enums.WeaknessType{enums.WeaknessInjection},
+		},
+		{
+			name:  "Empty vulnerability slice",
+			vulns: []*domain.Vulnerability{},
+			want:  []enums.WeaknessType{},
+		},
+		{
+			name: "Slice with two vulnerabilities with the same type",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String()},
+				{Type: enums.WeaknessInjection.String()},
+			},
+			want: []enums.WeaknessType{enums.WeaknessInjection},
+		},
+		{
+			name: "Slice with two vulnerabilities with a different type",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String()},
+				{Type: enums.WeaknessSSRF.String()},
+			},
+			want: []enums.WeaknessType{
+				enums.WeaknessInjection, enums.WeaknessSSRF,
+			},
+		},
+		{
+			name: "Slice with invalid weakness",
+			vulns: []*domain.Vulnerability{
+				{Type: "Invalid weakness"},
+			},
+			want: []enums.WeaknessType{},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.GetUniqueVulnTypes(tc.vulns)
+
+			assert.Equal(t, tc.want, got, "Expected weakness type slice %v, got %v", tc.want, got)
+		})
+	}
+}
+
+func TestBuildVulnerabilityGraph(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns          []*domain.Vulnerability
+		notSolvedVulns []*domain.Vulnerability
+		want           dto.GraphData
+	}{
+		{
+			name: "One unsolved vuln",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			},
+			notSolvedVulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			},
+			want: dto.GraphData{
+				Series: []dto.Series{
+					{Name: "Actual", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
+					{Name: "Expected", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
+				},
+			},
+		},
+		{
+			name:           "Empty vulns",
+			vulns:          []*domain.Vulnerability{},
+			notSolvedVulns: []*domain.Vulnerability{},
+			want: dto.GraphData{
+				Series: []dto.Series{
+					{Name: "Actual", Data: []dto.DataPoint{}, Average: 0.0},
+					{Name: "Expected", Data: []dto.DataPoint{}, Average: 0.0},
+				},
+			},
+		},
+		{
+			name: "No unsolved vulns",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			},
+			notSolvedVulns: []*domain.Vulnerability{},
+			want: dto.GraphData{
+				Series: []dto.Series{
+					{Name: "Actual", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
+					{Name: "Expected", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 0.0}}, Average: 0.0},
+				},
+			},
+		},
+		{
+			name:  "No vulns but one unsolved vuln",
+			vulns: []*domain.Vulnerability{},
+			notSolvedVulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			},
+			want: dto.GraphData{
+				Series: []dto.Series{
+					{Name: "Actual", Data: []dto.DataPoint{}, Average: 0.0},
+					{Name: "Expected", Data: []dto.DataPoint{}, Average: 0.0},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.BuildVulnerabilityGraph(tc.vulns, tc.notSolvedVulns)
+
+			assert.Equal(t, tc.want, got, "Expected GraphData %v, got %v", tc.want, got)
+		})
+	}
+}

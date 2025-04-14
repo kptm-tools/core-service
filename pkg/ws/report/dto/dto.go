@@ -112,4 +112,20 @@ type ReportDetailsResponse struct {
 	SolvedVulnerabilities     []*domain.Vulnerability `json:"solved_vulnerabilities"`
 	UnattendedVulnerabilities []*domain.Vulnerability `json:"unattended_vulnerabilities"`
 	ExpectedSecurityPosture   float64                 `json:"expected_security_posture"`
+	GraphData                 GraphData               `json:"vulnerability_graph"`
+}
+
+type GraphData struct {
+	Series []Series `json:"series"` // Represents each different line in the chart that must be plotted
+}
+
+type Series struct {
+	Name    string      `json:"name"`
+	Data    []DataPoint `json:"data"`
+	Average float64     `json:"average,omitempty"` // Optional field for static value (e.g: average)
+}
+
+type DataPoint struct {
+	X string  `json:"x"`
+	Y float64 `json:"y"`
 }
