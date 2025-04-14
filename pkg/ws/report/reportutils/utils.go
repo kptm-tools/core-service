@@ -330,13 +330,23 @@ func BuildVulnerabilityGraph(vulns []*domain.Vulnerability, notSolvedVulns []*do
 	uniqueTypes := GetUniqueVulnTypes(vulns)
 
 	for _, wt := range uniqueTypes {
+		actualHighestCVSS := 0.0
+		expectedHighestCVSS := 0.0
+
+		if highestActualVuln := GetHighestCVSSVulnerabilityOfType(vulns, wt); highestActualVuln != nil {
+			actualHighestCVSS = highestActualVuln.BaseCVSSScore
+		}
+		if highestExpectedVuln := GetHighestCVSSVulnerabilityOfType(notSolvedVulns, wt); highestExpectedVuln != nil {
+			expectedHighestCVSS = highestExpectedVuln.BaseCVSSScore
+		}
+
 		actualDataPoints = append(actualDataPoints, dto.DataPoint{
 			X: wt.String(),
-			Y: GetHighestCVSSVulnerabilityOfType(vulns, wt).BaseCVSSScore,
+			Y: actualHighestCVSS,
 		})
 		expectedDataPoints = append(expectedDataPoints, dto.DataPoint{
 			X: wt.String(),
-			Y: GetHighestCVSSVulnerabilityOfType(notSolvedVulns, wt).BaseCVSSScore,
+			Y: expectedHighestCVSS,
 		})
 	}
 
