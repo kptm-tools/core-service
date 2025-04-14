@@ -301,3 +301,74 @@ func GetHighestCVSSVulnerabilityOfType(vulns []*domain.Vulnerability, vulnType e
 
 	return highestVuln
 }
+
+// GetUniqueVulnTypes returns a slice with unique Weakness Types found within a vulnerability slice.
+func GetUniqueVulnTypes(vulns []*domain.Vulnerability) []enums.WeaknessType {
+	uniqueTypes := make([]enums.WeaknessType, 0)
+	for _, vuln := range vulns {
+		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type when building vulnerability graph",
+				slog.Int("vuln_id", vuln.ID),
+				slog.String("vuln_type", vuln.Type))
+			continue
+		}
+		if !contains(uniqueTypes, wt) {
+			uniqueTypes = append(uniqueTypes, wt)
+		}
+	}
+
+	return uniqueTypes
+}
+
+func BuildVulnerabilityGraph(vulns []*domain.Vulnerability, notSolvedVulns []*domain.Vulnerability) dto.GraphData {
+	actualDataPoints := make([]dto.DataPoint, 0)
+
+	expectedDataPoints := make([]dto.DataPoint, 0)
+
+	// 1. Get each unique type within vulners (X values)
+	uniqueTypes := GetUniqueVulnTypes(vulns)
+
+	for _, wt := range uniqueTypes {
+		actualDataPoints = append(actualDataPoints, dto.DataPoint{
+			X: wt.String(),
+			Y: GetHighestCVSSVulnerabilityOfType(vulns, wt).BaseCVSSScore,
+		})
+		expectedDataPoints = append(expectedDataPoints, dto.DataPoint{
+			X: wt.String(),
+			Y: GetHighestCVSSVulnerabilityOfType(notSolvedVulns, wt).BaseCVSSScore,
+		})
+	}
+
+	actualAvg := calculateSeriesAvg(actualDataPoints)
+	expectedAvg := calculateSeriesAvg(expectedDataPoints)
+
+	return dto.GraphData{
+		Series: []dto.Series{
+			{Name: "Actual", Data: actualDataPoints, Average: actualAvg},
+			{Name: "Expected", Data: expectedDataPoints, Average: expectedAvg},
+		},
+	}
+}
+
+func calculateSeriesAvg(dataPoints []dto.DataPoint) float64 {
+	avg := 0.0
+	sum := 0.0
+
+	for _, dataPoint := range dataPoints {
+		sum += dataPoint.Y
+	}
+	if len(dataPoints) != 0 {
+		avg = sum / float64(len(dataPoints))
+	}
+	return avg
+}
+
+func contains[T comparable](slice []T, value T) bool {
+	for _, item := range slice {
+		if value == item {
+			return true
+		}
+	}
+	return false
+}
