@@ -420,3 +420,50 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 		})
 	}
 }
+
+func TestGetUniqueVulnTypes(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		vulns []*domain.Vulnerability
+		want  []enums.WeaknessType
+	}{
+		{
+			name: "Slice with one vulnerability type",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String()},
+			},
+			want: []enums.WeaknessType{enums.WeaknessInjection},
+		},
+		{
+			name:  "Empty vulnerability slice",
+			vulns: []*domain.Vulnerability{},
+			want:  []enums.WeaknessType{},
+		},
+		{
+			name: "Slice with two vulnerabilities with the same type",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String()},
+				{Type: enums.WeaknessInjection.String()},
+			},
+			want: []enums.WeaknessType{enums.WeaknessInjection},
+		},
+		{
+			name: "Slice with two vulnerabilities with a different type",
+			vulns: []*domain.Vulnerability{
+				{Type: enums.WeaknessInjection.String()},
+				{Type: enums.WeaknessSSRF.String()},
+			},
+			want: []enums.WeaknessType{
+				enums.WeaknessInjection, enums.WeaknessSSRF,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := reportutils.GetUniqueVulnTypes(tc.vulns)
+
+			assert.Equal(t, tc.want, got, "Expected weakness type slice %v, got %v", tc.want, got)
+		})
+	}
+}
