@@ -122,7 +122,7 @@ type GraphData struct {
 type Series struct {
 	Name    string      `json:"name"`
 	Data    []DataPoint `json:"data"`
-	Average float64     `json:"value,omitempty"` // Optional field for static value (e.g: average)
+	Average float64     `json:"average,omitempty"` // Optional field for static value (e.g: average)
 }
 
 type DataPoint struct {
