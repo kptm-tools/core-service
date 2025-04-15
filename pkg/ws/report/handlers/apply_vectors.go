@@ -33,7 +33,7 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	payload := dto.ReportDetailsResponse{
 		SolvedVulnerabilities:     solved,
 		UnattendedVulnerabilities: notSolved,
-		ExpectedSecurityPosture:   reportutils.GetGlobalCVSSScore(notSolved),
+		ExpectedSecurityPosture:   reportutils.GetGlobalCVSSScore(notSolved) / 10,
 		GraphData:                 reportutils.BuildVulnerabilityGraph(scanVulns, notSolved),
 	}
 	payloadBytes, err := json.Marshal(payload)
