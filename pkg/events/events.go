@@ -16,6 +16,8 @@ func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) 
 
 	nmapHandler := consumers.NewNmapHandler(scanService)
 
+	scanFailedHandler := consumers.NewScanFailedHandler(scanService)
+
 	err := eventBus.Subscribe(string(enums.DNSLookupEventSubject), dnsLookupHandler.HandleMessage)
 	if err != nil {
 		return err
@@ -30,6 +32,10 @@ func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) 
 	}
 
 	if err := eventBus.Subscribe(string(enums.NmapEventSubject), nmapHandler.HandleMessage); err != nil {
+		return err
+	}
+
+	if err := eventBus.Subscribe(string(enums.ScanFailedEventSubject), scanFailedHandler.HandleMessage); err != nil {
 		return err
 	}
 
