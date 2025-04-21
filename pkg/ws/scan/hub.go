@@ -1,7 +1,6 @@
 package scan
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -24,7 +23,7 @@ type ScanHub struct {
 
 var _ interfaces.IHub = (*ScanHub)(nil)
 
-func NewScanHub(ctx context.Context, config *common.Config, scanService interfaces.IScanService, authService interfaces.IAuthService, scanIntervalSeconds int) *ScanHub {
+func NewScanHub(config *common.Config, scanService interfaces.IScanService, authService interfaces.IAuthService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
 		cfg:          config,
 		clients:      make(map[string]interfaces.IClient),
@@ -38,36 +37,39 @@ func NewScanHub(ctx context.Context, config *common.Config, scanService interfac
 }
 
 func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
+	slog.Info("1")
 	otp, err := utils.GetOTPFromQuery(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
+	slog.Info("2")
 	if !h.authService.VerifyOTP(otp) {
 		slog.Warn("Client OTP has expired")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
+	slog.Info("3")
 	tenantID, err := utils.GetTenantIDFromQuery(r)
 	if err != nil {
 		slog.Warn("Query is missing tenantID", slog.Any("error", err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
-
+	slog.Info("4")
 	conn, err := h.cfg.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 	// Create New Client
 	client := NewScanClient(h.cfg, conn, h, tenantID)
+	slog.Info("5")
 	// Add the newly created client to the Hub
 	h.Register(client)
-
+	slog.Info("6")
 	// Since clients don't send messages to this hub, we don't need to read their messages
 	go client.WriteMessages()
 	go client.ReadMessages()
+	slog.Info("7")
 }
 
 // Run spins up the select statement for managing clients and periodically sending scan data.

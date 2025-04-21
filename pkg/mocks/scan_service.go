@@ -30,8 +30,17 @@ func (m *MockScanService) GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur
 }
 
 func (m *MockScanService) GetCurrentScans(s string) ([]*domain.ScanSummary, error) {
-	// TODO implement me
-	panic("implement me")
+	resultScans := []*domain.ScanSummary{
+		{
+			ScanID:          uuid.New(),
+			ScanDate:        "",
+			Host:            "",
+			Vulnerabilities: 0,
+			Duration:        0.0,
+			Status:          "Completed",
+		},
+	}
+	return resultScans, nil
 }
 
 func (m *MockScanService) InsertScanResult(result *domain.ScanResult) error {

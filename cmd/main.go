@@ -96,7 +96,7 @@ func main() {
 		PingInterval: (10 * time.Second * 9) / 10,
 	}
 
-	scanHub := scan.NewScanHub(ctx, wsConfig, scanService, authService, 5)
+	scanHub := scan.NewScanHub(wsConfig, scanService, authService, 5)
 	reportHub := report.NewReportHub(wsConfig, scanService, authService)
 
 	// Event Subscriptions
