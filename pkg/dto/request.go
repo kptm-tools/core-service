@@ -1,8 +1,31 @@
-package handlers
+package dto
 
 import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
+
+type ClientMessageType string
+
+const (
+	MessageInitialRequest ClientMessageType = "initial_data_request"
+	MessageVectorUpdate   ClientMessageType = "vector_update"
+	MessageSelectVector   ClientMessageType = "select_vector"
+	MessageApplyVectors   ClientMessageType = "apply_vectors_request"
+)
+
+func (s ClientMessageType) String() string {
+	return string(s)
+}
+
+// InitialDataRequest is the payload send in a MessageInitialRequest (Client -> Server)
+type InitialDataRequest struct {
+	ScanID string `json:"scan_id"`
+}
+
+// SelectVectorRequest is the payload sent in a MessageSelectVector (Client -> Server)
+type SelectVectorRequest struct {
+	VulnerabilityTypeName string `json:"vulnerability_type_name"`
+}
 
 type CreateHostRequest struct {
 	Value       string              `json:"value"`

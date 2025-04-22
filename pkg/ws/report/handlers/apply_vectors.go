@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -30,9 +30,19 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	clientStatus := client.GetVectorStatus()
 
 	solved, notSolved := reportutils.FilterVulnerabilitiesByStatus(scanVulns, clientStatus)
+	solvedItems := make([]dto.ScanVulnerabilityItem, len(solved))
+	notSolvedItems := make([]dto.ScanVulnerabilityItem, len(notSolved))
+
+	for i, vuln := range solved {
+		solvedItems[i] = dto.ToScanVulnerabilityItem(vuln)
+	}
+	for i, vuln := range notSolved {
+		notSolvedItems[i] = dto.ToScanVulnerabilityItem(vuln)
+	}
+
 	payload := dto.ReportDetailsResponse{
-		SolvedVulnerabilities:     solved,
-		UnattendedVulnerabilities: notSolved,
+		SolvedVulnerabilities:     solvedItems,
+		UnattendedVulnerabilities: notSolvedItems,
 		ExpectedSecurityPosture:   reportutils.GetGlobalCVSSScore(notSolved) / 10,
 		GraphData:                 reportutils.BuildVulnerabilityGraph(scanVulns, notSolved),
 	}

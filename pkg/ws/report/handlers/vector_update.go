@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -40,7 +40,7 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 		return customerrors.NewServerSideError("Client has not joined room")
 	}
 	_, notSolved := reportutils.FilterVulnerabilitiesByStatus(client.GetHubReport().GetRoomVulnerabilities(roomID), client.GetVectorStatus())
-	vectorUpdateResponse := dto.VectorUpdateReponse{
+	vectorUpdateResponse := dto.VectorUpdateResponse{
 		ExpectedGlobalCVSSScore:            reportutils.GetGlobalCVSSScore(notSolved),
 		ExpectedGlobalTotalVulnerabilities: reportutils.GetGlobalTotalVulnerabilities(notSolved),
 	}

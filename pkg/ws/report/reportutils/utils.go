@@ -6,7 +6,7 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
+	"github.com/kptm-tools/core-service/pkg/dto"
 )
 
 type (
@@ -31,7 +31,7 @@ type (
 // Returns:
 //
 //	A dto.InitialDataReponse struct containing the processed vulnerability data.
-func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataReponse {
+func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataResponse {
 	maxCVSSPerType := make(MaxCVSSPerType)
 	vulnCountPerType := make(vulnerabilityCountByType)
 	uniqueCVSSValuesPerType := make(UniqueCVSSValuesByType)
@@ -97,7 +97,7 @@ func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataRe
 		})
 	}
 
-	return dto.InitialDataReponse{
+	return dto.InitialDataResponse{
 		VulnerabilityTypes:         vulnerabilityTypesData,
 		GlobalTotalVulnerabilities: globalTotalVulnerabilities,
 		GlobalCVSSScore:            globalCVSSScore,

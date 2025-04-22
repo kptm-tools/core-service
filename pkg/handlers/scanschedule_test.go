@@ -3,27 +3,29 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"github.com/kptm-tools/core-service/pkg/middleware"
-	"github.com/kptm-tools/core-service/pkg/mocks"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kptm-tools/core-service/pkg/dto"
+	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestScanScheduleHandlers_Valid(t *testing.T) {
 	testCases := []struct {
 		name             string
-		bodyRequest      ScanScheduleRequest
+		bodyRequest      dto.ScanScheduleRequest
 		expectError      bool
 		expectedFromDate *time.Time
 		expectedToDate   *time.Time
 	}{
 		{
 			name: "Invalid Date ScheduleAt",
-			bodyRequest: ScanScheduleRequest{
+			bodyRequest: dto.ScanScheduleRequest{
 				ScheduleAt: new(string),
 				Frequency:  nil,
 			},
@@ -31,7 +33,7 @@ func TestScanScheduleHandlers_Valid(t *testing.T) {
 		},
 		{
 			name: "Invalid Date less than two minute",
-			bodyRequest: ScanScheduleRequest{
+			bodyRequest: dto.ScanScheduleRequest{
 				ScheduleAt: &[]string{time.Now().UTC().String()}[0],
 				Frequency:  nil,
 			},
@@ -39,7 +41,7 @@ func TestScanScheduleHandlers_Valid(t *testing.T) {
 		},
 		{
 			name: "Valid Date more than two minute",
-			bodyRequest: ScanScheduleRequest{
+			bodyRequest: dto.ScanScheduleRequest{
 				ScheduleAt: &[]string{time.Now().UTC().Add(time.Minute * 3).String()}[0],
 				Frequency:  nil,
 			},

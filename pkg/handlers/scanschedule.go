@@ -2,14 +2,16 @@ package handlers
 
 import (
 	"errors"
-	"github.com/google/uuid"
-	cmmn "github.com/kptm-tools/common/common/pkg/events"
-	"github.com/kptm-tools/core-service/pkg/api"
-	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/middleware"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	cmmn "github.com/kptm-tools/common/common/pkg/events"
+	"github.com/kptm-tools/core-service/pkg/api"
+	"github.com/kptm-tools/core-service/pkg/dto"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/middleware"
 )
 
 type ScanScheduleHandlers struct {
@@ -53,7 +55,7 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	updateScanScheduleRequest := new(ScanScheduleRequest)
+	updateScanScheduleRequest := new(dto.ScanScheduleRequest)
 
 	if err := decodeJSONBody(w, r, updateScanScheduleRequest); err != nil {
 		var mr *malformedRequest
