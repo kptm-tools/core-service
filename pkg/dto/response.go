@@ -28,8 +28,8 @@ type VulnerabilityTypeData struct {
 	AvailableCvssValues []float64 `json:"available_cvss_values"`
 }
 
-// InitialDataReponse (Server -> Client)
-type InitialDataReponse struct {
+// InitialDataResponse (Server -> Client)
+type InitialDataResponse struct {
 	VulnerabilityTypes         []VulnerabilityTypeData `json:"vulnerability_types"`
 	GlobalCVSSScore            float64                 `json:"global_cvss_score"`
 	GlobalTotalVulnerabilities int                     `json:"global_total_vulnerabilities"`
@@ -73,8 +73,8 @@ func NewVulnerabilityDetails(vuln domain.Vulnerability) VulnerabilityDetails {
 	}
 }
 
-// VectorUpdateReponse (Server -> Client)
-type VectorUpdateReponse struct {
+// VectorUpdateResponse (Server -> Client)
+type VectorUpdateResponse struct {
 	ExpectedGlobalCVSSScore            float64 `json:"expected_global_cvss_score"`
 	ExpectedGlobalTotalVulnerabilities int     `json:"expected_global_total_vulnerabilities"`
 }

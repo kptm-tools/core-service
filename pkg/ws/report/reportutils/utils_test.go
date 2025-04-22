@@ -15,12 +15,12 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		vulns []*domain.Vulnerability
-		want  dto.InitialDataReponse
+		want  dto.InitialDataResponse
 	}{
 		{
 			name:  "Empty vulnerabilities",
 			vulns: []*domain.Vulnerability{},
-			want: dto.InitialDataReponse{
+			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
 					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
 					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
@@ -46,7 +46,7 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 8.0},
 				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 7.5},
 			},
-			want: dto.InitialDataReponse{
+			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
 					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
 					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
@@ -72,7 +72,7 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 				{Type: enums.WeaknessSSRF.String(), BaseCVSSScore: 9.0},
 				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 7.5},
 			},
-			want: dto.InitialDataReponse{
+			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
 					{Name: enums.WeaknessSSRF.String(), HighestCvss: 9.0, Count: 1, Percentage: 0.3333333333333333, AvailableCvssValues: []float64{0.0, 9.0}},
 					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
@@ -97,7 +97,7 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 0.0},
 				{Type: enums.WeaknessSSRF.String(), BaseCVSSScore: 0.0},
 			},
-			want: dto.InitialDataReponse{
+			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
 					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0.0, Count: 1, Percentage: 0.5, AvailableCvssValues: []float64{0.0}},
 					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
