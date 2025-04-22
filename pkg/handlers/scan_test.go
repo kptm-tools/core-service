@@ -3,13 +3,15 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"github.com/kptm-tools/core-service/pkg/middleware"
-	"github.com/kptm-tools/core-service/pkg/mocks"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/mocks"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -168,12 +170,12 @@ func parseTime(t *testing.T, timeStr string) *time.Time {
 func TestScanHandler_CreateScheduled(t *testing.T) {
 	testCases := []struct {
 		name        string
-		bodyRequest ScanRequest
+		bodyRequest dto.ScanRequest
 		expectError bool
 	}{
 		{
 			name: "Invalid Date ScheduleAt",
-			bodyRequest: ScanRequest{
+			bodyRequest: dto.ScanRequest{
 				HostID:     1,
 				ScheduleAt: new(string),
 				Frequency:  nil,
@@ -182,7 +184,7 @@ func TestScanHandler_CreateScheduled(t *testing.T) {
 		},
 		{
 			name: "Invalid Date less than two minute",
-			bodyRequest: ScanRequest{
+			bodyRequest: dto.ScanRequest{
 				HostID:     1,
 				ScheduleAt: &[]string{"2006-01-02T15:04:05.000Z"}[0],
 				Frequency:  nil,
@@ -191,7 +193,7 @@ func TestScanHandler_CreateScheduled(t *testing.T) {
 		},
 		{
 			name: "Valid Date more than two minute",
-			bodyRequest: ScanRequest{
+			bodyRequest: dto.ScanRequest{
 				HostID:     1,
 				ScheduleAt: &[]string{time.Now().Add(time.Minute * 3).UTC().String()}[0],
 				Frequency:  nil,
@@ -233,7 +235,6 @@ func TestScanHandler_CreateScheduled(t *testing.T) {
 				assert.Equal(t, http.StatusBadRequest, w.Code, "Expected BadRequest status code")
 			} else {
 				assert.NoError(t, err, "Expected no error but got one")
-
 			}
 		})
 	}

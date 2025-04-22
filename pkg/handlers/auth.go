@@ -18,6 +18,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/services"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 )
 
 type AuthHandlers struct {
@@ -36,7 +37,7 @@ func NewAuthHandlers(authService interfaces.IAuthService) *AuthHandlers {
 
 func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
-	loginRequest := new(LoginRequest)
+	loginRequest := new(dto.LoginRequest)
 
 	if err := decodeJSONBody(w, r, loginRequest); err != nil {
 		var mr *malformedRequest
@@ -73,7 +74,7 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) error {
-	registerTenantRequest := new(RegisterTenantRequest)
+	registerTenantRequest := new(dto.RegisterTenantRequest)
 
 	if err := decodeJSONBody(w, r, registerTenantRequest); err != nil {
 		var mr *malformedRequest
@@ -95,7 +96,7 @@ func (h *AuthHandlers) RegisterTenant(w http.ResponseWriter, r *http.Request) er
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	return api.WriteJSON(w, http.StatusCreated, &RegisterTenantResponse{ApplicationID: t.ApplicationID, User: *u})
+	return api.WriteJSON(w, http.StatusCreated, &dto.RegisterTenantResponse{ApplicationID: t.ApplicationID, User: *u})
 }
 
 func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
@@ -120,7 +121,7 @@ func (h *AuthHandlers) GetUser(w http.ResponseWriter, r *http.Request) error {
 
 func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
-	forgotPasswordRequest := new(ForgotPasswordRequest)
+	forgotPasswordRequest := new(dto.ForgotPasswordRequest)
 
 	if err := decodeJSONBody(w, r, forgotPasswordRequest); err != nil {
 		var mr *malformedRequest
@@ -147,7 +148,7 @@ func (h *AuthHandlers) ForgotPassword(w http.ResponseWriter, r *http.Request) er
 
 func (h *AuthHandlers) RegisterUser(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
-	registerUserRequest := new(RegisterUserRequest)
+	registerUserRequest := new(dto.RegisterUserRequest)
 
 	if err := decodeJSONBody(w, r, registerUserRequest); err != nil {
 		var mr *malformedRequest
@@ -200,7 +201,7 @@ func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) error
 
 func (h *AuthHandlers) ChangePassword(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
-	changePasswordRequest := new(ChangePasswordRequest)
+	changePasswordRequest := new(dto.ChangePasswordRequest)
 
 	if err := decodeJSONBody(w, r, changePasswordRequest); err != nil {
 		var mr *malformedRequest

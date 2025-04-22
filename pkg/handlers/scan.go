@@ -48,7 +48,7 @@ func NewScanHandlers(
 func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) error {
 	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
 	userID := req.Context().Value(middleware.ContextUserID).(string)
-	scanRequest := new(ScanRequest)
+	scanRequest := new(dto.ScanRequest)
 
 	if err := decodeJSONBody(w, req, scanRequest); err != nil {
 		var mr *malformedRequest
@@ -234,18 +234,18 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 	}
 
 	// Map from service layer struct to API response DTO
-	response := ScanVulnerabilitySummaryResponse{
+	response := dto.ScanVulnerabilitySummaryResponse{
 		ScanID: summaryData.ScanID.String(),
 		Domain: summaryData.Domain,
-		GeneralSummary: VulnerabilityGeneralSummary{
+		GeneralSummary: dto.VulnerabilityGeneralSummary{
 			TotalVulnerabilities: summaryData.TotalVulnerabilities,
 			SeverityCounts:       summaryData.SeverityCounts,
 		},
-		VulnerabilitiesByCategory: VulnerabilitiesByCategory{
-			CategoryData: adaptCategoryData(summaryData.CategoryData),
+		VulnerabilitiesByCategory: dto.VulnerabilitiesByCategory{
+			CategoryData: dto.AdaptCategoryData(summaryData.CategoryData),
 		},
-		VulnerabilityTrends: VulnerabilityTrends{
-			TimePeriods:               adaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
+		VulnerabilityTrends: dto.VulnerabilityTrends{
+			TimePeriods:               dto.AdaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
 			AverageVulnerabilityCount: summaryData.VulnerabilityTrends.AverageVulnerabilityCount,
 		},
 	}
@@ -264,9 +264,9 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 
-	reportResponses := make([]ReportsResponse, len(reportItems))
+	reportResponses := make([]dto.ReportsResponse, len(reportItems))
 	for i, item := range reportItems {
-		reportResponses[i] = ReportsResponse{
+		reportResponses[i] = dto.ReportsResponse{
 			ScanID:          item.ScanID.String(),
 			Domain:          item.HostName,
 			IP:              item.IP,
@@ -296,12 +296,12 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 
-	scoreCardResponses := make([]ScoreCardTrendResponse, len(scoreCardTrendItems))
+	scoreCardResponses := make([]dto.ScoreCardTrendResponse, len(scoreCardTrendItems))
 	for i, item := range scoreCardTrendItems {
 		if item == nil {
 			continue
 		}
-		scoreCardResponses[i] = ScoreCardTrendResponse{
+		scoreCardResponses[i] = dto.ScoreCardTrendResponse{
 			Alias:            item.Alias,
 			OldestScore:      item.OldestScore,
 			LatestScore:      item.LatestScore,
