@@ -83,34 +83,6 @@ type ScoreCardTrendResponse struct {
 	LatestScoreGrade *string  `json:"latest_score_grade"`
 }
 
-// ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
-// associated to a scan.
-type ScanVulnerabilityItemsResponse struct {
-	ScanDate             time.Time               `json:"scan_date"`
-	Alias                string                  `json:"alias"`
-	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
-	SeverityCounts       tools.SeverityCounts    `json:"severity_counts,omitempty"`
-	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
-}
-
-type ScanVulnerabilityItem struct {
-	ID             int                   `json:"id"`
-	Name           string                `json:"name"`
-	Severity       string                `json:"severity"`
-	MaxCVSS        float64               `json:"max_cvss"`
-	RiskScore      float64               `json:"risk_score"`
-	ImpactScore    float64               `json:"impact_score"`
-	Likelihood     string                `json:"likelihood"`
-	Access         string                `json:"access"`
-	Complexity     string                `json:"complexity"`
-	Privileges     string                `json:"privileges"`
-	Exploitability string                `json:"exploitability"`
-	Description    string                `json:"description"`
-	Comment        string                `json:"comment"`
-	VendorComments []tools.VendorComment `json:"vendor_comments"`
-	References     []string              `json:"references"`
-}
-
 // ScanVulnerabilityDetailResponse is the DTO with the details for a particular
 // scan's vulenrability.
 type ScanVulnerabilityDetailResponse struct {

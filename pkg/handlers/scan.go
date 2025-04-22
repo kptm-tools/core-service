@@ -16,6 +16,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 )
 
 type ScanHandlers struct {
@@ -390,35 +391,12 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
 
-	var scanVulnersItemsResponse ScanVulnerabilityItemsResponse
+	var scanVulnersItemsResponse dto.ScanVulnerabilityItemsResponse
 
 	// Parse vulners
-	scanVulnerItems := make([]ScanVulnerabilityItem, len(vulners))
+	scanVulnerItems := make([]dto.ScanVulnerabilityItem, len(vulners))
 	for i, vuln := range vulners {
-		var analystComment string
-		if vuln.AnalystComment == nil {
-			analystComment = ""
-		} else {
-			analystComment = *vuln.AnalystComment
-		}
-
-		scanVulnerItems[i] = ScanVulnerabilityItem{
-			ID:             vuln.ID,
-			Name:           vuln.VulnerabilityID,
-			Severity:       vuln.BaseSeverity.String(),
-			MaxCVSS:        vuln.BaseCVSSScore,
-			RiskScore:      vuln.RiskScore,
-			ImpactScore:    vuln.ImpactScore,
-			Likelihood:     vuln.Likelihood.String(),
-			Access:         vuln.AccessType.String(),
-			Complexity:     vuln.Complexity.String(),
-			Privileges:     vuln.PrivilegesRequired.String(),
-			Exploitability: vuln.Exploit.Exploitability.String(),
-			Description:    vuln.Description,
-			Comment:        analystComment,
-			VendorComments: vuln.VendorComments,
-			References:     vuln.References,
-		}
+		scanVulnerItems[i] = dto.ToScanVulnerabilityItem(vuln)
 	}
 
 	// Associate scan and host alias

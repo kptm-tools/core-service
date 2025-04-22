@@ -1,6 +1,9 @@
 package dto
 
 import (
+	"time"
+
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -109,8 +112,8 @@ type VectorUpdateMessage struct {
 type ApplyVectorsMessage struct{}
 
 type ReportDetailsResponse struct {
-	SolvedVulnerabilities     []*domain.Vulnerability `json:"solved_vulnerabilities"`
-	UnattendedVulnerabilities []*domain.Vulnerability `json:"unattended_vulnerabilities"`
+	SolvedVulnerabilities     []ScanVulnerabilityItem `json:"solved_vulnerabilities"`
+	UnattendedVulnerabilities []ScanVulnerabilityItem `json:"unattended_vulnerabilities"`
 	ExpectedSecurityPosture   float64                 `json:"expected_security_posture"`
 	GraphData                 GraphData               `json:"vulnerability_graph"`
 }
@@ -128,4 +131,59 @@ type Series struct {
 type DataPoint struct {
 	X string  `json:"x"`
 	Y float64 `json:"y"`
+}
+
+// ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
+// associated to a scan.
+type ScanVulnerabilityItemsResponse struct {
+	ScanDate             time.Time               `json:"scan_date"`
+	Alias                string                  `json:"alias"`
+	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
+	SeverityCounts       tools.SeverityCounts    `json:"severity_counts,omitempty"`
+	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
+}
+
+type ScanVulnerabilityItem struct {
+	ID             int                   `json:"id"`
+	Name           string                `json:"name"`
+	Severity       string                `json:"severity"`
+	MaxCVSS        float64               `json:"max_cvss"`
+	RiskScore      float64               `json:"risk_score"`
+	ImpactScore    float64               `json:"impact_score"`
+	Likelihood     string                `json:"likelihood"`
+	Access         string                `json:"access"`
+	Complexity     string                `json:"complexity"`
+	Privileges     string                `json:"privileges"`
+	Exploitability string                `json:"exploitability"`
+	Description    string                `json:"description"`
+	Comment        string                `json:"comment"`
+	VendorComments []tools.VendorComment `json:"vendor_comments"`
+	References     []string              `json:"references"`
+}
+
+func ToScanVulnerabilityItem(vuln *domain.Vulnerability) ScanVulnerabilityItem {
+	var analystComment string
+	if vuln.AnalystComment == nil {
+		analystComment = ""
+	} else {
+		analystComment = *vuln.AnalystComment
+	}
+
+	return ScanVulnerabilityItem{
+		ID:             vuln.ID,
+		Name:           vuln.VulnerabilityID,
+		Severity:       vuln.BaseSeverity.String(),
+		MaxCVSS:        vuln.BaseCVSSScore,
+		RiskScore:      vuln.RiskScore,
+		ImpactScore:    vuln.ImpactScore,
+		Likelihood:     vuln.Likelihood.String(),
+		Access:         vuln.AccessType.String(),
+		Complexity:     vuln.Complexity.String(),
+		Privileges:     vuln.PrivilegesRequired.String(),
+		Exploitability: vuln.Exploit.Exploitability.String(),
+		Description:    vuln.Description,
+		Comment:        analystComment,
+		VendorComments: vuln.VendorComments,
+		References:     vuln.References,
+	}
 }
