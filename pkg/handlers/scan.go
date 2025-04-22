@@ -14,6 +14,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 )
@@ -47,7 +48,7 @@ func NewScanHandlers(
 func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) error {
 	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
 	userID := req.Context().Value(middleware.ContextUserID).(string)
-	scanRequest := new(ScanRequest)
+	scanRequest := new(dto.ScanRequest)
 
 	if err := decodeJSONBody(w, req, scanRequest); err != nil {
 		var mr *malformedRequest
@@ -233,18 +234,18 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 	}
 
 	// Map from service layer struct to API response DTO
-	response := ScanVulnerabilitySummaryResponse{
+	response := dto.ScanVulnerabilitySummaryResponse{
 		ScanID: summaryData.ScanID.String(),
 		Domain: summaryData.Domain,
-		GeneralSummary: VulnerabilityGeneralSummary{
+		GeneralSummary: dto.VulnerabilityGeneralSummary{
 			TotalVulnerabilities: summaryData.TotalVulnerabilities,
 			SeverityCounts:       summaryData.SeverityCounts,
 		},
-		VulnerabilitiesByCategory: VulnerabilitiesByCategory{
-			CategoryData: adaptCategoryData(summaryData.CategoryData),
+		VulnerabilitiesByCategory: dto.VulnerabilitiesByCategory{
+			CategoryData: dto.AdaptCategoryData(summaryData.CategoryData),
 		},
-		VulnerabilityTrends: VulnerabilityTrends{
-			TimePeriods:               adaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
+		VulnerabilityTrends: dto.VulnerabilityTrends{
+			TimePeriods:               dto.AdaptTimePeriods(summaryData.VulnerabilityTrends.TimePeriods),
 			AverageVulnerabilityCount: summaryData.VulnerabilityTrends.AverageVulnerabilityCount,
 		},
 	}
@@ -263,9 +264,9 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 
-	reportResponses := make([]ReportsResponse, len(reportItems))
+	reportResponses := make([]dto.ReportsResponse, len(reportItems))
 	for i, item := range reportItems {
-		reportResponses[i] = ReportsResponse{
+		reportResponses[i] = dto.ReportsResponse{
 			ScanID:          item.ScanID.String(),
 			Domain:          item.HostName,
 			IP:              item.IP,
@@ -295,12 +296,12 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 
-	scoreCardResponses := make([]ScoreCardTrendResponse, len(scoreCardTrendItems))
+	scoreCardResponses := make([]dto.ScoreCardTrendResponse, len(scoreCardTrendItems))
 	for i, item := range scoreCardTrendItems {
 		if item == nil {
 			continue
 		}
-		scoreCardResponses[i] = ScoreCardTrendResponse{
+		scoreCardResponses[i] = dto.ScoreCardTrendResponse{
 			Alias:            item.Alias,
 			OldestScore:      item.OldestScore,
 			LatestScore:      item.LatestScore,
@@ -390,35 +391,12 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
 
-	var scanVulnersItemsResponse ScanVulnerabilityItemsResponse
+	var scanVulnersItemsResponse dto.ScanVulnerabilityItemsResponse
 
 	// Parse vulners
-	scanVulnerItems := make([]ScanVulnerabilityItem, len(vulners))
+	scanVulnerItems := make([]dto.ScanVulnerabilityItem, len(vulners))
 	for i, vuln := range vulners {
-		var analystComment string
-		if vuln.AnalystComment == nil {
-			analystComment = ""
-		} else {
-			analystComment = *vuln.AnalystComment
-		}
-
-		scanVulnerItems[i] = ScanVulnerabilityItem{
-			ID:             vuln.ID,
-			Name:           vuln.VulnerabilityID,
-			Severity:       vuln.BaseSeverity.String(),
-			MaxCVSS:        vuln.BaseCVSSScore,
-			RiskScore:      vuln.RiskScore,
-			ImpactScore:    vuln.ImpactScore,
-			Likelihood:     vuln.Likelihood.String(),
-			Access:         vuln.AccessType.String(),
-			Complexity:     vuln.Complexity.String(),
-			Privileges:     vuln.PrivilegesRequired.String(),
-			Exploitability: vuln.Exploit.Exploitability.String(),
-			Description:    vuln.Description,
-			Comment:        analystComment,
-			VendorComments: vuln.VendorComments,
-			References:     vuln.References,
-		}
+		scanVulnerItems[i] = dto.ToScanVulnerabilityItem(vuln)
 	}
 
 	// Associate scan and host alias

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/services"
 
@@ -28,7 +29,7 @@ func NewHostHandlers(hostService interfaces.IHostService) *HostHandlers {
 }
 
 func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) error {
-	createHostRequest := new(CreateHostRequest)
+	createHostRequest := new(dto.CreateHostRequest)
 
 	if err := decodeJSONBody(w, req, createHostRequest); err != nil {
 		var mr *malformedRequest
@@ -93,7 +94,7 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	createHostRequest := new(CreateHostRequest)
+	createHostRequest := new(dto.CreateHostRequest)
 
 	if err := decodeJSONBody(w, req, createHostRequest); err != nil {
 		var mr *malformedRequest
@@ -142,7 +143,7 @@ func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) 
 }
 
 func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) error {
-	validateHostRequest := new(ValidateHostRequest)
+	validateHostRequest := new(dto.ValidateHostRequest)
 
 	if err := decodeJSONBody(w, req, validateHostRequest); err != nil {
 		var mr *malformedRequest
@@ -166,7 +167,7 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
-func (h *HostHandlers) constructHostForDB(createHostRequest *CreateHostRequest, req *http.Request) (*domain.Host, error) {
+func (h *HostHandlers) constructHostForDB(createHostRequest *dto.CreateHostRequest, req *http.Request) (*domain.Host, error) {
 	result, err := h.hostService.GetDomainIPValues(createHostRequest.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get domain and IP values: %w", err)
@@ -199,7 +200,7 @@ func constructResponse(host *domain.Host) *domain.HostResponse {
 }
 
 func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) error {
-	validateAliasRequest := new(ValidateAliasRequest)
+	validateAliasRequest := new(dto.ValidateAliasRequest)
 
 	if err := decodeJSONBody(w, req, validateAliasRequest); err != nil {
 		var mr *malformedRequest

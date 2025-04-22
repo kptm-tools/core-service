@@ -6,7 +6,7 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
+	"github.com/kptm-tools/core-service/pkg/dto"
 )
 
 type (
@@ -16,7 +16,7 @@ type (
 	vulnerabilityCountByType map[enums.WeaknessType]int
 	// uniqueCVSSValues represents a set of unique CVSS scores.
 	uniqueCVSSValues map[float64]bool
-	// uniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
+	// UniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
 	UniqueCVSSValuesByType map[enums.WeaknessType]uniqueCVSSValues
 )
 
@@ -31,7 +31,7 @@ type (
 // Returns:
 //
 //	A dto.InitialDataReponse struct containing the processed vulnerability data.
-func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataReponse {
+func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataResponse {
 	maxCVSSPerType := make(MaxCVSSPerType)
 	vulnCountPerType := make(vulnerabilityCountByType)
 	uniqueCVSSValuesPerType := make(UniqueCVSSValuesByType)
@@ -97,7 +97,7 @@ func BuildVulnerabilityTypeData(vulns []*domain.Vulnerability) dto.InitialDataRe
 		})
 	}
 
-	return dto.InitialDataReponse{
+	return dto.InitialDataResponse{
 		VulnerabilityTypes:         vulnerabilityTypesData,
 		GlobalTotalVulnerabilities: globalTotalVulnerabilities,
 		GlobalCVSSScore:            globalCVSSScore,
@@ -250,7 +250,7 @@ func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) UniqueCVSSValuesB
 //   - Their WeaknessType exists in the status map and their BaseCVSS Score
 //     is less than or equal to the corresponding CVSS threshold.
 //   - Their WeaknessType does not exist as a key in the status map.
-func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[string]float64) (
+func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[enums.WeaknessType]float64) (
 	solved []*domain.Vulnerability,
 	notSolved []*domain.Vulnerability,
 ) {
@@ -258,7 +258,14 @@ func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[str
 	notSolved = make([]*domain.Vulnerability, 0)
 
 	for _, vuln := range vulns {
-		if cvssThreshold, ok := status[vuln.Type]; ok {
+		vulnTypeStr, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type when filtering vulnerabilities by status, skipping vuln...",
+				slog.Int("vuln_id", vuln.ID))
+			continue
+		}
+
+		if cvssThreshold, ok := status[vulnTypeStr]; ok {
 			if vuln.BaseCVSSScore > cvssThreshold {
 				solved = append(solved, vuln)
 			} else {
@@ -270,4 +277,108 @@ func FilterVulnerabilitiesByStatus(vulns []*domain.Vulnerability, status map[str
 	}
 
 	return solved, notSolved
+}
+
+// GetHighestCVSSVulnerabilityOfType gets the vulnerability with the highest CVSS of a slice of a particular type.
+func GetHighestCVSSVulnerabilityOfType(vulns []*domain.Vulnerability, vulnType enums.WeaknessType) *domain.Vulnerability {
+	var highestVuln *domain.Vulnerability = nil
+	maxCVSS := -1.0
+	vulnTypeStr := vulnType.String()
+
+	for _, vuln := range vulns {
+		if vuln.Type == vulnTypeStr {
+			if vuln.BaseCVSSScore > maxCVSS {
+				maxCVSS = vuln.BaseCVSSScore
+				highestVuln = vuln
+			} else if vuln.BaseCVSSScore == maxCVSS {
+				// If CVSS is the same, compare ID's (names) alphabetically
+				if vuln.VulnerabilityID > highestVuln.VulnerabilityID {
+					highestVuln = vuln
+				}
+			}
+		}
+	}
+
+	return highestVuln
+}
+
+// GetUniqueVulnTypes returns a slice with unique Weakness Types found within a vulnerability slice.
+func GetUniqueVulnTypes(vulns []*domain.Vulnerability) []enums.WeaknessType {
+	uniqueTypes := make([]enums.WeaknessType, 0)
+	for _, vuln := range vulns {
+		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		if !ok {
+			slog.Warn("Found an invalid vulnerability type when building vulnerability graph",
+				slog.Int("vuln_id", vuln.ID),
+				slog.String("vuln_type", vuln.Type))
+			continue
+		}
+		if !contains(uniqueTypes, wt) {
+			uniqueTypes = append(uniqueTypes, wt)
+		}
+	}
+
+	return uniqueTypes
+}
+
+func BuildVulnerabilityGraph(vulns []*domain.Vulnerability, notSolvedVulns []*domain.Vulnerability) dto.GraphData {
+	actualDataPoints := make([]dto.DataPoint, 0)
+
+	expectedDataPoints := make([]dto.DataPoint, 0)
+
+	// 1. Get each unique type within vulners (X values)
+	uniqueTypes := GetUniqueVulnTypes(vulns)
+
+	for _, wt := range uniqueTypes {
+		actualHighestCVSS := 0.0
+		expectedHighestCVSS := 0.0
+
+		if highestActualVuln := GetHighestCVSSVulnerabilityOfType(vulns, wt); highestActualVuln != nil {
+			actualHighestCVSS = highestActualVuln.BaseCVSSScore
+		}
+		if highestExpectedVuln := GetHighestCVSSVulnerabilityOfType(notSolvedVulns, wt); highestExpectedVuln != nil {
+			expectedHighestCVSS = highestExpectedVuln.BaseCVSSScore
+		}
+
+		actualDataPoints = append(actualDataPoints, dto.DataPoint{
+			X: wt.String(),
+			Y: actualHighestCVSS,
+		})
+		expectedDataPoints = append(expectedDataPoints, dto.DataPoint{
+			X: wt.String(),
+			Y: expectedHighestCVSS,
+		})
+	}
+
+	actualAvg := calculateSeriesAvg(actualDataPoints)
+	expectedAvg := calculateSeriesAvg(expectedDataPoints)
+
+	return dto.GraphData{
+		Series: []dto.Series{
+			{Name: "Actual", Data: actualDataPoints, Average: actualAvg},
+			{Name: "Expected", Data: expectedDataPoints, Average: expectedAvg},
+		},
+	}
+}
+
+func calculateSeriesAvg(dataPoints []dto.DataPoint) float64 {
+	avg := 0.0
+	sum := 0.0
+
+	for _, dataPoint := range dataPoints {
+		sum += dataPoint.Y
+	}
+	if len(dataPoints) != 0 {
+		avg = sum / float64(len(dataPoints))
+	}
+	return avg
+}
+
+func contains[T comparable](slice []T, value T) bool {
+	for _, item := range slice {
+		if value == item {
+			return true
+		}
+	}
+	return false
 }

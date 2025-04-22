@@ -3,8 +3,14 @@ package report
 import (
 	"log/slog"
 	"net/http"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/kptm-tools/core-service/pkg/domain"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
@@ -19,9 +25,10 @@ type ReportHub struct {
 	handlers    map[string]interfaces.IReportHandler
 	authService interfaces.IAuthService
 	scanService interfaces.IScanService
+	rooms       *sync.Map
 }
 
-var _ interfaces.IHub = (*ReportHub)(nil)
+var _ interfaces.IHubReport = (*ReportHub)(nil)
 
 // NewReportHub creates a ReportHub. If we use a particular service which we wish
 // to inject to our services, we would ask for it as a parameter in NewReportHub()
@@ -33,10 +40,10 @@ func NewReportHub(
 	authService interfaces.IAuthService,
 ) *ReportHub {
 	handlers := map[string]interfaces.IReportHandler{
-		wshandlers.MessageInitialRequest: wshandlers.NewInitialRequestHandler(scanService),
-		wshandlers.MessageVectorUpdate:   wshandlers.NewVectorUpdateHandler(),
-		wshandlers.MessageSelectVector:   wshandlers.NewSelectVectorHandler(),
-		wshandlers.MessageApplyVectors:   wshandlers.NewApplyVectorsHandler(),
+		dto.MessageInitialRequest.String(): wshandlers.NewInitialRequestHandler(scanService),
+		dto.MessageVectorUpdate.String():   wshandlers.NewVectorUpdateHandler(),
+		dto.MessageSelectVector.String():   wshandlers.NewSelectVectorHandler(),
+		dto.MessageApplyVectors.String():   wshandlers.NewApplyVectorsHandler(),
 	}
 
 	return &ReportHub{
@@ -47,6 +54,7 @@ func NewReportHub(
 		handlers:    handlers,
 		authService: authService,
 		scanService: scanService,
+		rooms:       &sync.Map{},
 	}
 }
 
@@ -121,5 +129,80 @@ func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportCl
 		return err
 	}
 
+	return nil
+}
+
+func (h *ReportHub) AddToRoom(scanID string) {
+	scanUUID, err := uuid.Parse(scanID)
+	if err != nil {
+		slog.Error("Failed to parse scanID when adding client to room", slog.String("scan_id", scanID), slog.Any("error", err))
+		return
+	}
+	roomInterface, _ := h.rooms.LoadOrStore(scanID, NewReportRoom(scanID))
+	room, ok := roomInterface.(*ReportRoom)
+	if !ok {
+		slog.Error("Hub's room is not of type ReportRoom", slog.String("scan_id", scanID))
+		return
+	}
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	if room.AmountOfClients == 0 {
+		slog.Debug("Fetching vulnerabilities for new room...")
+		vulns, err := h.scanService.GetScanVulnerabilities(scanUUID)
+		if err != nil {
+			slog.Error("Failed to fetch vulnerabilities from DB when adding client to room", slog.Any("error", err))
+			return
+		}
+		room.Vulnerabilities = vulns
+		room.AmountOfClients = 1
+		slog.Info("Vulnerabilities loaded for scanID", slog.String("scan_id", scanID))
+	} else {
+		room.AmountOfClients += 1
+		slog.Info("Increasing the amount of clients for scanID", slog.String("scan_id", scanID))
+	}
+	slog.Info("Client joined room", slog.String("scan_id", scanID))
+}
+
+func (h *ReportHub) RemoveFromRoom(scanID string) {
+	roomInterface, _ := h.rooms.Load(scanID)
+	room, ok := roomInterface.(*ReportRoom)
+	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
+	if ok {
+		room.mu.Lock()
+		defer room.mu.Unlock()
+		slog.Info("Removing client from room", slog.String("scanID", scanID))
+		room.AmountOfClients = room.AmountOfClients - 1
+		h.rooms.Store(scanID, room)
+		if room.AmountOfClients == 0 {
+			slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
+			ExecuteAfterDelay(5*time.Second, scanID, h)
+		}
+	}
+}
+
+func ExecuteAfterDelay(delay time.Duration, scanID string, h *ReportHub) {
+	time.AfterFunc(delay, func() {
+		slog.Info("Entering to delete scanID", slog.String("scanID", scanID))
+		roomInterface, _ := h.rooms.Load(scanID)
+		room, ok := roomInterface.(*ReportRoom)
+		if ok {
+			if room.AmountOfClients == 0 {
+				room.mu.Lock()
+				defer room.mu.Unlock()
+				slog.Info("Removing scanID from room", slog.String("scanID", scanID))
+				h.rooms.Delete(scanID)
+			}
+		}
+	})
+}
+
+func (h *ReportHub) GetRoomVulnerabilities(scanID string) []*domain.Vulnerability {
+	roomInterface, _ := h.rooms.Load(scanID)
+	room, ok := roomInterface.(*ReportRoom)
+	if ok {
+		return room.Vulnerabilities
+	}
+	slog.Warn("No room value present for scanID", slog.String("scan_id", scanID))
 	return nil
 }
