@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 	"github.com/kptm-tools/core-service/pkg/mocks"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 )
 
 type ReportClient struct {

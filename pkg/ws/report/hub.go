@@ -10,9 +10,9 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
-	"github.com/kptm-tools/core-service/pkg/ws/report/dto"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
 	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
