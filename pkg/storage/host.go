@@ -151,18 +151,30 @@ func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	}
 	defer tx.Rollback()
 
-	query := `
-    UPDATE hosts
-    SET  rapporteurs=$2, domain=$3, ip=$4, alias=$5
-        WHERE id=$1
-    RETURNING *
-  `
-	rapporteursJSONB, err := json.Marshal(h.Rapporteurs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal rapporteurs: %w", err)
+	var row *sql.Row
+	if h.Rapporteurs == nil {
+		query := `
+		UPDATE hosts
+		SET  domain=$2, ip=$3, alias=$4
+			WHERE id=$1
+		RETURNING *
+	  `
+		row = tx.QueryRow(query, h.ID, h.Domain, h.IP, h.Name)
+	} else {
+		query := `
+			UPDATE hosts
+			SET  rapporteurs=$2, domain=$3, ip=$4, alias=$5
+				WHERE id=$1
+			RETURNING *
+		  `
+		rapporteursJSONB, err := json.Marshal(h.Rapporteurs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal rapporteurs: %w", err)
+		}
+
+		row = tx.QueryRow(query, h.ID, rapporteursJSONB, h.Domain, h.IP, h.Name)
 	}
 
-	row := tx.QueryRow(query, h.ID, rapporteursJSONB, h.Domain, h.IP, h.Name)
 	host := &domain.Host{}
 	if err := scanIntoHostRow(row, host); err != nil {
 		return nil, fmt.Errorf("error fetching host: %w", err)
@@ -226,6 +238,10 @@ func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error
 }
 
 func (s *PostgreSQLStore) UpdateCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
+	if credentials == nil {
+		slog.Warn("no credentials to update")
+		return nil
+	}
 	// Step 1: Delete all credentials associated with the hostID
 	deleteQuery := `DELETE FROM credentials WHERE host_id = $1`
 	if _, err := tx.Exec(deleteQuery, hostID); err != nil {
