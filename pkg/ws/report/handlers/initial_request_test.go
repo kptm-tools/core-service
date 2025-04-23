@@ -2,18 +2,19 @@ package wshandlers
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/mocks"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestInitialRequestHandler(t *testing.T) {
-	dataBadScanId, _ := json.Marshal(&dto.InitialDataRequest{ScanID: ""})
-	dataGoodScanId, _ := json.Marshal(&dto.InitialDataRequest{ScanID: "56a9b230-1a67-40c1-ad97-603ebf304841"})
+	dataBadScanID, _ := json.Marshal(&dto.InitialDataRequest{ScanID: ""})
+	dataGoodScanID, _ := json.Marshal(&dto.InitialDataRequest{ScanID: "56a9b230-1a67-40c1-ad97-603ebf304841"})
 	testCases := []struct {
 		name        string
 		message     common.Message
@@ -31,7 +32,7 @@ func TestInitialRequestHandler(t *testing.T) {
 			name: "Invalid scanID",
 			message: common.Message{
 				Type:    "",
-				Payload: dataBadScanId,
+				Payload: dataBadScanID,
 			},
 			expectError: true,
 		},
@@ -39,7 +40,7 @@ func TestInitialRequestHandler(t *testing.T) {
 			name: "Invalid data memory",
 			message: common.Message{
 				Type:    "",
-				Payload: dataGoodScanId,
+				Payload: dataGoodScanID,
 			},
 			expectError: true,
 		},
@@ -47,7 +48,7 @@ func TestInitialRequestHandler(t *testing.T) {
 			name: "Good handler",
 			message: common.Message{
 				Type:    "",
-				Payload: dataGoodScanId,
+				Payload: dataGoodScanID,
 			},
 			expectError: false,
 		},
@@ -92,5 +93,4 @@ func TestInitialRequestHandler(t *testing.T) {
 			}
 		})
 	}
-
 }
