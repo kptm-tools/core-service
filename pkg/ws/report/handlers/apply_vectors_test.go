@@ -11,16 +11,14 @@ import (
 	"testing"
 )
 
-func TestInitialRequestHandler(t *testing.T) {
-	dataBadScanId, _ := json.Marshal(&dto.InitialDataRequest{ScanID: ""})
-	dataGoodScanId, _ := json.Marshal(&dto.InitialDataRequest{ScanID: "56a9b230-1a67-40c1-ad97-603ebf304841"})
+func TestApplyVectorsHandler(t *testing.T) {
 	testCases := []struct {
 		name        string
 		message     common.Message
 		expectError bool
 	}{
 		{
-			name: "Invalid message request",
+			name: "Invalid roomID",
 			message: common.Message{
 				Type:    "",
 				Payload: nil,
@@ -28,26 +26,10 @@ func TestInitialRequestHandler(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "Invalid scanID",
-			message: common.Message{
-				Type:    "",
-				Payload: dataBadScanId,
-			},
-			expectError: true,
-		},
-		{
-			name: "Invalid data memory",
-			message: common.Message{
-				Type:    "",
-				Payload: dataGoodScanId,
-			},
-			expectError: true,
-		},
-		{
 			name: "Good handler",
 			message: common.Message{
 				Type:    "",
-				Payload: dataGoodScanId,
+				Payload: nil,
 			},
 			expectError: false,
 		},
@@ -67,12 +49,16 @@ func TestInitialRequestHandler(t *testing.T) {
 				MockGetHubReport: func() interfaces.IHubReport {
 					return hub
 				},
+				MockGetRoomID: func() string {
+					if tc.expectError {
+						return ""
+					}
+					return "56a9b230-1a67-40c1-ad97-603ebf304841"
+				},
 				Outgoing: make(chan []byte, 256),
 			}
-			mockScanService := &mocks.MockScanService{}
-			handler := &InitialRequestHandler{
-				mockScanService,
-			}
+
+			handler := &ApplyVectorsHandler{}
 
 			// 2. Act
 			err := handler.Handle(tc.message, client)
@@ -87,7 +73,7 @@ func TestInitialRequestHandler(t *testing.T) {
 				// assert response of channel
 				var messageResponse common.Message
 				json.Unmarshal(value, &messageResponse)
-				assert.Equal(t, dto.MessageInitialDataResponse.String(), messageResponse.Type)
+				assert.Equal(t, dto.MessageReportDataResponse.String(), messageResponse.Type)
 				client.Close()
 			}
 		})
