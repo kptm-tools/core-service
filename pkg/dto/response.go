@@ -123,6 +123,7 @@ type ScanVulnerabilityItemsResponse struct {
 type ScanVulnerabilityItem struct {
 	ID             int                   `json:"id"`
 	Name           string                `json:"name"`
+	Type           string                `json:"type"`
 	Severity       string                `json:"severity"`
 	MaxCVSS        float64               `json:"max_cvss"`
 	RiskScore      float64               `json:"risk_score"`
@@ -360,6 +361,7 @@ func ToScanVulnerabilityItem(vuln *domain.Vulnerability) ScanVulnerabilityItem {
 	return ScanVulnerabilityItem{
 		ID:             vuln.ID,
 		Name:           vuln.VulnerabilityID,
+		Type:           vuln.Type,
 		Severity:       vuln.BaseSeverity.String(),
 		MaxCVSS:        vuln.BaseCVSSScore,
 		RiskScore:      vuln.RiskScore,
