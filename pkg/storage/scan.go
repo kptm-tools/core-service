@@ -362,6 +362,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
       SELECT
         sv.type AS vuln_type,
         MAX(sv.cvss) AS max_cvss,
+        COUNT(*) as quantity,
         sv.severity AS vuln_severity
       FROM
         scan_vulnerabilities sv
@@ -386,7 +387,15 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
           vuln_severity
         )
         FROM severity_per_type
-      ) AS severity_per_type_map
+      ) AS severity_per_type_map,
+        (
+        SELECT json_object_agg(
+          vuln_type,
+          quantity
+        )
+        FROM severity_per_type
+      ) AS count_severity_per_type_map
+    
     FROM
       scans
     INNER JOIN hosts ON scans.host_id = hosts.id
@@ -401,6 +410,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 
 	var insights domain.ScanInsights
 	var severityPerTypeJSON []byte
+	var countSeverityPerTypeJSON []byte
 
 	err := rows.Scan(
 		&insights.Metadata.ScanID,
@@ -412,6 +422,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 		&insights.SeverityCounts.High,
 		&insights.SeverityCounts.Critical,
 		&severityPerTypeJSON,
+		&countSeverityPerTypeJSON,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
@@ -419,26 +430,30 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 
 	// Parse JSON severity_per_type into the desired map if there are vulnerabilities
 	var severityPerType map[string]string
+	var countSeverityPerType map[string]int
 
 	if insights.TotalVulnerabilities > 0 {
 		if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal severity_per_type JSON: %w", err)
 		}
+		if err := json.Unmarshal(countSeverityPerTypeJSON, &countSeverityPerType); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal count_severity_per_type JSON: %w", err)
+		}
 	}
 
 	// Map max cvss values into enums.Severity
-	mapSeverities := func(a map[string]string, f func(string) int) map[string]int {
-		n := make(map[string]int, len(a))
+	mapSeverities := func(a map[string]string, f func(string) string) map[string]string {
+		n := make(map[string]string, len(a))
 		for k, v := range a {
 			n[k] = f(v)
 		}
 		return n
 	}
 
-	insights.SeverityPerType = mapSeverities(severityPerType, func(s string) int {
-		return enums.StringToSeverityType(s).Int()
+	insights.SeverityPerType = mapSeverities(severityPerType, func(s string) string {
+		return enums.StringToSeverityType(s).String()
 	})
-
+	insights.SeverityPerTypeCount = countSeverityPerType
 	// 1. Calculate total_vulnerabilities variation since last scan
 	vulnerabilityVariation, err := s.GetTotalVulnerabilityVariationSinceLastScan(scanID)
 	if err != nil {
