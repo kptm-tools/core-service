@@ -68,7 +68,6 @@ type ScanInsights struct {
 	ProtectionScore          float64              `json:"protection_score"`
 	SeverityCounts           tools.SeverityCounts `json:"severity_counts"`
 	SeverityPerType          map[string]string    `json:"severity_per_type"`
-	SeverityPerTypeCount     map[string]int       `json:"count_severity_per_type"`
 	TotalVulnerabilities     int                  `json:"total_vulnerabilities"`
 	VulnerabilityVariation   int                  `json:"vulnerability_variation"`
 	ProtectionScoreVariation float64              `json:"protection_score_variation"`
