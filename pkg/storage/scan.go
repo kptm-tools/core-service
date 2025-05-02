@@ -816,6 +816,7 @@ func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.Repor
   FROM scans s
   INNER JOIN hosts h ON s.host_id = h.id
   WHERE s.tenant_id = $1 AND s.status = 'Completed'
+  ORDER BY scan_date DESC
   `
 
 	rows, err := s.db.Query(query, tenantID)
