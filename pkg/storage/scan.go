@@ -361,15 +361,13 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
     WITH severity_per_type AS (
       SELECT
         sv.type AS vuln_type,
-        MAX(sv.cvss) AS max_cvss,
-        sv.severity AS vuln_severity
+        MAX(sv.cvss) AS max_cvss
       FROM
         scan_vulnerabilities sv
       WHERE
         sv.scan_id = $1
       GROUP BY
-        sv.type,
-        vuln_severity
+        sv.type
   )
     SELECT
       scans.id AS scan_id,
@@ -383,10 +381,11 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
       (
         SELECT json_object_agg(
           vuln_type,
-          vuln_severity
+          max_cvss
         )
         FROM severity_per_type
       ) AS severity_per_type_map
+    
     FROM
       scans
     INNER JOIN hosts ON scans.host_id = hosts.id
@@ -418,7 +417,7 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 	}
 
 	// Parse JSON severity_per_type into the desired map if there are vulnerabilities
-	var severityPerType map[string]string
+	var severityPerType map[string]float64
 
 	if insights.TotalVulnerabilities > 0 {
 		if err := json.Unmarshal(severityPerTypeJSON, &severityPerType); err != nil {
@@ -427,18 +426,17 @@ func (s *PostgreSQLStore) GetScanInsights(scanID uuid.UUID) (*domain.ScanInsight
 	}
 
 	// Map max cvss values into enums.Severity
-	mapSeverities := func(a map[string]string, f func(string) int) map[string]int {
-		n := make(map[string]int, len(a))
+	mapSeverities := func(a map[string]float64, f func(float64) string) map[string]string {
+		n := make(map[string]string, len(a))
 		for k, v := range a {
 			n[k] = f(v)
 		}
 		return n
 	}
 
-	insights.SeverityPerType = mapSeverities(severityPerType, func(s string) int {
-		return enums.StringToSeverityType(s).Int()
+	insights.SeverityPerType = mapSeverities(severityPerType, func(s float64) string {
+		return tools.MapCVSS(s).String()
 	})
-
 	// 1. Calculate total_vulnerabilities variation since last scan
 	vulnerabilityVariation, err := s.GetTotalVulnerabilityVariationSinceLastScan(scanID)
 	if err != nil {
@@ -818,6 +816,7 @@ func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.Repor
   FROM scans s
   INNER JOIN hosts h ON s.host_id = h.id
   WHERE s.tenant_id = $1 AND s.status = 'Completed'
+  ORDER BY scan_date DESC
   `
 
 	rows, err := s.db.Query(query, tenantID)
