@@ -96,7 +96,7 @@ func SampleScans() []domain.Scan {
 			Target: results.Target{
 				Alias: "anothersample",
 				Value: "anothersample.net", // Corrected to top-level domain
-				Type:  enums.Domain,        // Changed to Domain for top-level
+				Type:  enums.Domain,        // Changed to Credential for top-level
 			},
 			CreatedAt: time.Date(currentYear, month3, 5, 14, 0, 0, 0, time.UTC), // Month 3 is May
 			UpdatedAt: time.Date(currentYear, month3, 20, 9, 15, 0, 0, time.UTC),
