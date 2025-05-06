@@ -48,17 +48,19 @@ func Run() {
 func populateDB(store interfaces.IStorage) {
 	fmt.Println("Populating DB with sample data...")
 
-	if err := populateTenants(store); err != nil {
+	tenants, err := populateTenants(store)
+	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Tenants populated successfully")
 
-	if err := populateHosts(store); err != nil {
-		panic(err)
+	hosts, errHost := populateHosts(store, tenants)
+	if errHost != nil {
+		panic(errHost)
 	}
 	fmt.Println("Hosts populated successfully")
 
-	if err := populateScans(store); err != nil {
+	if err := populateScans(store, tenants, len(hosts)); err != nil {
 		panic(err)
 	}
 	fmt.Println("Scans populated successfully")
@@ -69,33 +71,32 @@ func populateDB(store interfaces.IStorage) {
 	// fmt.Println("Scan results populated successfully")
 }
 
-func populateTenants(store interfaces.IStorage) error {
+func populateTenants(store interfaces.IStorage) ([]domain.Tenant, error) {
 	sampleTenants := samples.SampleTenants()
 
 	for _, tenant := range sampleTenants {
 		_, err := store.CreateTenant(&tenant)
 		if err != nil {
-			return fmt.Errorf("error populating tenant %s: %w", tenant.ID, err)
+			return nil, fmt.Errorf("error populating tenant %s: %w", tenant.ID, err)
 		}
 	}
-	return nil
+	return sampleTenants, nil
 }
 
-func populateHosts(store interfaces.IStorage) error {
-	sampleHosts := samples.SampleHosts()
+func populateHosts(store interfaces.IStorage, tenants []domain.Tenant) ([]domain.Host, error) {
+	sampleHosts := samples.SampleHosts(10, tenants)
 
 	for _, host := range sampleHosts {
-
 		_, err := store.CreateHost(&host)
 		if err != nil {
-			return fmt.Errorf("error populating host %s: %w", host.Name, err)
+			return nil, fmt.Errorf("error populating host %s: %w", host.Name, err)
 		}
 	}
-	return nil
+	return sampleHosts, nil
 }
 
-func populateScans(store interfaces.IStorage) error {
-	sampleScans := samples.SampleScans()
+func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hostSize int) error {
+	sampleScans := samples.SampleScans(10, tenants, hostSize)
 
 	for i, scan := range sampleScans {
 		createdScan, err := store.CreateScan(&scan)
