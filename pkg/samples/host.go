@@ -46,7 +46,7 @@ func SampleHosts(size int, tenants []domain.Tenant) []domain.Host {
 			ID:          gofakeit.Int(),
 			TenantID:    tenants[indexTenant].ProviderID,
 			OperatorID:  operators[indexTenant],
-			Name:        strings.Split(domainName, ".")[0],
+			Name:        strings.Split(domainName, ".")[0] + " " + gofakeit.AppVersion(),
 			Domain:      "https://" + domainName,
 			IP:          gofakeit.IPv4Address(),
 			Credentials: generateCredentials(2),

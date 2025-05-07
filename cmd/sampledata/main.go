@@ -117,7 +117,7 @@ func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hostSize 
 			nil,
 			scan.ID,
 			enums.StatusCompleted.String(),
-			scan.StartedAt.Add(time.Duration(gofakeit.IntRange(1, 100))),
+			scan.StartedAt.Add(time.Minute*time.Duration(gofakeit.Number(100, 200))),
 		); err != nil {
 			return fmt.Errorf("error updating scan status and ended at: %w", err)
 		}

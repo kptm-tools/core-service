@@ -51,7 +51,7 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 		month := gofakeit.Month()
 		day := gofakeit.Day()
 		creationTime := gofakeit.DateRange(time.Now().AddDate(-fromYears, 0, 0), time.Now().AddDate(-fromYears, month, day)).UTC()
-		endedTime := creationTime.Add(time.Duration(gofakeit.IntRange(1, 100)))
+		endedTime := creationTime.Add(time.Minute * time.Duration(gofakeit.IntRange(1, 100)))
 		domainScans[i] = domain.Scan{
 			ID:         uuid.New(),
 			TenantID:   tenants[indexTenant].ProviderID,
