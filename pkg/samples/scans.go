@@ -12,7 +12,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func generateMetaData(size int, services []string) []domain.Metadata {
+func GenerateMetaData(size int, services []string) []domain.Metadata {
 	metadata := make([]domain.Metadata, size)
 	indexService := gofakeit.Number(0, 3)
 	for i := range size {
@@ -25,19 +25,8 @@ func generateMetaData(size int, services []string) []domain.Metadata {
 }
 
 func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan {
-	operators := make([]string, 2)
-	services := make([]string, 4)
-	targets := make([]string, 3)
-	operators[0] = "00000000-0000-0000-0000-111111111111"
-	operators[1] = "00000000-0000-0000-0000-222222222222"
-	services[0] = "nmap"
-	services[1] = "whois"
-	services[2] = "dns_lookup"
-	services[3] = "harvester"
-	targets[0] = "domain"
-	targets[1] = "subddomain"
-	targets[2] = "ip"
-
+	operators, services, targets := GenerateDefaultConstants()
+	fromYears := 1
 	domainScans := make([]domain.Scan, size)
 	for i := range size {
 		var hostValue string
@@ -61,8 +50,8 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 		hostID := gofakeit.Number(1, hostsSize)
 		month := gofakeit.Month()
 		day := gofakeit.Day()
-		creationTime := gofakeit.DateRange(time.Now().AddDate(-1, 0, 0), time.Now().AddDate(-1, month, day)).UTC()
-		endedTime := gofakeit.DateRange(time.Now().AddDate(-1, month, day), time.Now().AddDate(-1, month, day+1)).UTC()
+		creationTime := gofakeit.DateRange(time.Now().AddDate(-fromYears, 0, 0), time.Now().AddDate(-fromYears, month, day)).UTC()
+		endedTime := gofakeit.DateRange(time.Now().AddDate(-fromYears, month, day), time.Now().AddDate(-fromYears, month, day+1)).UTC()
 		domainScans[i] = domain.Scan{
 			ID:         uuid.New(),
 			TenantID:   tenants[indexTenant].ProviderID,
@@ -71,7 +60,7 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 			HostsStatus: []domain.StatusHost{
 				{
 					Host:     hostValue,
-					Metadata: generateMetaData(gofakeit.Number(1, 4), services),
+					Metadata: GenerateMetaData(gofakeit.Number(1, 4), services),
 				},
 			},
 			HostsResults: []domain.ResultHost{
@@ -90,4 +79,20 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 		}
 	}
 	return domainScans
+}
+
+func GenerateDefaultConstants() ([]string, []string, []string) {
+	operators := make([]string, 2)
+	services := make([]string, 4)
+	targets := make([]string, 3)
+	operators[0] = "00000000-0000-0000-0000-111111111111"
+	operators[1] = "00000000-0000-0000-0000-222222222222"
+	services[0] = "nmap"
+	services[1] = "whois"
+	services[2] = "dns_lookup"
+	services[3] = "harvester"
+	targets[0] = "domain"
+	targets[1] = "subddomain"
+	targets[2] = "ip"
+	return operators, services, targets
 }
