@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/brianvoe/gofakeit/v7"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -116,7 +117,7 @@ func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hostSize 
 			nil,
 			scan.ID,
 			enums.StatusCompleted.String(),
-			scan.StartedAt.Add(time.Minute*5),
+			scan.StartedAt.Add(time.Duration(gofakeit.IntRange(1, 100))),
 		); err != nil {
 			return fmt.Errorf("error updating scan status and ended at: %w", err)
 		}

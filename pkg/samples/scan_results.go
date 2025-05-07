@@ -112,7 +112,7 @@ func SampleInformationGatheringScanResults(scans []domain.Scan) []domain.ScanRes
 					Tool:      tool,
 					Result:    generateInfoGather(tool, scan.Target.Type),
 					Err:       nil,
-					Timestamp: gofakeit.DateRange(scan.StartedAt, *scan.EndedAt),
+					Timestamp: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
 				},
 			)
 			indexSR++
@@ -202,7 +202,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			ScanID:    scan.ID,
 			ToolName:  enums.ToolNmap.String(),
 			Success:   true,
-			CreatedAt: gofakeit.DateRange(scan.StartedAt, *scan.EndedAt),
+			CreatedAt: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
 			Result: tools.ToolResult{
 				Tool:   enums.ToolNmap,
 				Result: generateNmapResult(),
