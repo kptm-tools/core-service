@@ -2,12 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/brianvoe/gofakeit/v7"
-	"log/slog"
-	"math/rand"
-	"os"
-	"time"
-
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/cmd/migrations"
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -15,6 +9,9 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/samples"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"log/slog"
+	"math/rand"
+	"os"
 )
 
 func Run() {
@@ -119,7 +116,7 @@ func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hosts []d
 			nil,
 			scan.ID,
 			enums.StatusCompleted.String(),
-			scan.StartedAt.Add(time.Minute*time.Duration(gofakeit.Number(100, 200))),
+			*scan.EndedAt,
 		); err != nil {
 			return fmt.Errorf("error updating scan status and ended at: %w", err)
 		}
