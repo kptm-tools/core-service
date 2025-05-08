@@ -43,7 +43,6 @@ func SampleHosts(size int, tenants []domain.Tenant) []domain.Host {
 		creationTime := gofakeit.DateRange(time.Now().AddDate(-100, 0, 0), time.Now().AddDate(-18, 0, 0)).UTC()
 		indexTenant := gofakeit.Number(0, len(tenants)-1)
 		domainHosts[i] = domain.Host{
-			ID:          gofakeit.Int(),
 			TenantID:    tenants[indexTenant].ProviderID,
 			OperatorID:  operators[indexTenant],
 			Name:        strings.Split(domainName, ".")[0] + " " + gofakeit.AppVersion(),

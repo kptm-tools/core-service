@@ -8,6 +8,7 @@ import (
 	whoisparser "github.com/likexian/whois-parser"
 	"math"
 	"strconv"
+	"time"
 )
 
 func generateEmails(size int) []string {
@@ -122,7 +123,50 @@ func SampleInformationGatheringScanResults(scans []domain.Scan) []domain.ScanRes
 	return domainScanResult
 }
 
-func generateVuln(size int) []tools.Vulnerability {
+func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment {
+	vendorComments := make([]tools.VendorComment, size)
+	for i := range size {
+		vendorComments[i] = tools.VendorComment{
+			Organization: gofakeit.Company(),
+			Comment:      gofakeit.Comment(),
+			LastModified: fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
+		}
+	}
+	return vendorComments
+}
+
+func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
+	severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact := generateDefaultEnumsVuln()
+	vulns := make([]tools.Vulnerability, size)
+	for i := range vulns {
+		vulns[i] = tools.Vulnerability{
+			ID:                 "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
+			Type:               enums.AllWeaknessTypes[gofakeit.IntRange(0, len(enums.AllWeaknessTypes)-1)],
+			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
+			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
+			Access:             accessType[gofakeit.IntRange(0, 4)],
+			Complexity:         complexityType[gofakeit.IntRange(0, 3)],
+			PrivilegesRequired: privilegeRequiredType[gofakeit.IntRange(0, 3)],
+			Likelihood:         likelihoodType[gofakeit.IntRange(0, 4)],
+			References:         []string{gofakeit.URL()},
+			Exploit: tools.Exploit{
+				Score:          math.Trunc(gofakeit.Float64Range(0, 1)*10) / 10,
+				Exploitability: exploitableType[gofakeit.IntRange(0, len(exploitableType)-1)],
+			},
+			ImpactScore:        math.Trunc(gofakeit.Float64Range(0, 100)*10) / 10,
+			RiskScore:          math.Trunc(gofakeit.Float64Range(0, 100)*10) / 10,
+			IntegrityImpact:    integrityImpact[gofakeit.IntRange(0, 3)],
+			AvailabilityImpact: integrityImpact[gofakeit.IntRange(0, 3)],
+			Description:        gofakeit.LoremIpsumWord(),
+			VendorComments:     generateVendorComments(gofakeit.Number(0, 100), fromDate),
+			Published:          fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
+			LastUpdated:        fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
+		}
+	}
+	return vulns
+}
+
+func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityType, []enums.AccessType, []enums.ComplexityType, []enums.PrivilegesRequiredType, []enums.LikelyhoodType, []enums.ImpactType) {
 	severityType := make([]enums.SeverityType, 6)
 	severityType[0] = enums.SeverityTypeLow
 	severityType[1] = enums.SeverityTypeMedium
@@ -130,37 +174,44 @@ func generateVuln(size int) []tools.Vulnerability {
 	severityType[3] = enums.SeverityTypeUnknown
 	severityType[4] = enums.SeverityTypeCritical
 	severityType[5] = enums.SeverityTypeNone
-	weaknessType := make([]enums.WeaknessType, 6)
-	weaknessType[0] = enums.WeaknessInjection
-	weaknessType[1] = enums.WeaknessInsecureDesign
-	weaknessType[2] = enums.WeaknessOther
-	weaknessType[3] = enums.WeaknessBrokenAccessControl
-	weaknessType[4] = enums.WeaknessSecurityLoggingAndMonitoringFailures
-	weaknessType[5] = enums.WeaknessNoInfo
+
 	exploitableType := make([]enums.ExploitabilityType, 5)
 	exploitableType[0] = enums.ExploitabilityTypeUndefined
 	exploitableType[1] = enums.ExploitabilityTypeUnknown
 	exploitableType[2] = enums.ExploitabilityTypeFunctional
 	exploitableType[3] = enums.ExploitabilityTypeUnproven
 	exploitableType[4] = enums.ExploitabilityTypeProofOfConcept
-	vulns := make([]tools.Vulnerability, size)
-	for i := range vulns {
-		vulns[i] = tools.Vulnerability{
-			ID:            "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
-			Type:          weaknessType[gofakeit.IntRange(0, len(weaknessType)-1)],
-			BaseCVSSScore: math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
-			BaseSeverity:  severityType[gofakeit.IntRange(0, 5)],
-			References:    []string{gofakeit.URL()},
-			Exploit: tools.Exploit{
-				Score:          math.Trunc(gofakeit.Float64Range(0, 1)*10) / 10,
-				Exploitability: exploitableType[gofakeit.IntRange(0, len(exploitableType)-1)],
-			},
-		}
-	}
-	return vulns
+	accessType := make([]enums.AccessType, 5)
+	accessType[0] = enums.AccessTypeLocal
+	accessType[1] = enums.AccessTypeNetwork
+	accessType[2] = enums.AccessTypeUnknown
+	accessType[3] = enums.AccessTypeAdjacentNetwork
+	accessType[4] = enums.AccesTypePhysical
+	complexityType := make([]enums.ComplexityType, 4)
+	complexityType[0] = enums.ComplexityTypeLow
+	complexityType[1] = enums.ComplexityTypeMedium
+	complexityType[2] = enums.ComplexityTypeHigh
+	complexityType[3] = enums.ComplexityTypeUnknown
+	privilegeRequiredType := make([]enums.PrivilegesRequiredType, 4)
+	privilegeRequiredType[0] = enums.PrivilegesRequiredHigh
+	privilegeRequiredType[1] = enums.PrivilegesRequiredLow
+	privilegeRequiredType[2] = enums.PrivilegesRequiredNone
+	privilegeRequiredType[3] = enums.PrivilegesRequiredUnknown
+	likelihoodType := make([]enums.LikelyhoodType, 5)
+	likelihoodType[0] = enums.LikelyhoodTypeHigh
+	likelihoodType[1] = enums.LikelyhoodTypeLow
+	likelihoodType[2] = enums.LikelyhoodTypeMedium
+	likelihoodType[3] = enums.LikelyhoodTypeUnknown
+	likelihoodType[4] = enums.LikelyhoodTypeVeryHigh
+	integrityImpact := make([]enums.ImpactType, 4)
+	integrityImpact[0] = enums.ImpactTypeHigh
+	integrityImpact[1] = enums.ImpactTypeLow
+	integrityImpact[2] = enums.ImpactTypeNone
+	integrityImpact[3] = enums.ImpactTypeUnknown
+	return severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact
 }
 
-func generatePortsData(size int) []tools.PortData {
+func generatePortsData(size int, fromDate time.Time) []tools.PortData {
 	status := make([]string, 2)
 	status[0] = "open"
 	status[1] = "closed"
@@ -176,13 +227,13 @@ func generatePortsData(size int) []tools.PortData {
 				Confidence: gofakeit.Number(1, 100),
 			},
 			Product:         "nginx",
-			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10)),
+			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate),
 		}
 	}
 	return ports
 }
 
-func generateNmapResult() tools.IToolResult {
+func generateNmapResult(scan domain.Scan) tools.IToolResult {
 	return &tools.NmapResult{
 		HostName:    gofakeit.DomainName(),
 		HostAddress: gofakeit.IPv4Address(),
@@ -191,7 +242,7 @@ func generateNmapResult() tools.IToolResult {
 			Accuracy: gofakeit.Number(1, 10),
 			CPE:      "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
 		},
-		ScannedPorts: generatePortsData(gofakeit.Number(1, 10)),
+		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt),
 	}
 }
 
@@ -205,7 +256,7 @@ func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanRe
 			CreatedAt: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
 			Result: tools.ToolResult{
 				Tool:   enums.ToolNmap,
-				Result: generateNmapResult(),
+				Result: generateNmapResult(scan),
 			},
 		}
 	}

@@ -3,7 +3,6 @@ package samples
 import (
 	"github.com/brianvoe/gofakeit/v7"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,30 +23,29 @@ func GenerateMetaData(size int, services []string) []domain.Metadata {
 	return metadata
 }
 
-func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan {
-	operators, services, targets := GenerateDefaultConstants()
+func SampleScans(size int, tenants []domain.Tenant, hosts []domain.Host) []domain.Scan {
+	operators, services, targets := generateDefaultConstants()
+
 	fromYears := 1
 	domainScans := make([]domain.Scan, size)
 	for i := range size {
 		var hostValue string
-		var alias string
 		var targetType enums.TargetType
 		indexTenant := gofakeit.Number(0, len(tenants)-1)
 		indexTarget := gofakeit.Number(0, len(targets)-1)
+		hostsTenantOperator := getHostsFromTenant(hosts, tenants[indexTenant], operators[indexTenant])
+		host := hostsTenantOperator[gofakeit.Number(0, len(hostsTenantOperator)-1)]
+
 		if targets[indexTarget] == "ip" {
-			hostValue = gofakeit.IPv4Address()
-			alias = "Private IP"
+			hostValue = host.IP
 			targetType = enums.IP
 		} else if targets[indexTarget] == "domain" {
-			hostValue = gofakeit.DomainName()
-			alias = strings.Split(hostValue, ".")[0]
+			hostValue = host.Name
 			targetType = enums.Domain
 		} else {
-			hostValue = gofakeit.DomainName()
-			alias = strings.Split(hostValue, ".")[0]
+			hostValue = host.Name
 			targetType = enums.Subdomain
 		}
-		hostID := gofakeit.Number(1, hostsSize)
 		month := gofakeit.Month()
 		day := gofakeit.Day()
 		creationTime := gofakeit.DateRange(time.Now().AddDate(-fromYears, 0, 0), time.Now().AddDate(-fromYears, month, day)).UTC()
@@ -56,7 +54,7 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 			ID:         uuid.New(),
 			TenantID:   tenants[indexTenant].ProviderID,
 			OperatorID: operators[indexTenant],
-			HostID:     hostID,
+			HostID:     host.ID,
 			HostsStatus: []domain.StatusHost{
 				{
 					Host:     hostValue,
@@ -67,7 +65,7 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 				{Host: hostValue},
 			},
 			Target: results.Target{
-				Alias: alias,
+				Alias: host.Name,
 				Value: hostValue,
 				Type:  targetType,
 			},
@@ -81,7 +79,17 @@ func SampleScans(size int, tenants []domain.Tenant, hostsSize int) []domain.Scan
 	return domainScans
 }
 
-func GenerateDefaultConstants() ([]string, []string, []string) {
+func getHostsFromTenant(hosts []domain.Host, tenant domain.Tenant, operator string) []domain.Host {
+	var domainHosts []domain.Host
+	for _, host := range hosts {
+		if host.TenantID == tenant.ProviderID && host.OperatorID == operator {
+			domainHosts = append(domainHosts, host)
+		}
+	}
+	return domainHosts
+}
+
+func generateDefaultConstants() ([]string, []string, []string) {
 	operators := make([]string, 2)
 	services := make([]string, 4)
 	targets := make([]string, 3)

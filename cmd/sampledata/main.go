@@ -61,7 +61,7 @@ func populateDB(store interfaces.IStorage) {
 	}
 	fmt.Println("Hosts populated successfully")
 
-	if err := populateScans(store, tenants, len(hosts)); err != nil {
+	if err := populateScans(store, tenants, hosts); err != nil {
 		panic(err)
 	}
 	fmt.Println("Scans populated successfully")
@@ -87,23 +87,25 @@ func populateTenants(store interfaces.IStorage) ([]domain.Tenant, error) {
 func populateHosts(store interfaces.IStorage, tenants []domain.Tenant) ([]domain.Host, error) {
 	sampleHosts := samples.SampleHosts(10, tenants)
 
-	for _, host := range sampleHosts {
-		_, err := store.CreateHost(&host)
+	for i, host := range sampleHosts {
+		createdHost, err := store.CreateHost(&host)
 		if err != nil {
 			return nil, fmt.Errorf("error populating host %s: %w", host.Name, err)
 		}
+		sampleHosts[i] = *createdHost
 	}
 	return sampleHosts, nil
 }
 
-func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hostSize int) error {
-	sampleScans := samples.SampleScans(10, tenants, hostSize)
+func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hosts []domain.Host) error {
+	sampleScans := samples.SampleScans(10, tenants, hosts)
 
 	for i, scan := range sampleScans {
 		createdScan, err := store.CreateScan(&scan)
 		if err != nil {
 			return fmt.Errorf("error populating scans: %w", err)
 		}
+		createdScan.EndedAt = scan.EndedAt
 		sampleScans[i] = *createdScan
 	}
 
