@@ -2,11 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
-	"math/rand"
-	"os"
-	"time"
-
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/cmd/migrations"
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -14,6 +9,9 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/samples"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"log/slog"
+	"math/rand"
+	"os"
 )
 
 func Run() {
@@ -48,17 +46,19 @@ func Run() {
 func populateDB(store interfaces.IStorage) {
 	fmt.Println("Populating DB with sample data...")
 
-	if err := populateTenants(store); err != nil {
+	tenants, err := populateTenants(store)
+	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Tenants populated successfully")
 
-	if err := populateHosts(store); err != nil {
-		panic(err)
+	hosts, errHost := populateHosts(store, tenants)
+	if errHost != nil {
+		panic(errHost)
 	}
 	fmt.Println("Hosts populated successfully")
 
-	if err := populateScans(store); err != nil {
+	if err := populateScans(store, tenants, hosts); err != nil {
 		panic(err)
 	}
 	fmt.Println("Scans populated successfully")
@@ -69,39 +69,40 @@ func populateDB(store interfaces.IStorage) {
 	// fmt.Println("Scan results populated successfully")
 }
 
-func populateTenants(store interfaces.IStorage) error {
+func populateTenants(store interfaces.IStorage) ([]domain.Tenant, error) {
 	sampleTenants := samples.SampleTenants()
 
 	for _, tenant := range sampleTenants {
 		_, err := store.CreateTenant(&tenant)
 		if err != nil {
-			return fmt.Errorf("error populating tenant %s: %w", tenant.ID, err)
+			return nil, fmt.Errorf("error populating tenant %s: %w", tenant.ID, err)
 		}
 	}
-	return nil
+	return sampleTenants, nil
 }
 
-func populateHosts(store interfaces.IStorage) error {
-	sampleHosts := samples.SampleHosts()
+func populateHosts(store interfaces.IStorage, tenants []domain.Tenant) ([]domain.Host, error) {
+	sampleHosts := samples.SampleHosts(10, tenants)
 
-	for _, host := range sampleHosts {
-
-		_, err := store.CreateHost(&host)
+	for i, host := range sampleHosts {
+		createdHost, err := store.CreateHost(&host)
 		if err != nil {
-			return fmt.Errorf("error populating host %s: %w", host.Name, err)
+			return nil, fmt.Errorf("error populating host %s: %w", host.Name, err)
 		}
+		sampleHosts[i] = *createdHost
 	}
-	return nil
+	return sampleHosts, nil
 }
 
-func populateScans(store interfaces.IStorage) error {
-	sampleScans := samples.SampleScans()
+func populateScans(store interfaces.IStorage, tenants []domain.Tenant, hosts []domain.Host) error {
+	sampleScans := samples.SampleScans(10, tenants, hosts)
 
 	for i, scan := range sampleScans {
 		createdScan, err := store.CreateScan(&scan)
 		if err != nil {
 			return fmt.Errorf("error populating scans: %w", err)
 		}
+		createdScan.EndedAt = scan.EndedAt
 		sampleScans[i] = *createdScan
 	}
 
@@ -115,7 +116,7 @@ func populateScans(store interfaces.IStorage) error {
 			nil,
 			scan.ID,
 			enums.StatusCompleted.String(),
-			scan.StartedAt.Add(time.Minute*5),
+			*scan.EndedAt,
 		); err != nil {
 			return fmt.Errorf("error updating scan status and ended at: %w", err)
 		}
