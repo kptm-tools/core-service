@@ -64,7 +64,7 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	return nil
 }
 
-// calculateSecurityPostureFromGlobalCVSS calculates the security posture (e.g: 2%)
+// getSecurityPostureFromGlobalCVSS calculates the security posture (e.g: 2%)
 // based on a global CVSS (e.g 9.8).
 func getSecurityPostureFromGlobalCVSS(cvss float64) float64 {
 	result := 1 - (cvss / 10)
