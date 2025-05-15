@@ -86,10 +86,13 @@ func (s *HostService) GetHostNameFromIPWithTimeout(ip string, timeout time.Durat
 			return
 		}
 
-		hostnames, err := net.DefaultResolver.LookupAddr(ctx, ip)
+		resolver := &net.Resolver{
+			PreferGo: true,
+		}
+		hostnames, err := resolver.LookupAddr(ctx, ip)
 		if err != nil {
-			errors <- fmt.Errorf("reverse DNS lookup failed: %w", err)
-			return
+			slog.Debug("lookupAddr not found ip", slog.Any("ip", ip), slog.Any("error", err))
+			hostnames = []string{}
 		}
 
 		// Clean up hostnames (remove trailing dots)
@@ -210,7 +213,7 @@ func (s *HostService) handleIPType(normalizedURL string) (*domain.DomainIPResult
 
 	hostNames, err := s.GetHostNameFromIP(ipValue)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get hostnames form IP: %w", err)
+		return nil, fmt.Errorf("failed to get hostnames from IP: %w", err)
 	}
 
 	hostName := ""

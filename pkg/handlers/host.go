@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"net/http"
 	"strconv"
 
@@ -107,9 +108,19 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	}
 	hostToDB, err := h.constructHostForDB(createHostRequest, req)
 	if err != nil {
-		return err
+		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 	hostToDB.ID = id
+	hostGet, err := h.hostService.GetHostByID(hostToDB.ID)
+	if err != nil {
+		statusCode := http.StatusNotFound
+		return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+	}
+	if enums.IP.String() == createHostRequest.ValueType && len(hostGet.Domain) > 0 {
+		hostToDB.Domain = hostGet.Domain
+	} else if enums.Domain.String() == createHostRequest.ValueType && len(hostGet.IP) > 0 {
+		hostToDB.IP = hostGet.IP
+	}
 	host, err := h.hostService.PatchHostByID(hostToDB)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
