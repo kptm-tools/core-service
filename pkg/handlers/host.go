@@ -108,7 +108,7 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	}
 	hostToDB, err := h.constructHostForDB(createHostRequest, req)
 	if err != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	hostToDB.ID = id
 	hostGet, err := h.hostService.GetHostByID(hostToDB.ID)
@@ -121,13 +121,19 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	} else if enums.Domain.String() == createHostRequest.ValueType && len(hostGet.IP) > 0 {
 		hostToDB.IP = hostGet.IP
 	}
+	// Get the value of the host, IP if it's an IP type, Hostname if it's a Domain/Subdomain
+	if errValidation := h.hostService.ValidateHost(createHostRequest.Value); errValidation != nil {
+		// Handle the case when the host value (the target) is not valid
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errValidation.Error()})
+	}
+	// Patch the host in the DB if everything's ok
 	host, err := h.hostService.PatchHostByID(hostToDB)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
 			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 		}
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
 	return api.WriteJSON(w, http.StatusCreated, constructResponse(host))
