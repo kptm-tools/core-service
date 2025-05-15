@@ -136,7 +136,11 @@ func (s *HostService) ValidateHost(host string) error {
 	if err != nil {
 		return err
 	}
-
+	stats := pinger.Statistics()
+	if stats.PacketLoss == 100 {
+		slog.Error("Failed to ping host", slog.String("address", stats.IPAddr.String()))
+		return ErrHostUnhealthy
+	}
 	slog.Debug("Pinger stats", slog.Any("stats", pinger.Statistics()))
 	return nil
 }

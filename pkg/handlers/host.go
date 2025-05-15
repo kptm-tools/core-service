@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kptm-tools/common/common/pkg/enums"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -108,6 +109,7 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	}
 	hostToDB, err := h.constructHostForDB(createHostRequest, req)
 	if err != nil {
+		slog.Error("Failed to constructHostForDB", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	hostToDB.ID = id
@@ -124,6 +126,7 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	// Get the value of the host, IP if it's an IP type, Hostname if it's a Domain/Subdomain
 	if errValidation := h.hostService.ValidateHost(createHostRequest.Value); errValidation != nil {
 		// Handle the case when the host value (the target) is not valid
+		slog.Error("Failed to validate host value", slog.String("host_value", createHostRequest.Value))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errValidation.Error()})
 	}
 	// Patch the host in the DB if everything's ok
