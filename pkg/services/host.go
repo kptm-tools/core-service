@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -67,52 +66,6 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	}
 
 	return host, nil
-}
-
-func (s *HostService) GetHostNameFromIP(ip string) ([]string, error) {
-	return s.GetHostNameFromIPWithTimeout(ip, 10*time.Second)
-}
-
-func (s *HostService) GetHostNameFromIPWithTimeout(ip string, timeout time.Duration) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	results := make(chan []string, 1)
-	errors := make(chan error, 1)
-
-	go func() {
-		if net.ParseIP(ip) == nil {
-			errors <- fmt.Errorf("invalid IP address format: %s", ip)
-			return
-		}
-
-		resolver := &net.Resolver{
-			PreferGo: true,
-		}
-		hostnames, err := resolver.LookupAddr(ctx, ip)
-		if err != nil {
-			slog.Debug("lookupAddr not found ip", slog.Any("ip", ip), slog.Any("error", err))
-			hostnames = []string{}
-		}
-
-		// Clean up hostnames (remove trailing dots)
-		cleaned := make([]string, len(hostnames))
-		for i, hostname := range hostnames {
-			cleaned[i] = strings.TrimSuffix(hostname, ".")
-		}
-
-		results <- cleaned
-	}()
-
-	// Wait for either results or timeout
-	select {
-	case hostnames := <-results:
-		return hostnames, nil
-	case err := <-errors:
-		return nil, err
-	case <-ctx.Done():
-		return nil, fmt.Errorf("lookup timed out after %v", timeout)
-	}
 }
 
 func (s *HostService) ValidateHost(host string) error {
@@ -215,18 +168,8 @@ func (s *HostService) findFirstIPv4(domain string) (string, error) {
 func (s *HostService) handleIPType(normalizedURL string) (*domain.DomainIPResult, error) {
 	ipValue := strings.Split(normalizedURL, "//")[1]
 
-	hostNames, err := s.GetHostNameFromIP(ipValue)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hostnames from IP: %w", err)
-	}
-
-	hostName := ""
-	if len(hostNames) > 0 {
-		hostName = hostNames[0]
-	}
-
 	return &domain.DomainIPResult{
-		Domain: hostName,
+		Domain: "",
 		IP:     ipValue,
 	}, nil
 }
