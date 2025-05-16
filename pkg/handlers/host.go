@@ -113,11 +113,6 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	hostToDB.ID = id
-	hostGet, err := h.hostService.GetHostByID(hostToDB.ID)
-	if err != nil {
-		statusCode := http.StatusNotFound
-		return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
-	}
 
 	// Get the value of the host, IP if it's an IP type, Hostname if it's a Domain/Subdomain
 	if errValidation := h.hostService.ValidateHost(createHostRequest.Value); errValidation != nil {
