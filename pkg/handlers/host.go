@@ -118,16 +118,15 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 		statusCode := http.StatusNotFound
 		return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 	}
-	if enums.IP.String() == createHostRequest.ValueType && len(hostGet.Domain) > 0 {
-		hostToDB.Domain = hostGet.Domain
-	} else if enums.Domain.String() == createHostRequest.ValueType && len(hostGet.IP) > 0 {
-		hostToDB.IP = hostGet.IP
-	}
+
 	// Get the value of the host, IP if it's an IP type, Hostname if it's a Domain/Subdomain
 	if errValidation := h.hostService.ValidateHost(createHostRequest.Value); errValidation != nil {
 		// Handle the case when the host value (the target) is not valid
 		slog.Error("Failed to validate host value", slog.String("host_value", createHostRequest.Value))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errValidation.Error()})
+	}
+	if enums.IP.String() == createHostRequest.ValueType {
+		hostToDB.Domain = ""
 	}
 	// Patch the host in the DB if everything's ok
 	host, err := h.hostService.PatchHostByID(hostToDB)
