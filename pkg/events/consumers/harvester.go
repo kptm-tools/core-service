@@ -30,7 +30,6 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 		if err := json.Unmarshal(msg.Data, &evt); err != nil {
 			slog.Error("Failed to unmarshal ToolResultEvent",
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("msg_data", string(msg.Data)),
 				slog.Any("error", err))
 			return
 		}
