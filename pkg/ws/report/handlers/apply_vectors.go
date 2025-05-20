@@ -3,6 +3,7 @@ package wshandlers
 import (
 	"encoding/json"
 	"log/slog"
+	"math"
 
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/dto"
@@ -43,7 +44,7 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	payload := dto.ReportDetailsResponse{
 		SolvedVulnerabilities:     solvedItems,
 		UnattendedVulnerabilities: notSolvedItems,
-		ExpectedSecurityPosture:   reportutils.GetGlobalCVSSScore(notSolved) / 10,
+		ExpectedSecurityPosture:   getSecurityPostureFromGlobalCVSS(reportutils.GetGlobalCVSSScore(notSolved)),
 		GraphData:                 reportutils.BuildVulnerabilityGraph(scanVulns, notSolved),
 	}
 	payloadBytes, err := json.Marshal(payload)
@@ -61,4 +62,18 @@ func (h *ApplyVectorsHandler) Handle(msg common.Message, client interfaces.IRepo
 	slog.Debug("Sending back response...")
 	client.GetSend() <- msgBytes
 	return nil
+}
+
+// getSecurityPostureFromGlobalCVSS calculates the security posture (e.g: 2%)
+// based on a global CVSS (e.g 9.8).
+func getSecurityPostureFromGlobalCVSS(cvss float64) float64 {
+	result := 1 - (cvss / 10)
+	return roundTwoDecimals(result)
+}
+
+// roundTwoDecimals rounds a float64 to two decimal places.
+func roundTwoDecimals(value float64) float64 {
+	shifted := value * 100
+	roundedShifted := math.Round(shifted)
+	return roundedShifted / 100
 }

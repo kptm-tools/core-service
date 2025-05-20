@@ -11,11 +11,12 @@ require (
 
 require (
 	github.com/FusionAuth/go-client v0.0.0-20250328163231-59fbbfbb80fa
+	github.com/brianvoe/gofakeit/v7 v7.2.1
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
-	github.com/kptm-tools/common v1.5.5
+	github.com/kptm-tools/common v1.5.6
 	github.com/likexian/whois-parser v1.24.20
 	github.com/lmittmann/tint v1.0.6
 	github.com/nats-io/nats.go v1.38.0

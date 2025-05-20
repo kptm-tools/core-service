@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -69,49 +68,6 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	return host, nil
 }
 
-func (s *HostService) GetHostNameFromIP(ip string) ([]string, error) {
-	return s.GetHostNameFromIPWithTimeout(ip, 10*time.Second)
-}
-
-func (s *HostService) GetHostNameFromIPWithTimeout(ip string, timeout time.Duration) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	results := make(chan []string, 1)
-	errors := make(chan error, 1)
-
-	go func() {
-		if net.ParseIP(ip) == nil {
-			errors <- fmt.Errorf("invalid IP address format: %s", ip)
-			return
-		}
-
-		hostnames, err := net.DefaultResolver.LookupAddr(ctx, ip)
-		if err != nil {
-			errors <- fmt.Errorf("reverse DNS lookup failed: %w", err)
-			return
-		}
-
-		// Clean up hostnames (remove trailing dots)
-		cleaned := make([]string, len(hostnames))
-		for i, hostname := range hostnames {
-			cleaned[i] = strings.TrimSuffix(hostname, ".")
-		}
-
-		results <- cleaned
-	}()
-
-	// Wait for either results or timeout
-	select {
-	case hostnames := <-results:
-		return hostnames, nil
-	case err := <-errors:
-		return nil, err
-	case <-ctx.Done():
-		return nil, fmt.Errorf("lookup timed out after %v", timeout)
-	}
-}
-
 func (s *HostService) ValidateHost(host string) error {
 	classification, err := validation.ClassifyHostValue(host)
 	if err != nil {
@@ -133,7 +89,11 @@ func (s *HostService) ValidateHost(host string) error {
 	if err != nil {
 		return err
 	}
-
+	stats := pinger.Statistics()
+	if stats.PacketLoss == 100 {
+		slog.Error("Failed to ping host", slog.String("address", stats.IPAddr.String()))
+		return ErrHostUnhealthy
+	}
 	slog.Debug("Pinger stats", slog.Any("stats", pinger.Statistics()))
 	return nil
 }
@@ -208,18 +168,8 @@ func (s *HostService) findFirstIPv4(domain string) (string, error) {
 func (s *HostService) handleIPType(normalizedURL string) (*domain.DomainIPResult, error) {
 	ipValue := strings.Split(normalizedURL, "//")[1]
 
-	hostNames, err := s.GetHostNameFromIP(ipValue)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hostnames form IP: %w", err)
-	}
-
-	hostName := ""
-	if len(hostNames) > 0 {
-		hostName = hostNames[0]
-	}
-
 	return &domain.DomainIPResult{
-		Domain: hostName,
+		Domain: "",
 		IP:     ipValue,
 	}, nil
 }

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -107,16 +109,34 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	}
 	hostToDB, err := h.constructHostForDB(createHostRequest, req)
 	if err != nil {
-		return err
+		slog.Error("Failed to constructHostForDB", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	hostToDB.ID = id
+
+	_, errGet := h.hostService.GetHostByID(hostToDB.ID)
+	if errGet != nil {
+		statusCode := http.StatusNotFound
+		return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
+	}
+
+	// Get the value of the host, IP if it's an IP type, Hostname if it's a Domain/Subdomain
+	if errValidation := h.hostService.ValidateHost(createHostRequest.Value); errValidation != nil {
+		// Handle the case when the host value (the target) is not valid
+		slog.Error("Failed to validate host value", slog.String("host_value", createHostRequest.Value), slog.Any("error", errValidation))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errValidation.Error()})
+	}
+	if enums.IP.String() == createHostRequest.ValueType {
+		hostToDB.Domain = ""
+	}
+	// Patch the host in the DB if everything's ok
 	host, err := h.hostService.PatchHostByID(hostToDB)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
 			return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 		}
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
 	return api.WriteJSON(w, http.StatusCreated, constructResponse(host))

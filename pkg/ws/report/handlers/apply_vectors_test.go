@@ -2,13 +2,14 @@ package wshandlers
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/mocks"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestApplyVectorsHandler(t *testing.T) {
@@ -78,5 +79,34 @@ func TestApplyVectorsHandler(t *testing.T) {
 			}
 		})
 	}
+}
 
+func Test_getSecurityPostureFromGlobalCVSS(t *testing.T) {
+	testCases := []struct {
+		name string
+		cvss float64
+		want float64
+	}{
+		{
+			name: "Valid cvss score",
+			cvss: 8.8,
+			want: 0.12,
+		},
+		{
+			name: "0.0 CVSS Score",
+			cvss: 0.0,
+			want: 1.0,
+		},
+		{
+			name: "Negative CVSS Score",
+			cvss: -1.0,
+			want: 1.1,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := getSecurityPostureFromGlobalCVSS(tc.cvss)
+			assert.Equal(t, tc.want, got, "getSecurityPostureFromGlobalCVSS() = %v, want %v", got, tc.want)
+		})
+	}
 }

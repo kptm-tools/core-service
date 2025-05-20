@@ -1,6 +1,8 @@
 package samples
 
 import (
+	"github.com/brianvoe/gofakeit/v7"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,182 +11,96 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func SampleScans() []domain.Scan {
-	tenantID := "11111111-0000-0000-0000-000000000000"
-	sampleOperatorID1 := "00000000-0000-0000-0000-111111111111"
-	currentYear := time.Now().Year()
-
-	// Define months for the scans. More varied months across the year.
-	month1 := time.Month(1)  // January
-	month2 := time.Month(3)  // March
-	month3 := time.Month(5)  // May
-	month4 := time.Month(7)  // July
-	month5 := time.Month(9)  // September
-	month6 := time.Month(11) // November
-
-	endedAt1 := time.Date(currentYear, month1, 28, 12, 30, 0, 0, time.UTC)
-	endedAt2 := time.Date(currentYear, month2, 25, 18, 0, 0, 0, time.UTC)
-	endedAt3 := time.Date(currentYear, month3, 20, 9, 15, 0, 0, time.UTC)
-	endedAt4 := time.Date(currentYear, month4, 28, 14, 45, 0, 0, time.UTC)
-	endedAt5 := time.Date(currentYear, month5, 15, 11, 0, 0, 0, time.UTC)
-	endedAt6 := time.Date(currentYear, month6, 22, 16, 30, 0, 0, time.UTC)
-
-	return []domain.Scan{
-		{ // Scan 1: example.com - January
-			ID:         uuid.New(),
-			TenantID:   tenantID,
-			OperatorID: sampleOperatorID1,
-			HostID:     1,
-			HostsStatus: []domain.StatusHost{
-				{
-					Host: "example.com",
-					Metadata: []domain.Metadata{
-						{Progress: "25%", Service: enums.EventSubjectName("nmap")},
-						{Progress: "75%", Service: enums.EventSubjectName("whois")},
-					},
-				},
-			},
-			HostsResults: []domain.ResultHost{
-				{Host: "example.com"},
-			},
-			Target: results.Target{
-				Alias: "example dot com",
-				Value: "example.com",
-				Type:  enums.Domain,
-			},
-			CreatedAt: time.Date(currentYear, month1, 1, 10, 0, 0, 0, time.UTC),
-			UpdatedAt: time.Date(currentYear, month1, 28, 12, 30, 0, 0, time.UTC),
-			StartedAt: time.Date(currentYear, month1, 1, 10, 0, 0, 0, time.UTC),
-			EndedAt:   &endedAt1,
-			Status:    enums.StatusCompleted.String(),
-		},
-		{ // Scan 2: example.com - March (repeat scan, different month)
-			ID:         uuid.New(),
-			TenantID:   tenantID,
-			OperatorID: sampleOperatorID1,
-			HostID:     1,
-			HostsResults: []domain.ResultHost{
-				{Host: "example.com"},
-			},
-			Target: results.Target{
-				Alias: "example dot com",
-				Value: "example.com",
-				Type:  enums.Domain,
-			},
-			CreatedAt: time.Date(currentYear, month2, 1, 10, 0, 0, 0, time.UTC), // Month 2 is March
-			UpdatedAt: time.Date(currentYear, month2, 25, 18, 0, 0, 0, time.UTC),
-			StartedAt: time.Date(currentYear, month2, 1, 10, 0, 0, 0, time.UTC),
-			EndedAt:   &endedAt2,
-			Status:    enums.StatusCompleted.String(),
-		},
-		{ // Scan 3: anothersample.net - May (new host)
-			ID:         uuid.New(),
-			TenantID:   tenantID,
-			OperatorID: sampleOperatorID1,
-			HostID:     2,
-			HostsStatus: []domain.StatusHost{
-				{
-					Host: "anothersample.net",
-					Metadata: []domain.Metadata{
-						{Progress: "50%", Service: enums.EventSubjectName("dns_lookup")},
-					},
-				},
-			},
-			HostsResults: []domain.ResultHost{
-				{Host: "anothersample.net"},
-			},
-			Target: results.Target{
-				Alias: "anothersample",
-				Value: "anothersample.net", // Corrected to top-level domain
-				Type:  enums.Domain,        // Changed to Domain for top-level
-			},
-			CreatedAt: time.Date(currentYear, month3, 5, 14, 0, 0, 0, time.UTC), // Month 3 is May
-			UpdatedAt: time.Date(currentYear, month3, 20, 9, 15, 0, 0, time.UTC),
-			StartedAt: time.Date(currentYear, month3, 5, 14, 0, 0, 0, time.UTC),
-			EndedAt:   &endedAt3,
-			Status:    enums.StatusCompleted.String(),
-		},
-		{ // Scan 4: test-host.org - July (another new host)
-			ID:         uuid.New(),
-			TenantID:   tenantID,
-			OperatorID: sampleOperatorID1,
-			HostID:     3,
-			HostsStatus: []domain.StatusHost{
-				{
-					Host: "test-host.org",
-					Metadata: []domain.Metadata{
-						{Progress: "90%", Service: enums.EventSubjectName("harvester")},
-					},
-				},
-			},
-			HostsResults: []domain.ResultHost{
-				{Host: "test-host.org"},
-			},
-			Target: results.Target{
-				Alias: "test-host",
-				Value: "test-host.org",
-				Type:  enums.Domain,
-			},
-			CreatedAt: time.Date(currentYear, month4, 10, 8, 0, 0, 0, time.UTC), // Month 4 is July
-			UpdatedAt: time.Date(currentYear, month4, 28, 14, 45, 0, 0, time.UTC),
-			StartedAt: time.Date(currentYear, month4, 10, 8, 0, 0, 0, time.UTC),
-			EndedAt:   &endedAt4,
-			Status:    enums.StatusCompleted.String(),
-		},
-		{ // Scan 5: subdomain.example.com - September (subdomain of example.com)
-			ID:         uuid.New(),
-			TenantID:   tenantID,
-			OperatorID: sampleOperatorID1,
-			HostID:     4,
-			HostsStatus: []domain.StatusHost{
-				{
-					Host: "subdomain.example.com",
-					Metadata: []domain.Metadata{
-						{Progress: "60%", Service: enums.EventSubjectName("nmap")},
-						{Progress: "80%", Service: enums.EventSubjectName("dns_lookup")},
-					},
-				},
-			},
-			HostsResults: []domain.ResultHost{
-				{Host: "subdomain.example.com"},
-			},
-			Target: results.Target{
-				Alias: "example subdomain",
-				Value: "subdomain.example.com",
-				Type:  enums.Subdomain, // Target is a subdomain
-			},
-			CreatedAt: time.Date(currentYear, month5, 2, 11, 30, 0, 0, time.UTC), // Month 5 is September
-			UpdatedAt: time.Date(currentYear, month5, 15, 11, 0, 0, 0, time.UTC),
-			StartedAt: time.Date(currentYear, month5, 2, 11, 30, 0, 0, time.UTC),
-			EndedAt:   &endedAt5,
-			Status:    enums.StatusCompleted.String(),
-		},
-		{ // Scan 6: 192.168.1.1 - November (IP address target)
-			ID:         uuid.New(),
-			TenantID:   tenantID,
-			OperatorID: sampleOperatorID1,
-			HostID:     5,
-			HostsStatus: []domain.StatusHost{
-				{
-					Host: "192.168.1.1",
-					Metadata: []domain.Metadata{
-						{Progress: "40%", Service: enums.EventSubjectName("nmap")},
-					},
-				},
-			},
-			HostsResults: []domain.ResultHost{
-				{Host: "192.168.1.1"},
-			},
-			Target: results.Target{
-				Alias: "Private IP",
-				Value: "192.168.1.1",
-				Type:  enums.IP, // Target is an IP Address
-			},
-			CreatedAt: time.Date(currentYear, month6, 8, 9, 0, 0, 0, time.UTC), // Month 6 is November
-			UpdatedAt: time.Date(currentYear, month6, 22, 16, 30, 0, 0, time.UTC),
-			StartedAt: time.Date(currentYear, month6, 8, 9, 0, 0, 0, time.UTC),
-			EndedAt:   &endedAt6,
-			Status:    enums.StatusCompleted.String(),
-		},
+func GenerateMetaData(size int, services []string) []domain.Metadata {
+	metadata := make([]domain.Metadata, size)
+	indexService := gofakeit.Number(0, 3)
+	for i := range size {
+		metadata[i] = domain.Metadata{
+			Progress: strconv.Itoa(gofakeit.Number(1, 100)) + "%",
+			Service:  enums.EventSubjectName(services[indexService]),
+		}
 	}
+	return metadata
+}
+
+func SampleScans(size int, tenants []domain.Tenant, hosts []domain.Host) []domain.Scan {
+	operators, services, targets := generateDefaultConstants()
+
+	fromYears := 1
+	domainScans := make([]domain.Scan, size)
+	for i := range size {
+		var hostValue string
+		var targetType enums.TargetType
+		indexTenant := gofakeit.Number(0, len(tenants)-1)
+		indexTarget := gofakeit.Number(0, len(targets)-1)
+		hostsTenantOperator := getHostsFromTenant(hosts, tenants[indexTenant], operators[indexTenant])
+		host := hostsTenantOperator[gofakeit.Number(0, len(hostsTenantOperator)-1)]
+
+		if targets[indexTarget] == "ip" {
+			hostValue = host.IP
+			targetType = enums.IP
+		} else if targets[indexTarget] == "domain" {
+			hostValue = host.Name
+			targetType = enums.Domain
+		} else {
+			hostValue = host.Name
+			targetType = enums.Subdomain
+		}
+		month := gofakeit.Month()
+		day := gofakeit.Day()
+		creationTime := gofakeit.DateRange(time.Now().AddDate(-fromYears, 0, 0), time.Now().AddDate(-fromYears, month, day)).UTC()
+		endedTime := creationTime.Add(time.Minute * time.Duration(gofakeit.IntRange(1, 100)))
+		domainScans[i] = domain.Scan{
+			ID:         uuid.New(),
+			TenantID:   tenants[indexTenant].ProviderID,
+			OperatorID: operators[indexTenant],
+			HostID:     host.ID,
+			HostsStatus: []domain.StatusHost{
+				{
+					Host:     hostValue,
+					Metadata: GenerateMetaData(gofakeit.Number(1, 4), services),
+				},
+			},
+			HostsResults: []domain.ResultHost{
+				{Host: hostValue},
+			},
+			Target: results.Target{
+				Alias: host.Name,
+				Value: hostValue,
+				Type:  targetType,
+			},
+			CreatedAt: creationTime,
+			UpdatedAt: endedTime,
+			StartedAt: creationTime,
+			EndedAt:   &endedTime,
+			Status:    enums.StatusCompleted.String(),
+		}
+	}
+	return domainScans
+}
+
+func getHostsFromTenant(hosts []domain.Host, tenant domain.Tenant, operator string) []domain.Host {
+	var domainHosts []domain.Host
+	for _, host := range hosts {
+		if host.TenantID == tenant.ProviderID && host.OperatorID == operator {
+			domainHosts = append(domainHosts, host)
+		}
+	}
+	return domainHosts
+}
+
+func generateDefaultConstants() ([]string, []string, []string) {
+	operators := make([]string, 2)
+	services := make([]string, 4)
+	targets := make([]string, 3)
+	operators[0] = "00000000-0000-0000-0000-111111111111"
+	operators[1] = "00000000-0000-0000-0000-222222222222"
+	services[0] = "nmap"
+	services[1] = "whois"
+	services[2] = "dns_lookup"
+	services[3] = "harvester"
+	targets[0] = "domain"
+	targets[1] = "subddomain"
+	targets[2] = "ip"
+	return operators, services, targets
 }
