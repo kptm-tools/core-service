@@ -91,6 +91,5 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		slog.Debug("NmapEvent handled successfully")
-
 	}(msg)
 }

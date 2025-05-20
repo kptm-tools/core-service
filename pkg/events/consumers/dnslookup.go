@@ -22,7 +22,6 @@ func NewDNSLookupHandler(scanService interfaces.IScanService) *DNSLookupHandler 
 var _ interfaces.EventConsumer = (*DNSLookupHandler)(nil)
 
 func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
-
 	go func(msg *nats.Msg) {
 		slog.Info("Received DNSLookupEvent")
 
@@ -56,20 +55,8 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2.2 Check for errors in the result
-		if evt.ToolResult.Err != nil {
-			slog.Warn("ToolResult contains an error",
-				slog.String("scan_id", evt.ScanID.String()),
-				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", evt.ToolResult.Err))
+		handleToolResultError(evt.ScanID, evt.ToolResult, h.scanService)
 
-			// Mark the scan as failed
-			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
-				slog.Error("Failed to mark scan as failed",
-					slog.String("scan_id", evt.ScanID.String()),
-					slog.Any("error", err))
-			}
-			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
-		}
 		// 3. Save ToolResult to DB
 		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 
@@ -83,7 +70,5 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		slog.Debug("DNSLookupEvent handled successfully")
-
 	}(msg)
-
 }
