@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 )
 
@@ -67,7 +68,7 @@ func Test_checkTokenRoles(t *testing.T) {
 	tests := []struct {
 		name         string
 		tokenClaims  jwt.MapClaims
-		functionName string
+		functionName domain.Action
 		wantErr      error
 	}{
 		{
@@ -75,7 +76,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			tokenClaims: jwt.MapClaims{
 				"roles": []interface{}{"admin"},
 			},
-			functionName: "tenants",
+			functionName: domain.ActionUserGet,
 			wantErr:      nil,
 		},
 		{
@@ -83,7 +84,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			tokenClaims: jwt.MapClaims{
 				"roles": []interface{}{"user"},
 			},
-			functionName: "tenants",
+			functionName: domain.ActionDashboardGet,
 			wantErr:      middleware.ErrInvalidToken,
 		},
 		{
@@ -91,7 +92,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			tokenClaims: jwt.MapClaims{
 				"roles": []interface{}{},
 			},
-			functionName: "admin_function",
+			functionName: domain.ActionDashboardGet,
 			wantErr:      middleware.ErrInvalidToken,
 		},
 	}
@@ -145,7 +146,6 @@ func Test_validateTokenSignature(t *testing.T) {
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
 			}
-
 		})
 	}
 }
@@ -265,7 +265,6 @@ func Test_validateClaims(t *testing.T) {
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
 			}
-
 		})
 	}
 }

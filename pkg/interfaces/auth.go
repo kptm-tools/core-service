@@ -28,6 +28,6 @@ type IAuthHandlers interface {
 	ForgotPassword(w http.ResponseWriter, req *http.Request) error
 	RegisterUser(w http.ResponseWriter, req *http.Request) error
 	ChangePassword(writer http.ResponseWriter, request *http.Request) error
-	WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc
+	WithAuth(endpoint http.HandlerFunc, action domain.Action) http.HandlerFunc
 	VerifyEmail(w http.ResponseWriter, req *http.Request) error
 }

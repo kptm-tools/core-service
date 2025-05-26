@@ -236,7 +236,7 @@ func WriteInternalServerError(w http.ResponseWriter) {
 	w.Write([]byte(http.StatusText(http.StatusInternalServerError)))
 }
 
-func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) http.HandlerFunc {
+func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, action domain.Action) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := h.parseToken(r)
 		if err != nil {
@@ -292,7 +292,7 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, functionName string) 
 		}
 
 		// Verify user roles
-		if err := checkTokenRoles(token, functionName); err != nil {
+		if err := checkTokenRoles(token, action); err != nil {
 			if errors.Is(err, middleware.ErrInvalidToken) {
 				slog.Error("Invalid token", slog.Any("error", err))
 				WriteUnauthorized(w)
@@ -435,7 +435,7 @@ func getRequestToken(r *http.Request) (string, error) {
 	return reqToken, nil
 }
 
-func checkTokenRoles(token *jwt.Token, functionName string) error {
+func checkTokenRoles(token *jwt.Token, action domain.Action) error {
 	roles := token.Claims.(jwt.MapClaims)["roles"]
 	// Check if we have any roles in our claims
 	if len(roles.([]interface{})) == 0 {
@@ -450,10 +450,10 @@ func checkTokenRoles(token *jwt.Token, functionName string) error {
 	}
 
 	// Check out what page we're calling, so we can check relevant roles
-	validRoles, err := domain.GetValidRoles(functionName)
+	validRoles, err := domain.GetValidRolesForAction(action)
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%v`, must be one of `%v`", parsedRoles, validRoles)
-		slog.Error("Error in obtaining role of function", slog.Any("function_name", functionName))
+		slog.Error("Error in obtaining role of function", slog.Any("function_name", action))
 		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
