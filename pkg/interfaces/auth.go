@@ -19,6 +19,7 @@ type IAuthService interface {
 	GenerateOTP() auth.OTP
 	VerifyOTP(otp string) bool
 	CheckOriginAllowed(r *http.Request) bool
+	GetDeniedActionsForRoles([]domain.Role) []domain.Action
 }
 
 type IAuthHandlers interface {
