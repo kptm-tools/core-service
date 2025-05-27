@@ -87,7 +87,7 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("GET /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHosts), domain.ActionHostGetAll))
 	router.HandleFunc("GET /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), domain.ActionHostGetByID))
 	router.HandleFunc("DELETE /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), domain.ActionHostDeleteByID))
-	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), "patchHostByID"))
+	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), domain.ActionHostPatchByID))
 	router.HandleFunc("GET /tenants", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), domain.ActionTenantGetAll))
 
 	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScan), domain.ActionScanCreate))
