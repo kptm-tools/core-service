@@ -106,3 +106,41 @@ func TestGetRolesFromStringSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestGetValidRolesForAction(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		action  domain.Action
+		want    []domain.Role
+		wantErr bool
+	}{
+		{
+			name:    "Valid Action",
+			action:  domain.ActionDashboardGet,
+			want:    []domain.Role{domain.RoleOperator, domain.RoleAnalyst},
+			wantErr: false,
+		},
+		{
+			name:    "Invalid Action",
+			action:  "Non-existant action",
+			want:    []domain.Role{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotErr := domain.GetValidRolesForAction(tt.action)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("GetValidRolesForAction() failed: %v", gotErr)
+				}
+				return
+			}
+			if tt.wantErr {
+				t.Fatal("GetValidRolesForAction() succeeded unexpectedly")
+			}
+			assert.Equal(t, tt.want, got, "Got role slice %v, expected %v", got, tt.want)
+		})
+	}
+}
