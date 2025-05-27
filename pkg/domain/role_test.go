@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -141,6 +142,48 @@ func TestGetValidRolesForAction(t *testing.T) {
 				t.Fatal("GetValidRolesForAction() succeeded unexpectedly")
 			}
 			assert.Equal(t, tt.want, got, "Got role slice %v, expected %v", got, tt.want)
+		})
+	}
+}
+
+func TestGetValidActionsForRole(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		role domain.Role
+		want []domain.Action
+	}{
+		{
+			name: "Valid Role",
+			role: domain.RoleAdmin,
+			want: []domain.Action{
+				domain.ActionUserGet,
+				domain.ActionHostDeleteByID,
+				domain.ActionHostGetAll,
+				domain.ActionHostGetByID,
+				domain.ActionHostPatchByID,
+				domain.ActionTenantGetAll,
+			},
+		},
+		{
+			name: "Invalid Role returns empty slice",
+			role: "Invalid Role",
+			want: []domain.Action{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := domain.GetValidActionsForRole(tt.role)
+			assert.Equal(t, len(tt.want), len(got), "Expected actions slice to be the same length")
+
+			// Sort them, since we're comparing values and the map operation won't produce the same order each time
+			sort.Slice(tt.want, func(i, j int) bool {
+				return tt.want[i].String() < tt.want[j].String()
+			})
+			sort.Slice(got, func(i, j int) bool {
+				return got[i].String() < got[j].String()
+			})
+			assert.Equal(t, tt.want, got, "Expected actions slice %v, got %v", tt.want, got)
 		})
 	}
 }
