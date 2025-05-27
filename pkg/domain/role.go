@@ -141,7 +141,11 @@ func ParseRole(s string) (Role, error) {
 }
 
 func GetRolesFromStringSlice(strSlice []string) ([]Role, error) {
-	var res []Role
+	res := make([]Role, 0)
+	if strSlice == nil {
+		return res, fmt.Errorf("string slice must not be nil: %v", strSlice)
+	}
+
 	for _, s := range strSlice {
 		v, err := ParseRole(s)
 		if err != nil {

@@ -56,3 +56,53 @@ func TestParseRole(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRolesFromStringSlice(t *testing.T) {
+	testCases := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		strSlice []string
+		want     []domain.Role
+		wantErr  bool
+	}{
+		{
+			name:     "Slice with valid roles",
+			strSlice: []string{"admin", "operator"},
+			want:     []domain.Role{domain.RoleAdmin, domain.RoleOperator},
+			wantErr:  false,
+		},
+		{
+			name:     "Empty slice",
+			strSlice: []string{},
+			want:     []domain.Role{},
+			wantErr:  false,
+		},
+		{
+			name:     "Slice with invalid role",
+			strSlice: []string{"operator", "invalid_role"},
+			want:     []domain.Role{},
+			wantErr:  true,
+		},
+		{
+			name:     "Nil slice",
+			strSlice: nil,
+			want:     []domain.Role{},
+			wantErr:  true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, gotErr := domain.GetRolesFromStringSlice(tc.strSlice)
+			if gotErr != nil {
+				if !tc.wantErr {
+					t.Errorf("GetRolesFromStringSlice() failed: %v", gotErr)
+				}
+				return
+			}
+			if tc.wantErr {
+				t.Fatal("GetRolesFromStringSlice() succeeded unexpectedly")
+			}
+			assert.Equal(t, tc.want, got, "Expected string slice %v, got %v", tc.want, got)
+		})
+	}
+}
