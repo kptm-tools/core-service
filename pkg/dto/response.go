@@ -177,7 +177,7 @@ type TimePeriod struct {
 }
 
 type UserPermissionsResponse struct {
-	UserRoles                       []domain.Role   `json:"user_role"`
+	UserRoles                       []domain.Role   `json:"user_roles"`
 	DeniedActions                   []domain.Action `json:"denied_actions"`
 	EffectivePermissionsLastUpdated time.Time       `json:"effective_permissions_last_updated"`
 }
