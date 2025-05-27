@@ -6,7 +6,8 @@ type Action string
 
 const (
 	// User Actions
-	ActionUserGet Action = "user:get"
+	ActionUserGet            Action = "user:get"
+	ActionUserGetPermissions Action = "user:get_permissions"
 
 	// Host Actions
 	ActionHostCreate        Action = "host:create"
@@ -65,7 +66,8 @@ func (r Role) String() string {
 // actionRoles maps each action to the roles that are allowed to perform it.
 // This is the source of truth for action-to-role mapping.
 var actionRoles = map[Action][]Role{
-	ActionUserGet: {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionUserGet:            {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionUserGetPermissions: {RoleAdmin, RoleOperator, RoleAnalyst},
 
 	ActionHostCreate:        {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionHostValidate:      {RoleAdmin, RoleOperator, RoleAnalyst},

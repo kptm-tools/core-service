@@ -31,4 +31,5 @@ type IAuthHandlers interface {
 	ChangePassword(writer http.ResponseWriter, request *http.Request) error
 	WithAuth(endpoint http.HandlerFunc, action domain.Action) http.HandlerFunc
 	VerifyEmail(w http.ResponseWriter, req *http.Request) error
+	GetUserPermissions(w http.ResponseWriter, req *http.Request) error
 }
