@@ -180,29 +180,3 @@ func TestGetValidActionsForRole(t *testing.T) {
 		})
 	}
 }
-
-func TestGetDeniedActionsForRole(t *testing.T) {
-	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		role domain.Role
-		want []domain.Action
-	}{
-		{
-			name: "Admin has no denied actions",
-			role: domain.RoleAdmin,
-			want: []domain.Action{},
-		},
-		{
-			name: "Invalid role has all actions denied",
-			role: "",
-			want: domain.AllActions,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := domain.GetDeniedActionsForRole(tt.role)
-			assert.Equal(t, tt.want, got, "Expected actions %v for role %s, got %v", tt.want, tt.role, got)
-		})
-	}
-}

@@ -179,31 +179,6 @@ func GetValidActionsForRole(role Role) []Action {
 	return []Action{}
 }
 
-// GetDeniedActionsForRole calculates and returns a slice of actions that the given role is not allowed to perform.
-// This is based on the difference between all possible actions and the allowed actions for the role.
-// It returns a copy of the slice to prevent external modifications.
-func GetDeniedActionsForRole(role Role) []Action {
-	// 1. Get all allowed actions
-	allowedActions := GetValidActionsForRole(role)
-
-	// 2. Create a set of allowed actions for efficient lookup
-	allowedSet := make(map[Action]bool)
-	for _, a := range allowedActions {
-		allowedSet[a] = true
-	}
-
-	// 3. Iterate through all possible actions and identify those not in set
-	deniedActions := make([]Action, 0)
-	for _, a := range AllActions {
-		if !allowedSet[a] {
-			deniedActions = append(deniedActions, a)
-		}
-	}
-	copiedDeniedActions := make([]Action, len(deniedActions))
-	copy(copiedDeniedActions, deniedActions)
-	return copiedDeniedActions
-}
-
 // ContainsRole finds the intersection of two arrays
 // of type Role, returns an array with the intersection
 func ContainsRole(roles []Role, rolesToCheck []Role) []Role {
