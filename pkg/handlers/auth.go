@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -292,7 +293,8 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, action domain.Action)
 		}
 
 		// Verify user roles
-		if err := checkTokenRoles(token, action); err != nil {
+		roles, err := checkTokenRoles(token, action)
+		if err != nil {
 			if errors.Is(err, middleware.ErrInvalidToken) {
 				slog.Error("Invalid token", slog.Any("error", err))
 				WriteUnauthorized(w)
@@ -305,6 +307,7 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, action domain.Action)
 
 		ctx := context.WithValue(r.Context(), middleware.ContextTenantID, tenantID)
 		ctx = context.WithValue(ctx, middleware.ContextUserID, userID)
+		ctx = context.WithValue(ctx, middleware.ContextRoles, roles)
 		endpoint(w, r.WithContext(ctx))
 	})
 }
@@ -435,18 +438,18 @@ func getRequestToken(r *http.Request) (string, error) {
 	return reqToken, nil
 }
 
-func checkTokenRoles(token *jwt.Token, action domain.Action) error {
+func checkTokenRoles(token *jwt.Token, action domain.Action) ([]domain.Role, error) {
 	roles := token.Claims.(jwt.MapClaims)["roles"]
 	// Check if we have any roles in our claims
 	if len(roles.([]interface{})) == 0 {
 		msg := "Token has no roles"
-		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
+		return nil, fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
 	parsedRoles, err := domain.GetRolesFromStringSlice([]string{roles.([]interface{})[0].(string)})
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%s`", err.Error())
-		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
+		return nil, fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
 	// Check out what page we're calling, so we can check relevant roles
@@ -454,19 +457,19 @@ func checkTokenRoles(token *jwt.Token, action domain.Action) error {
 	if err != nil {
 		msg := fmt.Sprintf("Invalid Role: `%v`, must be one of `%v`", parsedRoles, validRoles)
 		slog.Error("Error in obtaining role of function", slog.Any("function_name", action))
-		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
+		return nil, fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
-	result := domain.ContainsRole(parsedRoles, validRoles)
+	intersection := domain.ContainsRole(parsedRoles, validRoles)
 	// If the length of the intersection is >= 1 , we have the proper role
 	// log.Printf("Intersection result: `%v`\n", result)
-	if len(result) == 0 {
+	if len(intersection) == 0 {
 		msg := fmt.Sprintf("Roles missing: Have `%v`, want one of `%v`", parsedRoles, validRoles)
 		slog.Error("Invalid role for consuming endpoint", slog.Any("roles", parsedRoles))
-		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
+		return nil, fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
-	return nil
+	return parsedRoles, nil
 }
 
 func (h *AuthHandlers) setPublicKey(kid string) error {
@@ -518,4 +521,25 @@ func (h *AuthHandlers) ValidateUserWithFusionAuth(userID, tenantID string) (bool
 	}
 
 	return true, nil
+}
+
+func (h *AuthHandlers) GetUserPermissions(w http.ResponseWriter, r *http.Request) error {
+	roles := r.Context().Value(middleware.ContextRoles)
+	castedRoles, ok := roles.([]domain.Role)
+	if !ok {
+		slog.Error("User roles in request context are invalid", slog.Any("context_roles", roles))
+		WriteUnauthorized(w)
+		return nil
+	}
+
+	// Get denied permissions for the role
+	deniedActions := h.authService.GetDeniedActionsForRoles(castedRoles)
+
+	response := dto.UserPermissionsResponse{
+		UserRoles:                       castedRoles,
+		DeniedActions:                   deniedActions,
+		EffectivePermissionsLastUpdated: time.Date(2025, time.May, 27, 9, 52, 00, 0, time.Local),
+	}
+
+	return api.WriteJSON(w, http.StatusOK, response)
 }

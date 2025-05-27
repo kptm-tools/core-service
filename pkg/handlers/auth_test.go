@@ -102,7 +102,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			token := &jwt.Token{
 				Claims: tt.tokenClaims,
 			}
-			err := checkTokenRoles(token, tt.functionName)
+			_, err := checkTokenRoles(token, tt.functionName)
 
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error %v, got %v", tt.wantErr, err)

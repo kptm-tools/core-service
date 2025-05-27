@@ -507,6 +507,9 @@ func (s *AuthService) CheckOriginAllowed(r *http.Request) bool {
 	return false
 }
 
+// GetDeniedActionsForRoles calculates and returns a slice of actions that the given roles are not allowed to perform.
+// This is based on the difference between all possible actions and the allowed actions for the role.
+// It returns a copy of the slice to prevent external modifications.
 func (s *AuthService) GetDeniedActionsForRoles(roles []domain.Role) []domain.Action {
 	// 1. Determine all unique actions allowed by ANY of the user's permissions
 	allAllowedForUserSet := make(map[domain.Action]bool)
