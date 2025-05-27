@@ -67,9 +67,9 @@ func (r Role) String() string {
 var actionRoles = map[Action][]Role{
 	ActionUserGet: {RoleAdmin, RoleOperator, RoleAnalyst},
 
-	ActionHostCreate:        {RoleOperator, RoleAnalyst},
-	ActionHostValidate:      {RoleOperator, RoleAnalyst},
-	ActionHostValidateAlias: {RoleOperator, RoleAnalyst},
+	ActionHostCreate:        {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionHostValidate:      {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionHostValidateAlias: {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionHostGetAll:        {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionHostGetByID:       {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionHostDeleteByID:    {RoleAdmin, RoleOperator},
@@ -77,25 +77,25 @@ var actionRoles = map[Action][]Role{
 
 	ActionTenantGetAll: {RoleAdmin, RoleAnalyst},
 
-	ActionScanCreate:                      {RoleOperator},
-	ActionScanCancelByID:                  {RoleOperator},
-	ActionScanGetInsightsByID:             {RoleOperator, RoleAnalyst},
-	ActionScanGetVulnerabilitySummaryByID: {RoleOperator, RoleAnalyst},
-	ActionScanGetVulnerabilitiesByID:      {RoleOperator, RoleAnalyst},
-	ActionScanGetScorecardTrends:          {RoleOperator, RoleAnalyst},
+	ActionScanCreate:                      {RoleAdmin, RoleOperator},
+	ActionScanCancelByID:                  {RoleAdmin, RoleOperator},
+	ActionScanGetInsightsByID:             {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetVulnerabilitySummaryByID: {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetVulnerabilitiesByID:      {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetScorecardTrends:          {RoleAdmin, RoleOperator, RoleAnalyst},
 
-	ActionScanScheduleDeleteByID: {RoleOperator, RoleAnalyst},
-	ActionScanSchedulePatchByID:  {RoleOperator, RoleAnalyst},
-	ActionScanScheduleGetAll:     {RoleOperator, RoleAnalyst},
+	ActionScanScheduleDeleteByID: {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanSchedulePatchByID:  {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanScheduleGetAll:     {RoleAdmin, RoleOperator, RoleAnalyst},
 
-	ActionReportGetAll: {RoleOperator, RoleAnalyst},
+	ActionReportGetAll: {RoleAdmin, RoleOperator, RoleAnalyst},
 
-	ActionVulnerabilityGet:           {RoleOperator, RoleAnalyst},
-	ActionVulnerabilityCreateComment: {RoleAnalyst},
-	ActionVulnerabilityPatchComment:  {RoleAnalyst},
-	ActionVulnerabilityDeleteComment: {RoleAnalyst},
+	ActionVulnerabilityGet:           {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionVulnerabilityCreateComment: {RoleAdmin, RoleAnalyst},
+	ActionVulnerabilityPatchComment:  {RoleAdmin, RoleAnalyst},
+	ActionVulnerabilityDeleteComment: {RoleAdmin, RoleAnalyst},
 
-	ActionDashboardGet: {RoleOperator, RoleAnalyst},
+	ActionDashboardGet: {RoleAdmin, RoleOperator, RoleAnalyst},
 }
 
 // AllActions is a slice containing all defined Action constants.
