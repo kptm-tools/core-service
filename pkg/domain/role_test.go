@@ -119,7 +119,7 @@ func TestGetValidRolesForAction(t *testing.T) {
 		{
 			name:    "Valid Action",
 			action:  domain.ActionDashboardGet,
-			want:    []domain.Role{domain.RoleOperator, domain.RoleAnalyst},
+			want:    []domain.Role{domain.RoleAdmin, domain.RoleOperator, domain.RoleAnalyst},
 			wantErr: false,
 		},
 		{
@@ -156,14 +156,7 @@ func TestGetValidActionsForRole(t *testing.T) {
 		{
 			name: "Valid Role",
 			role: domain.RoleAdmin,
-			want: []domain.Action{
-				domain.ActionUserGet,
-				domain.ActionHostDeleteByID,
-				domain.ActionHostGetAll,
-				domain.ActionHostGetByID,
-				domain.ActionHostPatchByID,
-				domain.ActionTenantGetAll,
-			},
+			want: domain.AllActions,
 		},
 		{
 			name: "Invalid Role returns empty slice",
@@ -184,6 +177,32 @@ func TestGetValidActionsForRole(t *testing.T) {
 				return got[i].String() < got[j].String()
 			})
 			assert.Equal(t, tt.want, got, "Expected actions slice %v, got %v", tt.want, got)
+		})
+	}
+}
+
+func TestGetDeniedActionsForRole(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		role domain.Role
+		want []domain.Action
+	}{
+		{
+			name: "Admin has no denied actions",
+			role: domain.RoleAdmin,
+			want: []domain.Action{},
+		},
+		{
+			name: "Invalid role has all actions denied",
+			role: "",
+			want: domain.AllActions,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := domain.GetDeniedActionsForRole(tt.role)
+			assert.Equal(t, tt.want, got, "Expected actions %v for role %s, got %v", tt.want, tt.role, got)
 		})
 	}
 }
