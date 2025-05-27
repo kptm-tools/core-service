@@ -79,6 +79,7 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("GET /api/users/verify", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
 	router.HandleFunc("POST /api/tenants", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
 	router.HandleFunc("GET /api/users/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), domain.ActionUserGet))
+	router.HandleFunc("GET /api/users/permissions", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUserPermissions), domain.ActionUserGetPermissions))
 
 	router.HandleFunc("POST /api/hosts", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.CreateHost), domain.ActionHostCreate))
 	router.HandleFunc("POST /api/hosts/validate-host", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.ValidateHost), domain.ActionHostValidate))
