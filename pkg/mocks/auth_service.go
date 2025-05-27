@@ -68,7 +68,7 @@ func (m *MockAuthService) VerifyOTP(otp string) bool {
 
 func (m *MockAuthService) GetDeniedActionsForRoles(roles []domain.Role) []domain.Action {
 	if m.MockGetDeniedActionsForRoles != nil {
-		return m.GetDeniedActionsForRoles(roles)
+		return m.MockGetDeniedActionsForRoles(roles)
 	}
 	return []domain.Action{}
 }
