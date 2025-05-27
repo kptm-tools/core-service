@@ -15,5 +15,8 @@ var VerifyKey *rsa.PublicKey
 
 type ContextKey string
 
-const ContextTenantID ContextKey = "tenantID"
-const ContextUserID ContextKey = "userID"
+const (
+	ContextTenantID ContextKey = "tenantID"
+	ContextUserID   ContextKey = "userID"
+	ContextRoles    ContextKey = "userRoles"
+)

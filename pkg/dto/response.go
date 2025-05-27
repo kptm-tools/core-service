@@ -176,6 +176,12 @@ type TimePeriod struct {
 	VulnerabilityCount *int   `json:"vulnerability_count"`
 }
 
+type UserPermissionsResponse struct {
+	UserRoles                       []domain.Role   `json:"user_roles"`
+	DeniedActions                   []domain.Action `json:"denied_actions"`
+	EffectivePermissionsLastUpdated time.Time       `json:"effective_permissions_last_updated"`
+}
+
 func AdaptCategoryData(serviceCategoryData []domain.ServiceCategoryData) []CategoryData {
 	adaptedData := make([]CategoryData, len(serviceCategoryData))
 	for i, svcData := range serviceCategoryData {

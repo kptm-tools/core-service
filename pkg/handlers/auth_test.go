@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
+	"github.com/kptm-tools/core-service/pkg/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_getRequestToken(t *testing.T) {
@@ -67,7 +72,7 @@ func Test_checkTokenRoles(t *testing.T) {
 	tests := []struct {
 		name         string
 		tokenClaims  jwt.MapClaims
-		functionName string
+		functionName domain.Action
 		wantErr      error
 	}{
 		{
@@ -75,7 +80,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			tokenClaims: jwt.MapClaims{
 				"roles": []interface{}{"admin"},
 			},
-			functionName: "tenants",
+			functionName: domain.ActionUserGet,
 			wantErr:      nil,
 		},
 		{
@@ -83,7 +88,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			tokenClaims: jwt.MapClaims{
 				"roles": []interface{}{"user"},
 			},
-			functionName: "tenants",
+			functionName: domain.ActionDashboardGet,
 			wantErr:      middleware.ErrInvalidToken,
 		},
 		{
@@ -91,7 +96,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			tokenClaims: jwt.MapClaims{
 				"roles": []interface{}{},
 			},
-			functionName: "admin_function",
+			functionName: domain.ActionDashboardGet,
 			wantErr:      middleware.ErrInvalidToken,
 		},
 	}
@@ -101,7 +106,7 @@ func Test_checkTokenRoles(t *testing.T) {
 			token := &jwt.Token{
 				Claims: tt.tokenClaims,
 			}
-			err := checkTokenRoles(token, tt.functionName)
+			_, err := checkTokenRoles(token, tt.functionName)
 
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error %v, got %v", tt.wantErr, err)
@@ -145,7 +150,6 @@ func Test_validateTokenSignature(t *testing.T) {
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
 			}
-
 		})
 	}
 }
@@ -265,7 +269,67 @@ func Test_validateClaims(t *testing.T) {
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
 			}
-
 		})
+	}
+}
+
+func TestAuthHandlers_GetUserPermissions(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for receiver constructor.
+		mockStore   interfaces.IStorage
+		authService interfaces.IAuthService
+		// Named input parameters for target function.
+		r          *http.Request
+		wantStatus int
+	}{
+		{
+			name:        "Request with valid roles on token",
+			mockStore:   &mocks.MockStorage{},
+			authService: &mocks.MockAuthService{},
+			r: httptest.NewRequest("GET", "/api/user/permissions", nil).WithContext(
+				context.WithValue(
+					context.Background(),
+					middleware.ContextRoles,
+					[]domain.Role{domain.RoleAdmin},
+				),
+			),
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:        "Request with uncastable roles on context token returns unauthorized",
+			mockStore:   &mocks.MockStorage{},
+			authService: &mocks.MockAuthService{},
+			r: httptest.NewRequest("GET", "/api/user/permissions", nil).WithContext(
+				context.WithValue(
+					context.Background(),
+					middleware.ContextRoles,
+					"this is an invalid role",
+				),
+			),
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:        "Request with uncastable non-string roles on context token returns unauthorized",
+			mockStore:   &mocks.MockStorage{},
+			authService: &mocks.MockAuthService{},
+			r: httptest.NewRequest("GET", "/api/user/permissions", nil).WithContext(
+				context.WithValue(
+					context.Background(),
+					middleware.ContextRoles,
+					5,
+				),
+			),
+			wantStatus: http.StatusUnauthorized,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			h := NewAuthHandlers(tt.authService)
+			h.GetUserPermissions(rr, tt.r)
+			assert.Equal(t, tt.wantStatus, rr.Code, "Expected http response code %d, got %d", tt.wantStatus, rr.Code)
+		},
+		)
 	}
 }
