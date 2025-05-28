@@ -1,14 +1,14 @@
 -- Migration: 000002_create_hosts_table.up.sql
-CREATE TABLE IF NOT EXISTS hosts(
-  id SERIAL PRIMARY KEY,
-  tenant_id UUID,
-  operator_id UUID,
-  domain VARCHAR(2048),
-  ip VARCHAR(15),
-  alias VARCHAR(2048) UNIQUE NOT NULL,
-  rapporteurs JSONB,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS hosts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID,
+    operator_id UUID,
+    domain VARCHAR(2048),
+    ip VARCHAR(15),
+    alias VARCHAR(2048) UNIQUE NOT NULL,
+    rapporteurs JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto; 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;

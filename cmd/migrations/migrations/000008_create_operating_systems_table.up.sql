@@ -1,7 +1,7 @@
 -- Migration: 000015_create_operating_systems_table.up.sql
 CREATE TABLE IF NOT EXISTS operating_systems (
     id SERIAL PRIMARY KEY,
-    host_id INTEGER NOT NULL REFERENCES hosts (id) ON DELETE CASCADE,
+    host_id UUID NOT NULL REFERENCES hosts (id) ON DELETE CASCADE,
     scan_id UUID NOT NULL REFERENCES scans (id) ON DELETE CASCADE,
     os_name VARCHAR(255),
     family VARCHAR(255),
