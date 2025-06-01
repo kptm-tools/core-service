@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/kptm-tools/common/common/pkg/enums"
 	"log/slog"
 	"net/http"
-	"strconv"
+
+	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
 
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/middleware"
@@ -31,6 +32,7 @@ func NewHostHandlers(hostService interfaces.IHostService) *HostHandlers {
 }
 
 func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) error {
+	ctx := req.Context()
 	createHostRequest := new(dto.CreateHostRequest)
 
 	if err := decodeJSONBody(w, req, createHostRequest); err != nil {
@@ -48,37 +50,43 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	host, err = h.hostService.CreateHost(host)
+	host, err = h.hostService.CreateHost(ctx, host)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 
-	return api.WriteJSON(w, http.StatusCreated, constructResponse(host))
+	response := dto.NewHostResponse(*host)
+
+	return api.WriteJSON(w, http.StatusCreated, response)
 }
 
 func (h *HostHandlers) GetHosts(w http.ResponseWriter, req *http.Request) error {
+	ctx := req.Context()
 	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
+	tenantUUID := uuid.MustParse(tenantID)
 
-	hosts, err := h.hostService.GetHostsByTenantID(tenantID)
+	hosts, err := h.hostService.GetHostsByTenantID(ctx, tenantUUID)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
+	slog.Debug("Got hosts from service", slog.Int("len_hosts", len(hosts)))
 
-	hostsResponse := []*domain.HostResponse{}
-	for _, host := range hosts {
-		hostsResponse = append(hostsResponse, constructResponse(host))
+	response := make([]dto.HostResponse, len(hosts))
+	for i, host := range hosts {
+		response[i] = dto.NewHostResponse(*host)
 	}
 
-	return api.WriteJSON(w, http.StatusOK, hostsResponse)
+	return api.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *HostHandlers) GetHostByID(w http.ResponseWriter, req *http.Request) error {
-	id, err := GetID(req)
+	ctx := req.Context()
+	id, err := GetUUID(req)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	host, err := h.hostService.GetHostByID(id)
+	host, err := h.hostService.GetHostByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
@@ -87,11 +95,14 @@ func (h *HostHandlers) GetHostByID(w http.ResponseWriter, req *http.Request) err
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 
-	return api.WriteJSON(w, http.StatusOK, constructResponse(host))
+	response := dto.NewHostResponse(*host)
+
+	return api.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) error {
-	id, err := GetID(req)
+	ctx := req.Context()
+	id, err := GetUUID(req)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
@@ -114,14 +125,14 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 	}
 	hostToDB.ID = id
 
-	_, errGet := h.hostService.GetHostByID(hostToDB.ID)
+	_, errGet := h.hostService.GetHostByID(ctx, hostToDB.ID)
 	if errGet != nil {
 		statusCode := http.StatusNotFound
 		return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 	}
 
 	// Get the value of the host, IP if it's an IP type, Hostname if it's a Domain/Subdomain
-	if errValidation := h.hostService.ValidateHost(createHostRequest.Value); errValidation != nil {
+	if errValidation := h.hostService.ValidateHost(ctx, createHostRequest.Value); errValidation != nil {
 		// Handle the case when the host value (the target) is not valid
 		slog.Error("Failed to validate host value", slog.String("host_value", createHostRequest.Value), slog.Any("error", errValidation))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: errValidation.Error()})
@@ -130,7 +141,7 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 		hostToDB.Domain = ""
 	}
 	// Patch the host in the DB if everything's ok
-	host, err := h.hostService.PatchHostByID(hostToDB)
+	host, err := h.hostService.PatchHostByID(ctx, hostToDB)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			statusCode := http.StatusNotFound
@@ -139,16 +150,19 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 
-	return api.WriteJSON(w, http.StatusCreated, constructResponse(host))
+	response := dto.NewHostResponse(*host)
+
+	return api.WriteJSON(w, http.StatusCreated, response)
 }
 
 func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) error {
-	id, err := GetID(req)
+	ctx := req.Context()
+	id, err := GetUUID(req)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	isDeleted, err := h.hostService.DeleteHostByID(id)
+	isDeleted, err := h.hostService.DeleteHostByID(ctx, id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
@@ -163,6 +177,7 @@ func (h *HostHandlers) DeleteHostByID(w http.ResponseWriter, req *http.Request) 
 }
 
 func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) error {
+	ctx := req.Context()
 	validateHostRequest := new(dto.ValidateHostRequest)
 
 	if err := decodeJSONBody(w, req, validateHostRequest); err != nil {
@@ -175,7 +190,7 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 		}
 	}
 
-	if err := h.hostService.ValidateHost(validateHostRequest.Value); err != nil {
+	if err := h.hostService.ValidateHost(ctx, validateHostRequest.Value); err != nil {
 		if errors.Is(err, services.ErrInvalidHostValue) {
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})
 		} else if errors.Is(err, services.ErrHostUnhealthy) {
@@ -188,38 +203,27 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 }
 
 func (h *HostHandlers) constructHostForDB(createHostRequest *dto.CreateHostRequest, req *http.Request) (*domain.Host, error) {
+	ctx := req.Context()
 	result, err := h.hostService.GetDomainIPValues(createHostRequest.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get domain and IP values: %w", err)
 	}
-	tenantID := req.Context().Value(middleware.ContextTenantID)
-	operatorID := req.Context().Value(middleware.ContextUserID)
+	tenantID := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	operatorID := ctx.Value(middleware.ContextUserID).(uuid.UUID)
 
 	host := domain.NewHost(
 		result.Domain,
 		result.IP,
-		tenantID.(string),
-		operatorID.(string),
+		tenantID,
+		operatorID,
 		createHostRequest.Name,
 		createHostRequest.Credentials,
 		createHostRequest.Rapporteurs)
 	return host, nil
 }
 
-func constructResponse(host *domain.Host) *domain.HostResponse {
-	hostResponse := new(domain.HostResponse)
-	hostResponse.Name = host.Name
-	hostResponse.CreatedAt = host.CreatedAt
-	hostResponse.UpdatedAt = host.UpdatedAt
-	hostResponse.ID = strconv.Itoa(host.ID)
-	hostResponse.Domain = host.Domain
-	hostResponse.IP = host.IP
-	hostResponse.Rapporteurs = host.Rapporteurs
-	hostResponse.Credentials = host.Credentials
-	return hostResponse
-}
-
 func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) error {
+	ctx := req.Context()
 	validateAliasRequest := new(dto.ValidateAliasRequest)
 
 	if err := decodeJSONBody(w, req, validateAliasRequest); err != nil {
@@ -232,7 +236,7 @@ func (h *HostHandlers) ValidateAlias(w http.ResponseWriter, req *http.Request) e
 		}
 	}
 
-	if err := h.hostService.ValidateAlias(validateAliasRequest.Hostname); err != nil {
+	if err := h.hostService.ValidateAlias(ctx, validateAliasRequest.Hostname); err != nil {
 
 		if errors.Is(err, services.ErrAliasTaken) {
 			return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: err.Error()})

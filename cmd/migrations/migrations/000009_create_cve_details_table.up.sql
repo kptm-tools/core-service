@@ -1,8 +1,9 @@
 -- Migration: 000027_create_vulnerabilities_table.up.sql
 CREATE TABLE IF NOT EXISTS cve_details (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cve_id VARCHAR(255) UNIQUE NOT NULL, -- Foreign key to vulnerabilities (via cve_id)
+    cve_id VARCHAR(255) UNIQUE NOT NULL,
     source_identifier VARCHAR(255),
+    cwe VARCHAR(255) NOT NULL,
     published_date TIMESTAMP WITH TIME ZONE,
     last_modified_date TIMESTAMP WITH TIME ZONE,
     vuln_status VARCHAR(50), -- e.g., 'Analyzed', 'Modified', 'Received'
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS cve_details (
     cvss_v31_base_score DECIMAL(3, 1),
     cvss_v31_base_severity VARCHAR(50), -- e.g., 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
     cvss_v31_exploitability_score DECIMAL(3, 1),
+    cvss_v31_exploit_code_maturity VARCHAR(50),
     cvss_v31_impact_score DECIMAL(3, 1),
     cvss_v31_attack_vector VARCHAR(50),
     cvss_v31_attack_complexity VARCHAR(50),
@@ -53,6 +55,10 @@ CREATE TABLE IF NOT EXISTS cve_details (
     -- EPSS (Expected Exploitability Prediction System)
     epss_score DECIMAL(5, 4),
     epss_percentile DECIMAL(5, 2),
+
+    -- Calculated metrics
+    risk_score DECIMAL(5, 2),
+    likelihood VARCHAR(50),
 
     -- Other NVD fields
     evaluator_comment TEXT,
@@ -70,9 +76,7 @@ CREATE TABLE IF NOT EXISTS cve_details (
     vendor_comments JSONB,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_cve_details_cve_id FOREIGN KEY (cve_id) REFERENCES vulnerabilities (cve_id) ON DELETE RESTRICT
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_cve_details_cve_id ON cve_details (cve_id);

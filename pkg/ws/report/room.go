@@ -1,8 +1,9 @@
 package report
 
 import (
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"sync"
+
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 )
 
 // ReportRoom represents the DTO struct being sent over WebSocket
@@ -10,7 +11,7 @@ import (
 type ReportRoom struct {
 	scanID string
 	// Vulnerabilities is the array of vulnerabilities
-	Vulnerabilities []*domain.Vulnerability `json:"vulnerabilities"`
+	Vulnerabilities []tools.Vulnerability `json:"vulnerabilities"`
 	// Payload is the data Based on the Type
 	AmountOfClients int `json:"amount_of_clients"`
 	mu              sync.Mutex
@@ -29,7 +30,7 @@ func NewReportRoom(scanID string) *ReportRoom {
 	return &ReportRoom{
 		scanID:          scanID,
 		mu:              sync.Mutex{},
-		Vulnerabilities: []*domain.Vulnerability{},
+		Vulnerabilities: []tools.Vulnerability{},
 		AmountOfClients: 0,
 	}
 }

@@ -25,11 +25,9 @@ type ResultHost struct {
 
 type Scan struct {
 	ID              uuid.UUID      `json:"id,omitempty" db:"id"`
-	TenantID        string         `json:"tenant_id,omitempty"`
-	OperatorID      string         `json:"operator_id,omitempty"`
-	HostID          int            `json:"host_ids,omitempty"`
-	HostsStatus     []StatusHost   `json:"hosts_status,omitempty"`
-	HostsResults    []ResultHost   `json:"hosts_results,omitempty"`
+	TenantID        uuid.UUID      `json:"tenant_id,omitempty"`
+	OperatorID      uuid.UUID      `json:"operator_id,omitempty"`
+	HostID          uuid.UUID      `json:"host_ids,omitempty"`
 	Target          results.Target `json:"targets,omitempty"`
 	CreatedAt       time.Time      `json:"created_at,omitempty"`
 	UpdatedAt       time.Time      `json:"updated_at,omitempty"`

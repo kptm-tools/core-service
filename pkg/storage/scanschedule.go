@@ -3,9 +3,10 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"time"
 )
 
 func (s *PostgreSQLStore) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
@@ -76,13 +77,13 @@ func scanIntoScanSchedule(rows *sql.Rows, scanSchedule *domain.ScanScheduleSumma
 	return nil
 }
 
-func (s *PostgreSQLStore) GetCurrentHostIDFromScanSchedule(scanScheduleID int) (int, error) {
+func (s *PostgreSQLStore) GetCurrentHostIDFromScanSchedule(scanScheduleID int) (uuid.UUID, error) {
 	query := `SELECT S.host_id FROM (SELECT * FROM scan_scheduling WHERE id=$1)SC INNER JOIN scans S ON SC.scan_id = S.id`
 	row := s.db.QueryRow(query, scanScheduleID)
-	var hostID int
+	var hostID uuid.UUID
 	err := row.Scan(&hostID)
 	if err != nil {
-		return -1, err
+		return uuid.Nil, err
 	}
 	return hostID, nil
 }

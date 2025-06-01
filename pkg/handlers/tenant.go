@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -35,7 +35,9 @@ func (h *TenantHandlers) GetTenants(w http.ResponseWriter, req *http.Request) er
 }
 
 func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) error {
-	tenantIDStr := req.Context().Value(middleware.ContextTenantID).(string)
+	ctx := req.Context()
+	tenantIDStr := ctx.Value(middleware.ContextTenantID).(string)
+	tenantID := uuid.MustParse(tenantIDStr)
 
 	hostIDFilter, err := parseHostsIDFilterFromURLQuery(req, "host_ids")
 	if err != nil {
@@ -54,7 +56,7 @@ func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
 	}
 
-	tenantDasboardData, err := h.tenantService.GetTenantDashboardData(tenantIDStr, trendsTimePeriodFilter, trendsSeverityFilter, hostIDFilter)
+	tenantDasboardData, err := h.tenantService.GetTenantDashboardData(ctx, tenantID, trendsTimePeriodFilter, trendsSeverityFilter, hostIDFilter)
 	if err != nil {
 		slog.Error("Error getting tenant dashboard data",
 			slog.String("tenant_id", tenantIDStr),
@@ -105,13 +107,13 @@ func parseSeverityFilterFromURLQuery(req *http.Request, queryKey string) ([]stri
 	return severityFilters, nil
 }
 
-func parseHostsIDFilterFromURLQuery(req *http.Request, queryKey string) ([]int, error) {
+func parseHostsIDFilterFromURLQuery(req *http.Request, queryKey string) ([]uuid.UUID, error) {
 	hostIDFilter := req.URL.Query().Get(queryKey)
 
-	var hostIDs []int
+	var hostIDs []uuid.UUID
 	if hostIDFilter != "" {
 		for _, hostIDStr := range strings.Split(hostIDFilter, ",") {
-			hostID, err := strconv.Atoi(hostIDStr)
+			hostID, err := uuid.Parse(hostIDStr)
 			if err != nil {
 				return nil, fmt.Errorf("invalid host ID: %s", hostIDStr)
 			}

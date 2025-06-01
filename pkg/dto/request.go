@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
@@ -89,7 +90,7 @@ type ServiceHost struct {
 	Host  string   `json:"host"`
 }
 type ScanRequest struct {
-	HostID     int                    `json:"host_id"`
+	HostID     uuid.UUID              `json:"host_id"`
 	ScheduleAt *string                `json:"schedule_at"`
 	Frequency  *domain.RepeatSchedule `json:"repeat_frequency"`
 }

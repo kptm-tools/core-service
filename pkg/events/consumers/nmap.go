@@ -1,8 +1,10 @@
 package consumers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/events"
@@ -24,6 +26,8 @@ var _ interfaces.EventConsumer = (*NmapHandler)(nil)
 func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
 		slog.Info("Received NmapEvent")
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
 
 		// 1. Parse payload
 		var evt events.ToolResultEvent
@@ -60,6 +64,16 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", err),
 			)
+
+			// Mark the scan as failed
+			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+				slog.Error("Error marking scan as failed",
+					slog.String("scan_id", evt.ScanID.String()),
+					slog.Any("error", err))
+			}
+
+			slog.Debug("Scan marked as failed successfully", slog.String("scan_id", evt.ScanID.String()))
+
 			return
 		}
 		slog.Debug("Nmap ToolResult saved successfully")
@@ -82,11 +96,19 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
-		if err := h.scanService.InsertVulnerabilityResult(scanResult); err != nil {
+		if err := h.scanService.InsertVulnerabilityResult(ctx, scanResult); err != nil {
 			slog.Error("Error inserting VulnerabilityResult to DB",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", err))
+
+			// Mark the scan as failed
+			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+				slog.Error("Error marking scan as failed",
+					slog.String("scan_id", evt.ScanID.String()),
+					slog.Any("error", err))
+				return
+			}
 			return
 		}
 

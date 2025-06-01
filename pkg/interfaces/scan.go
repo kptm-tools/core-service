@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -13,10 +14,10 @@ import (
 )
 
 type IScanService interface {
-	CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error)
+	CreateScan(ctx context.Context, hostID uuid.UUID, tenantID, operatorID uuid.UUID, startedAt *time.Time) (*domain.Scan, error)
 	GetCurrentScans(string) ([]*domain.ScanSummary, error)
 	InsertScanResult(*domain.ScanResult) error
-	InsertVulnerabilityResult(*domain.ScanResult) error
+	InsertVulnerabilityResult(context.Context, *domain.ScanResult) error
 	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
 	MarkScanAsFailed(scanID uuid.UUID) error
 	MarkScanAsCancelled(scanID uuid.UUID) error
@@ -26,10 +27,10 @@ type IScanService interface {
 	HandleScanCompletion(scanID uuid.UUID) error
 	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
-	GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
-	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)
+	GetScoreCardTrendsForTenant(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
+	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
 	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
-	CreateTarget(hostID int) (*results.Target, error)
+	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
 	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
 	ScanScheduleDisableJob(int) error
 	GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error)

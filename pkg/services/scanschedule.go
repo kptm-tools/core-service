@@ -2,9 +2,10 @@ package services
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
-	"time"
 
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -24,7 +25,6 @@ func NewScanScheduleService(storage interfaces.IStorage) *ScanScheduleService {
 
 func (s ScanScheduleService) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
 	isDeleted, err := s.storage.DeleteScanScheduleByID(scanScheduleID)
-
 	if err != nil {
 		return false, err
 	}
@@ -55,7 +55,12 @@ func (s ScanScheduleService) InsertScanScheduling(scanID uuid.UUID, scheduleAt t
 	return nil
 }
 
-func (s ScanScheduleService) PatchScanSchedule(scanScheduleID int, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID string, operatorID string, hostID int) error {
+func (s ScanScheduleService) PatchScanSchedule(
+	scanScheduleID int,
+	frequency *domain.RepeatSchedule,
+	scheduleAt time.Time,
+	tenantID, operatorID, hostID uuid.UUID,
+) error {
 	errDisableCurrentJob := s.storage.ScanScheduleDisableJob(scanScheduleID, true)
 	if errDisableCurrentJob != nil {
 		return errDisableCurrentJob
@@ -94,14 +99,13 @@ func (s ScanScheduleService) PatchScanSchedule(scanScheduleID int, frequency *do
 	}
 
 	return nil
-
 }
 
 func (s ScanScheduleService) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error) {
 	return s.storage.GetScanSchedules(tenantID)
 }
 
-func (s ScanScheduleService) GetCurrentHostID(scanScheduleID int) (int, error) {
+func (s ScanScheduleService) GetCurrentHostID(scanScheduleID int) (uuid.UUID, error) {
 	hostID, errGetHostID := s.storage.GetCurrentHostIDFromScanSchedule(scanScheduleID)
 	if errGetHostID != nil {
 		return hostID, fmt.Errorf("failed to get current host ID: %w", errGetHostID)

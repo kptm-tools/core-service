@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/auth"
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -267,10 +268,22 @@ func (h *AuthHandlers) WithAuth(endpoint http.HandlerFunc, action domain.Action)
 		}
 
 		// Verify that said user exists
-		tenantID := token.Claims.(jwt.MapClaims)["tid"]
-		userID := token.Claims.(jwt.MapClaims)["sub"]
+		tenantIDStr := token.Claims.(jwt.MapClaims)["tid"].(string)
+		userIDStr := token.Claims.(jwt.MapClaims)["sub"].(string)
 
-		exists, err := h.ValidateUserWithFusionAuth(userID.(string), tenantID.(string))
+		// Parse the UUID's
+		tenantID, err := uuid.Parse(tenantIDStr)
+		if err != nil {
+			slog.Error("Failed to parse tenant UUID", slog.Any("error", err))
+			WriteInternalServerError(w)
+		}
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			slog.Error("Failed to parse user UUID", slog.Any("error", err))
+			WriteInternalServerError(w)
+		}
+
+		exists, err := h.ValidateUserWithFusionAuth(userIDStr, tenantIDStr)
 		if err != nil {
 			if errors.Is(err, middleware.ErrUserNotFound) {
 				slog.Error("User not found",

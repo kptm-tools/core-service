@@ -1,18 +1,19 @@
 package interfaces
 
 import (
-	"github.com/google/uuid"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 type IScanScheduleService interface {
 	InsertScanScheduling(scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) error
 	DeleteScanScheduleByID(int) (bool, error)
-	PatchScanSchedule(scanScheduleID int, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID string, operatorID string, hostID int) error
+	PatchScanSchedule(scanScheduleID int, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID, operatorID, hostID uuid.UUID) error
 	GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error)
-	GetCurrentHostID(scanScheduleID int) (int, error)
+	GetCurrentHostID(scanScheduleID int) (uuid.UUID, error)
 }
 
 type IScanScheduleHandlers interface {

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS services (
     port_state port_state_enum NOT NULL,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (host_id, port, protocol)
+    UNIQUE (scan_id, host_id, port, protocol)
 );
 
 CREATE INDEX idx_services_host_id ON services (host_id);

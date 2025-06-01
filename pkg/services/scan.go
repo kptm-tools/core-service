@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -19,18 +20,27 @@ import (
 )
 
 type ScanService struct {
-	storage interfaces.IStorage
+	storage  interfaces.IStorage
+	vulnRepo interfaces.VulnerabilityRepository
 }
 
 var _ interfaces.IScanService = (*ScanService)(nil)
 
-func NewScanService(storage interfaces.IStorage) *ScanService {
+func NewScanService(
+	storage interfaces.IStorage,
+	vulnerabilityRepository interfaces.VulnerabilityRepository,
+) *ScanService {
 	return &ScanService{
-		storage: storage,
+		storage:  storage,
+		vulnRepo: vulnerabilityRepository,
 	}
 }
 
-func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error) {
+func (s ScanService) CreateScan(
+	ctx context.Context,
+	hostID, tenantID, operatorID uuid.UUID,
+	startedAt *time.Time,
+) (*domain.Scan, error) {
 	var startScanDate time.Time
 	if startedAt == nil {
 		startScanDate = time.Now().UTC()
@@ -52,7 +62,7 @@ func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, started
 	}
 
 	// 3. Add the target to the scan
-	target, err := s.CreateTarget(scanToCreate.HostID)
+	target, err := s.CreateTarget(ctx, scanToCreate.HostID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target: %w", err)
 	}
@@ -62,9 +72,9 @@ func (s ScanService) CreateScan(hostID int, tenantID, operatorID string, started
 	return dataScan, nil
 }
 
-func (s ScanService) CreateTarget(hostID int) (*results.Target, error) {
+func (s ScanService) CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error) {
 	// 1. Get host details
-	host, err := s.storage.GetHostByID(hostID)
+	host, err := s.storage.GetHostByID(ctx, hostID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host: %w", err)
 	}
@@ -98,8 +108,8 @@ func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
 	return s.storage.InsertScanResult(nil, scanResult)
 }
 
-func (s *ScanService) InsertVulnerabilityResult(scanResult *domain.ScanResult) error {
-	return s.storage.InsertVulnerabilityResult(scanResult)
+func (s *ScanService) InsertVulnerabilityResult(ctx context.Context, scanResult *domain.ScanResult) error {
+	return s.storage.InsertVulnerabilityResult(ctx, scanResult)
 }
 
 func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error {
@@ -185,7 +195,6 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 		*harvesterResult,
 		*nmapResult,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to calculate protection score: %w", err)
 	}
@@ -227,8 +236,12 @@ func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportI
 	return reportItems, nil
 }
 
-func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID, []int{})
+func (s *ScanService) GetScoreCardTrendsForTenant(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	fromDate, toDate *time.Time,
+) ([]*domain.ScoreCardTrendItem, error) {
+	hosts, err := s.storage.GetHostsByTenantID(ctx, tenantID, []uuid.UUID{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}
@@ -258,7 +271,7 @@ func (s *ScanService) GetScoreCardTrendsForTenant(tenantID string, fromDate, toD
 	return scoreCardItems, nil
 }
 
-func (s *ScanService) getOldestLatestScans(hostID int, fromDate, toDate *time.Time) (*domain.Scan, *domain.Scan, error) {
+func (s *ScanService) getOldestLatestScans(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, *domain.Scan, error) {
 	oldestScan, err := s.storage.GetOldestScanByHostID(hostID, fromDate, toDate)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -287,8 +300,8 @@ func (s *ScanService) getOldestLatestScans(hostID int, fromDate, toDate *time.Ti
 	return oldestScan, latestScan, nil
 }
 
-func (s *ScanService) GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error) {
-	return s.storage.GetScanVulnerabilities(scanID)
+func (s *ScanService) GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error) {
+	return s.vulnRepo.GetVulnerabilitiesWithCveDetailByScanID(ctx, scanID)
 }
 
 func (s *ScanService) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error) {

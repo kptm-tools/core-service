@@ -48,9 +48,10 @@ func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http
 }
 
 func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	id, err := GetID(r)
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	userID := r.Context().Value(middleware.ContextUserID).(string)
+	tenantID := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	userID := ctx.Value(middleware.ContextUserID).(uuid.UUID)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}

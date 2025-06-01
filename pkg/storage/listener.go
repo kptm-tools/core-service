@@ -1,12 +1,14 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/pkg/enums"
 	"log/slog"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -23,7 +25,7 @@ type PostgresListener struct {
 
 type ScanCron struct {
 	ScanID         uuid.UUID `json:"scan_id"`
-	HostID         int       `json:"host_id"`
+	HostID         uuid.UUID `json:"host_id"`
 	Timestamp      time.Time `json:"timestamp"`
 	HasPeriod      bool      `json:"has_period"`
 	ScanScheduleID int       `json:"scan_schedule_id"`
@@ -140,6 +142,8 @@ func (pl *PostgresListener) handleScanCompletedNotification(payload string) erro
 }
 
 func (pl *PostgresListener) handleScanCronNotification(payload string) error {
+	// TODO: Use this context to mark a scan as failed after ~1 hr
+	ctx := context.Background()
 	// Parse the notification method
 	var scanCron ScanCron
 	if err := json.Unmarshal([]byte(payload), &scanCron); err != nil {
@@ -152,7 +156,7 @@ func (pl *PostgresListener) handleScanCronNotification(payload string) error {
 	slog.Debug("Parsed scan cron event", slog.String("scanID", scanCron.ScanID.String()))
 
 	// Create the target
-	target, errTarget := pl.scanService.CreateTarget(scanCron.HostID)
+	target, errTarget := pl.scanService.CreateTarget(ctx, scanCron.HostID)
 	if errTarget != nil {
 		slog.Error("Failed to create target", slog.Any("error", errTarget))
 	}
@@ -176,7 +180,13 @@ func (pl *PostgresListener) handleScanCronNotification(payload string) error {
 		}
 	} else {
 		// 1. Create scan
-		scan, errCreationScan := pl.scanService.CreateScan(scanCron.HostID, scanCron.TenantID.String(), scanCron.OperatorID.String(), &scanCron.NextSchedule)
+		scan, errCreationScan := pl.scanService.CreateScan(
+			ctx,
+			scanCron.HostID,
+			scanCron.TenantID,
+			scanCron.OperatorID,
+			&scanCron.NextSchedule,
+		)
 		if errCreationScan != nil {
 			slog.Error("Failed to create scans", slog.Any("error", err))
 			return errCreationScan

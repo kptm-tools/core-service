@@ -1,21 +1,25 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/lib/pq"
-	"log"
 	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/cockroachdb/apd/v3"
+	"github.com/lib/pq"
+	"github.com/sqlc-dev/pqtype"
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/repository"
 )
 
 func (s *PostgreSQLStore) ClearScanTable() error {
@@ -78,18 +82,19 @@ func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
 	return &insertedScan, nil
 }
 
-func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error {
+func (s *PostgreSQLStore) InsertVulnerabilityResult(ctx context.Context, sr *domain.ScanResult) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
+	qtx := s.queries.WithTx(tx)
 
 	if sr.Result.Tool != enums.ToolNmap {
 		return fmt.Errorf("scan result tool is invalid: %s", sr.Result.Tool)
 	}
 
-	scan, err := s.GetScanByID(sr.ScanID)
+	scan, err := qtx.GetScanByID(ctx, sr.ScanID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch scan by ID: %w", err)
 	}
@@ -111,34 +116,15 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 		return fmt.Errorf("failed to unmarshal nmap result: %w", err)
 	}
 
-	// 3. Store OS (if OS data is present in scanResult)
-	// If not present, will just store empty values
-	operatingSystemID, err := s.CreateOS(tx, scan.HostID, scan.ID, nr.MostLikelyOS)
-	if err != nil {
-		return fmt.Errorf("failed to store OS data: %w", err)
+	// 1. Store OS (if OS data is present in scanResult)
+	if err := s.InsertOSVulnerabilities(ctx, qtx, scan, nr.MostLikelyOS); err != nil {
+		return fmt.Errorf("failed to insert OS vulnerabilities for scan %s: %w", scan.ID.String(), err)
 	}
 
-	// 3.1 Store OS vulners (if present)
-	for _, vuln := range nr.MostLikelyOS.Vulnerabilities {
-		err := s.CreateOSVulnerability(tx, scan.ID, scan.HostID, operatingSystemID, vuln)
-		if err != nil {
-			return fmt.Errorf("failed to create OS vulnerability: %w", err)
-		}
-	}
-
-	// 4. Loop through detected services (PortData)
+	// 2. Insert Service Vulners
 	for _, portData := range nr.ScannedPorts {
-		// 4.1 Store detected Service
-		serviceID, err := s.CreateService(tx, scan.HostID, scan.ID, portData)
-		if err != nil {
-			return fmt.Errorf("failed to create service: %w", err)
-		}
-		// 4.2 Store that Service's vulners
-		for _, vuln := range portData.Vulnerabilities {
-			err := s.CreateServiceVulnerability(tx, scan.ID, scan.HostID, serviceID, vuln)
-			if err != nil {
-				return fmt.Errorf("failed to create Service vulnerabiliy: %w", err)
-			}
+		if err := s.InsertPortVulnerabilities(ctx, qtx, scan, portData); err != nil {
+			return fmt.Errorf("failed to insert service vulnerabilities for scan %s: %w", scan.ID.String(), err)
 		}
 	}
 
@@ -147,6 +133,206 @@ func (s *PostgreSQLStore) InsertVulnerabilityResult(sr *domain.ScanResult) error
 	}
 
 	return nil
+}
+
+func (s *PostgreSQLStore) InsertOSVulnerabilities(
+	ctx context.Context,
+	qtx *repository.Queries,
+	scan repository.Scan,
+	osData tools.OSData,
+) error {
+	// 1. Store or Update OS
+	params := repository.CreateOSParams{
+		HostID: scan.HostID.UUID,
+		ScanID: scan.ID,
+		OsName: sql.NullString{String: osData.Name, Valid: osData.Name != ""},
+		Family: sql.NullString{String: osData.Family, Valid: osData.Family != ""},
+		OsType: sql.NullString{String: osData.Type, Valid: osData.Type != ""},
+	}
+	operatingSystem, err := qtx.CreateOS(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to store OS data: %w", err)
+	}
+
+	// 2. Loop through each vulnerability, saving each one
+	for _, vuln := range osData.Vulnerabilities {
+
+		// 2.1 Store CVE detail of the vuln
+		_, err = s.InsertCVEDetail(ctx, qtx, vuln)
+		if err != nil {
+			return fmt.Errorf("failed to insert os vulnerability CVE Detail: %w", err)
+		}
+
+		// 2.2 Create Vulnerability record
+		createVulnerParams := repository.CreateVulnerabilityParams{
+			HostID:         scan.HostID.UUID,
+			ScanID:         scan.ID,
+			CveID:          sql.NullString{String: vuln.CveID, Valid: vuln.CveID != ""},
+			Title:          vuln.CveID,
+			Description:    sql.NullString{String: vuln.Description, Valid: vuln.Description != ""},
+			Severity:       vuln.BaseSeverity.String(),
+			VulnSource:     "NVD",
+			VulnType:       repository.VulnerabilityTypeEnumNETWORKOS,
+			AnalystComment: sql.NullString{String: "", Valid: false},
+		}
+		dbVulner, err := qtx.CreateVulnerability(ctx, createVulnerParams)
+		if err != nil {
+			return fmt.Errorf("failed to create vulnerablity record: %w", err)
+		}
+
+		// 3. Create NetworkOS Vulnerability Record
+		networkOSVulnerabilityParams := repository.CreateNetworkOSVulnerabilityParams{
+			VulnerabilityID:   dbVulner.ID,
+			ScanID:            scan.ID,
+			HostID:            scan.HostID.UUID,
+			OperatingSystemID: sql.NullInt32{Int32: operatingSystem.ID, Valid: true},
+			ServiceID:         sql.NullInt32{Valid: false},
+		}
+		_, err = qtx.CreateNetworkOSVulnerability(ctx, networkOSVulnerabilityParams)
+		if err != nil {
+			return fmt.Errorf("failed to create network os vulnerability record: %w", err)
+		}
+
+	}
+
+	return nil
+}
+
+func (s *PostgreSQLStore) InsertPortVulnerabilities(
+	ctx context.Context,
+	qtx *repository.Queries,
+	scan repository.Scan,
+	portData tools.PortData,
+) error {
+	// 1. Store Service
+	createOrUpdateParams := repository.CreateOrUpdateServiceParams{
+		HostID:     scan.HostID.UUID,
+		ScanID:     scan.ID,
+		Port:       int32(portData.ID),
+		Protocol:   sql.NullString{String: portData.Protocol, Valid: portData.Protocol != ""},
+		SvName:     sql.NullString{String: portData.Service.Name, Valid: portData.Service.Name != ""},
+		SvVersion:  sql.NullString{String: portData.Service.Version, Valid: portData.Service.Version != ""},
+		Confidence: sql.NullInt32{Int32: int32(portData.Service.Confidence), Valid: portData.Service.Confidence != 0},
+		Cpe:        sql.NullString{String: portData.Service.CPE, Valid: portData.Service.CPE != ""},
+		Product:    sql.NullString{String: portData.Product, Valid: portData.Product != ""},
+		PortState:  repository.PortStateEnum(portData.State),
+	}
+	service, err := qtx.CreateOrUpdateService(ctx, createOrUpdateParams)
+	if err != nil {
+		return fmt.Errorf("failed to create or update service: %w", err)
+	}
+
+	slog.Debug(
+		"Service processed (created or updated)",
+		slog.String("scan_id", scan.ID.String()),
+		slog.String("service_cpe", portData.Service.CPE),
+		slog.Int("service_port", int(portData.ID)),
+	)
+
+	// 2. Store vulnerabilities associated to the service
+	for _, vuln := range portData.Vulnerabilities {
+
+		// 2.1 Store CVE detail, look up if it exists first
+		_, err = s.InsertCVEDetail(ctx, qtx, vuln)
+		if err != nil {
+			return fmt.Errorf("failed to insert cve detail record: %w", err)
+		}
+
+		// 2.2 Store Vulnerability Record
+		createVulnerParams := repository.CreateVulnerabilityParams{
+			HostID:         scan.HostID.UUID,
+			ScanID:         scan.ID,
+			CveID:          sql.NullString{String: vuln.CveID, Valid: vuln.CveID != ""},
+			Title:          vuln.CveID,
+			Description:    sql.NullString{String: vuln.Description, Valid: vuln.Description != ""},
+			Severity:       vuln.BaseSeverity.String(),
+			VulnType:       repository.VulnerabilityTypeEnumNETWORKOS,
+			VulnSource:     "NVD",
+			AnalystComment: sql.NullString{String: "", Valid: false},
+		}
+		dbVulner, err := qtx.CreateVulnerability(ctx, createVulnerParams)
+		if err != nil {
+			return fmt.Errorf("failed to create vulnerablity record: %w", err)
+		}
+
+		// 2.3 Store NetworkOS vulnerability record
+		networkOSVulnerabilityParams := repository.CreateNetworkOSVulnerabilityParams{
+			VulnerabilityID:   dbVulner.ID,
+			ScanID:            scan.ID,
+			HostID:            scan.HostID.UUID,
+			OperatingSystemID: sql.NullInt32{Valid: false},
+			ServiceID:         sql.NullInt32{Int32: service.ID, Valid: service.ID >= 0},
+		}
+		_, err = qtx.CreateNetworkOSVulnerability(ctx, networkOSVulnerabilityParams)
+		if err != nil {
+			return fmt.Errorf("failed to create network os vulnerability record: %w", err)
+		}
+
+	}
+	return nil
+}
+
+func (s *PostgreSQLStore) InsertCVEDetail(ctx context.Context, qtx *repository.Queries, vuln tools.Vulnerability) (*repository.CveDetail, error) {
+	// 1. Store CVE detail of the vuln
+	baseCVSSScoreString := fmt.Sprintf("%.2f", vuln.BaseCVSSScore)
+	baseScore, _, err := apd.NewFromString(baseCVSSScoreString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create decimal from string: %w", err)
+	}
+	exploitabilityScoreString := fmt.Sprintf("%.2f", vuln.Exploit.Score)
+	exploitabilityScore, _, err := apd.NewFromString(exploitabilityScoreString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create exploitability score decimal from string: %w", err)
+	}
+	impactScoreString := fmt.Sprintf("%.2f", vuln.ImpactScore)
+	impactScore, _, err := apd.NewFromString(impactScoreString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create impact score decimal from string: %w", err)
+	}
+	referencesBytes, err := json.Marshal(vuln.References)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal vuln references: %w", err)
+	}
+	vendorCommentsBytes, err := json.Marshal(vuln.VendorComments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal vuln vendor comments: %w", err)
+	}
+
+	params := repository.CreateCVEDetailParams{
+		CveID:            vuln.CveID,
+		SourceIdentifier: sql.NullString{},
+		PublishedDate:    sql.NullTime{},
+		LastModifiedDate: sql.NullTime{},
+		VulnStatus:       sql.NullString{},
+
+		// TODO: CVSS v2 Metrics go here
+
+		// TODO: CVSS v3.0 Metrics go here
+
+		CvssV31Vector:                sql.NullString{String: vuln.Access.String(), Valid: vuln.Access.String() != ""},
+		CvssV31BaseScore:             apd.NullDecimal{Decimal: *baseScore, Valid: true},
+		CvssV31BaseSeverity:          sql.NullString{String: vuln.BaseSeverity.String(), Valid: vuln.BaseSeverity.String() != ""},
+		CvssV31ExploitabilityScore:   apd.NullDecimal{Decimal: *exploitabilityScore, Valid: true},
+		CvssV31ImpactScore:           apd.NullDecimal{Decimal: *impactScore, Valid: true},
+		CvssV31AttackVector:          sql.NullString{String: "", Valid: false},
+		CvssV31AttackComplexity:      sql.NullString{String: vuln.Complexity.String(), Valid: vuln.Complexity.String() != ""},
+		CvssV31PrivilegesRequired:    sql.NullString{String: vuln.PrivilegesRequired.String(), Valid: vuln.PrivilegesRequired.String() != ""},
+		CvssV31UserInteraction:       sql.NullString{String: "", Valid: false},
+		CvssV31Scope:                 sql.NullString{String: "", Valid: false},
+		CvssV31ConfidentialityImpact: sql.NullString{String: "", Valid: false},
+		CvssV31IntegrityImpact:       sql.NullString{String: vuln.IntegrityImpact.String(), Valid: vuln.IntegrityImpact.String() != ""},
+		CvssV31AvailabilityImpact:    sql.NullString{String: vuln.AvailabilityImpact.String(), Valid: vuln.AvailabilityImpact.String() != ""},
+
+		NvdDescription: sql.NullString{String: vuln.Description, Valid: vuln.Description != ""},
+		NvdReferences:  pqtype.NullRawMessage{RawMessage: referencesBytes, Valid: true},
+		VendorComments: pqtype.NullRawMessage{RawMessage: vendorCommentsBytes, Valid: true},
+	}
+
+	cveDetail, err := qtx.CreateCVEDetail(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CVE detail entry: %w", err)
+	}
+	return &cveDetail, nil
 }
 
 func scanIntoScanSum(rows *sql.Rows) (*domain.ScanSummary, error) {
@@ -246,38 +432,6 @@ func (s *PostgreSQLStore) GetScanByID(UUID uuid.UUID) (*domain.Scan, error) {
 	}
 
 	return &scan, nil
-}
-
-func (s *PostgreSQLStore) GetListOfScanResults(tenantID string) ([]*domain.ScanResult, error) {
-	query := `SELECT S.id, SR.tool, result from scan_results SR
-	INNER JOIN  (select * from scans where tenant_id=$1) S on SR.scan_id = S.id`
-	rows, err := s.db.Query(query, tenantID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch scans: %w", err)
-	}
-	defer rows.Close()
-	scansResults := []*domain.ScanResult{}
-	for rows.Next() {
-		scanRes := &domain.ScanResult{}
-		err := scanIntoScanResult(rows, scanRes)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan result: %w", err)
-		}
-		scansResults = append(scansResults, scanRes)
-	}
-	return scansResults, nil
-}
-
-func scanIntoScanResult(rows *sql.Rows, scanRes *domain.ScanResult) error {
-	var result []byte
-	if err := rows.Scan(&scanRes.ScanID, &scanRes.ToolName, &result); err != nil {
-		return fmt.Errorf("failed to scan host: %w", err)
-	}
-	if err := json.Unmarshal(result, &scanRes.Result); err != nil {
-		log.Println("no results yet")
-		// return fmt.Errorf("failed to unmarshal result of scan_results: %w", err)
-	}
-	return nil
 }
 
 func (s *PostgreSQLStore) InsertScanResult(tx *sql.Tx, sr *domain.ScanResult) error {
@@ -856,7 +1010,7 @@ func (s *PostgreSQLStore) GetReportsByTenantID(tenantID string) ([]*domain.Repor
 	return reportItems, nil
 }
 
-func (s *PostgreSQLStore) GetLatestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+func (s *PostgreSQLStore) GetLatestScanByHostID(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, error) {
 	query := `
     SELECT
       id,
@@ -892,7 +1046,7 @@ func (s *PostgreSQLStore) GetLatestScanByHostID(hostID int, fromDate, toDate *ti
 	return &scan, nil
 }
 
-func (s *PostgreSQLStore) GetScanBeforeLatestByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+func (s *PostgreSQLStore) GetScanBeforeLatestByHostID(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, error) {
 	query := `
     SELECT
       id,
@@ -929,7 +1083,7 @@ func (s *PostgreSQLStore) GetScanBeforeLatestByHostID(hostID int, fromDate, toDa
 	return &scan, nil
 }
 
-func (s *PostgreSQLStore) GetOldestScanByHostID(hostID int, fromDate, toDate *time.Time) (*domain.Scan, error) {
+func (s *PostgreSQLStore) GetOldestScanByHostID(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, error) {
 	query := `
     SELECT
       id,

@@ -3,3 +3,5 @@
 DROP TYPE IF EXISTS port_state_enum;
 DROP TYPE IF EXISTS scan_status;
 DROP TYPE IF EXISTS tool_enum;
+DROP TYPE IF EXISTS period_enum;
+DROP TYPE IF EXISTS vulnerability_type_enum;

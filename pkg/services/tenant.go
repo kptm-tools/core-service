@@ -1,11 +1,13 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -41,19 +43,20 @@ func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
 // and # of vulnerabilities in HostsWithGreatestVulnerabilities, since saying no vulnerabilities
 // were found would be misleading, because the data just doesn't exist at that moment.
 func (s *TenantService) GetTenantDashboardData(
-	tenantID string,
+	ctx context.Context,
+	tenantID uuid.UUID,
 	trendsTimePeriodFilter domain.TimePeriodFilter,
 	trendsSeverityFilters []string,
-	hostsIDFilter []int,
+	hostsIDFilter []uuid.UUID,
 ) (*domain.TenantDashboardData, error) {
 	// 1. Get Overall Security Posture (averageProtectionScore)
-	securityPostureData, err := s.GetTenantSecurityPosture(tenantID, hostsIDFilter)
+	securityPostureData, err := s.GetTenantSecurityPosture(ctx, tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenant security posture: %w", err)
 	}
 
 	// 2. Populate a map[domain.Host]domain.Scan with all latest scans for later reference
-	hosts, err := s.storage.GetHostsByTenantID(tenantID, hostsIDFilter)
+	hosts, err := s.storage.GetHostsByTenantID(ctx, tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hosts by tenantID %s: %w", tenantID, err)
 	}
@@ -71,7 +74,7 @@ func (s *TenantService) GetTenantDashboardData(
 
 	// 4. Calculate Overall Vulnerability Trends
 	// 4.1 Get a slice with HostIDs to pass to GetHostsVulnerabilityTrends
-	hostIDs := make([]int, 0, len(hosts))
+	hostIDs := make([]uuid.UUID, 0, len(hosts))
 	for _, host := range hosts {
 		hostIDs = append(hostIDs, host.ID)
 	}
@@ -112,8 +115,8 @@ func (s *TenantService) GetTenantDashboardData(
 	return &dashboardData, nil
 }
 
-func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[int]*domain.Scan, error) {
-	hostLatestScanMap := make(map[int]*domain.Scan, len(hosts))
+func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[uuid.UUID]*domain.Scan, error) {
+	hostLatestScanMap := make(map[uuid.UUID]*domain.Scan, len(hosts))
 	for _, host := range hosts {
 		latestScan, err := s.storage.GetLatestScanByHostID(host.ID, nil, nil)
 		if err != nil {
@@ -122,7 +125,7 @@ func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[int]*dom
 		if latestScan == nil {
 			slog.Warn(
 				"LatestScan for host is nil",
-				slog.Int("host_id", host.ID),
+				slog.String("host_id", host.ID.String()),
 			)
 		}
 		hostLatestScanMap[host.ID] = latestScan
@@ -131,8 +134,12 @@ func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[int]*dom
 	return hostLatestScanMap, nil
 }
 
-func (s *TenantService) GetTenantSecurityPosture(tenantID string, hostsIDFilter []int) (*domain.OverallSecurityPostureData, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID, hostsIDFilter)
+func (s *TenantService) GetTenantSecurityPosture(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	hostsIDFilter []uuid.UUID,
+) (*domain.OverallSecurityPostureData, error) {
+	hosts, err := s.storage.GetHostsByTenantID(ctx, tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hosts for tenant %s: %w", tenantID, err)
 	}
@@ -147,7 +154,7 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string, hostsIDFilter 
 		if err != nil {
 			slog.Warn(
 				"Error getting latest scan for host",
-				slog.Int("host_id", host.ID),
+				slog.String("host_id", host.ID.String()),
 				slog.Any("error", err),
 			)
 			continue
@@ -161,7 +168,7 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string, hostsIDFilter 
 		if err != nil {
 			slog.Warn(
 				"Error getting scan before latest for host",
-				slog.Int("host_id", host.ID),
+				slog.String("host_id", host.ID.String()),
 				slog.Any("error", err),
 			)
 			continue
@@ -195,7 +202,7 @@ func (s *TenantService) GetTenantSecurityPosture(tenantID string, hostsIDFilter 
 // has no vulnerabilities (it just doesn't have data yet).
 func (s *TenantService) getHostSeverityHeatMap(
 	hosts []*domain.Host,
-	hostLatestScanMap map[int]*domain.Scan,
+	hostLatestScanMap map[uuid.UUID]*domain.Scan,
 ) ([]domain.HostAliasSeverityCountPair, error) {
 	severityHeatMap := make([]domain.HostAliasSeverityCountPair, 0, len(hosts))
 	for _, host := range hosts {
@@ -223,7 +230,7 @@ func (s *TenantService) getHostSeverityHeatMap(
 }
 
 func (s *TenantService) GetHostsVulnerabilityTrends(
-	hostIDs []int,
+	hostIDs []uuid.UUID,
 	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) ([]domain.ServiceTimePeriod, error) {
@@ -308,12 +315,12 @@ func (s *TenantService) getLatestScanData(scans []*domain.Scan) (*domain.LastSca
 
 func (s *TenantService) GetHostsSortedByMostVulnerabilities(
 	hosts []*domain.Host,
-	latestScanMap map[int]*domain.Scan,
+	latestScanMap map[uuid.UUID]*domain.Scan,
 ) ([]domain.HostAliasVulnerabilityPair, error) {
 	hostVulnerabilityPairs := []domain.HostAliasVulnerabilityPair{}
 
 	// For quick lookup by ID
-	hostMap := make(map[int]*domain.Host)
+	hostMap := make(map[uuid.UUID]*domain.Host)
 	for _, host := range hosts {
 		hostMap[host.ID] = host
 	}

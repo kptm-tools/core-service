@@ -2,6 +2,8 @@ package domain
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Credential struct {
@@ -18,20 +20,9 @@ type Rapporteur struct {
 }
 
 type Host struct {
-	ID          int          `json:"id,omitempty"`
-	TenantID    string       `json:"tenant_id"`
-	OperatorID  string       `json:"user_id"`
-	Name        string       `json:"name"`
-	Domain      string       `json:"domain"`
-	IP          string       `json:"ip"`
-	Credentials []Credential `json:"credentials"`
-	Rapporteurs []Rapporteur `json:"rapporteurs"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
-}
-
-type HostResponse struct {
-	ID          string       `json:"id"`
+	ID          uuid.UUID    `json:"id,omitempty"`
+	TenantID    uuid.UUID    `json:"tenant_id"`
+	OperatorID  uuid.UUID    `json:"user_id"`
 	Name        string       `json:"name"`
 	Domain      string       `json:"domain"`
 	IP          string       `json:"ip"`
@@ -46,7 +37,14 @@ type DomainIPResult struct {
 	IP     string
 }
 
-func NewHost(domain string, ip string, tenantID string, operatorID string, name string, credentials []Credential, rappporteurs []Rapporteur) *Host {
+func NewHost(
+	domain string,
+	ip string,
+	tenantID, operatorID uuid.UUID,
+	name string,
+	credentials []Credential,
+	rappporteurs []Rapporteur,
+) *Host {
 	return &Host{
 		TenantID:    tenantID,
 		OperatorID:  operatorID,
@@ -55,7 +53,5 @@ func NewHost(domain string, ip string, tenantID string, operatorID string, name 
 		IP:          ip,
 		Credentials: credentials,
 		Rapporteurs: rappporteurs,
-		CreatedAt:   time.Now().UTC(),
-		UpdatedAt:   time.Now().UTC(),
 	}
 }

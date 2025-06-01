@@ -1,20 +1,22 @@
 package interfaces
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
 type IHostService interface {
-	CreateHost(*domain.Host) (*domain.Host, error)
-	GetHostsByTenantID(tenantID string) ([]*domain.Host, error)
-	GetHostByID(ID int) (*domain.Host, error)
+	CreateHost(context.Context, *domain.Host) (*domain.Host, error)
+	GetHostsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*domain.Host, error)
+	GetHostByID(ctx context.Context, ID uuid.UUID) (*domain.Host, error)
 	GetDomainIPValues(string) (*domain.DomainIPResult, error)
-	DeleteHostByID(ID int) (bool, error)
-	PatchHostByID(*domain.Host) (*domain.Host, error)
-	ValidateHost(string) error
-	ValidateAlias(string) error
+	DeleteHostByID(ctx context.Context, ID uuid.UUID) (bool, error)
+	PatchHostByID(context.Context, *domain.Host) (*domain.Host, error)
+	ValidateHost(context.Context, string) error
+	ValidateAlias(context.Context, string) error
 }
 
 type IHostHandlers interface {
