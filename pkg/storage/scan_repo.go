@@ -100,6 +100,7 @@ func (r *ScanRepo) GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*doma
 func toDomainScan(dbScan repository.Scan) domain.Scan {
 	return domain.Scan{
 		ID:         dbScan.ID,
+		HostID:     dbScan.HostID.UUID,
 		TenantID:   dbScan.TenantID,
 		OperatorID: dbScan.OperatorID,
 		CreatedAt:  dbScan.CreatedAt.Time,

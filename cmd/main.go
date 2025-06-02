@@ -59,7 +59,7 @@ func main() {
 	// Services
 	healthService := services.NewHealthcheckService(c, coreStore)
 	authService := services.NewAuthService(ctx, coreStore)
-	hostService := services.NewHostService(coreStore)
+	hostService := services.NewHostService(coreStore.Host)
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore, coreStore.Vulnerability, coreStore.Scan)
 	vulnService := services.NewVulnerabilityService(coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host)

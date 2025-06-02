@@ -40,5 +40,5 @@ RETURNING *;
 DELETE FROM hosts
 WHERE id = $1;
 
--- name: ExistAlias :one 
+-- name: AliasExists :one 
 SELECT EXISTS(SELECT 1 FROM hosts WHERE alias = $1);

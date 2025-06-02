@@ -65,6 +65,7 @@ type HostRepository interface {
 	GetHostsByTenantID(ctx context.Context, tenantID uuid.UUID, hostsIDFilter []uuid.UUID) ([]*domain.Host, error)
 	DeleteHostByID(context.Context, uuid.UUID) (bool, error)
 	PatchHostByID(context.Context, domain.Host) (*domain.Host, error)
+	AliasExists(context.Context, string) (bool, error)
 }
 
 type ScanRepository interface {

@@ -155,10 +155,6 @@ func (r *HostRepo) PatchHostByID(ctx context.Context, h domain.Host) (*domain.Ho
 		domainCred := domain.Credential{HostID: h.ID.String(), Username: createdCred.Username, Password: createdCred.Password}
 		domainCredentials[i] = domainCred
 	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to create credential record for host %s: %w", h.ID.String(), err)
-	}
-	//
 	// Fetch and assign updated credentials
 	domHost := domain.Host{
 		ID:          dbHost.ID,
@@ -185,6 +181,11 @@ func (r *HostRepo) DeleteHostByID(ctx context.Context, hostID uuid.UUID) (bool, 
 		return false, fmt.Errorf("failed to delete host by id %s: %w", hostID.String(), err)
 	}
 	return rowsAffected >= 1, nil
+}
+
+func (r *HostRepo) AliasExists(ctx context.Context, alias string) (bool, error) {
+	queries := r.getQueries(ctx)
+	return queries.AliasExists(ctx, alias)
 }
 
 func toDomainHost(dbHost repository.Host, dbCredentials []repository.Credential) *domain.Host {

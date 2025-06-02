@@ -15,6 +15,17 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
+const aliasExists = `-- name: AliasExists :one
+SELECT EXISTS(SELECT 1 FROM hosts WHERE alias = $1)
+`
+
+func (q *Queries) AliasExists(ctx context.Context, alias string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, aliasExists, alias)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const createHost = `-- name: CreateHost :one
 INSERT INTO hosts (
   tenant_id,
@@ -73,17 +84,6 @@ func (q *Queries) DeleteHostByID(ctx context.Context, id uuid.UUID) (int64, erro
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const existAlias = `-- name: ExistAlias :one
-SELECT EXISTS(SELECT 1 FROM hosts WHERE alias = $1)
-`
-
-func (q *Queries) ExistAlias(ctx context.Context, alias string) (bool, error) {
-	row := q.db.QueryRowContext(ctx, existAlias, alias)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const getHostByID = `-- name: GetHostByID :one

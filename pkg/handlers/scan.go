@@ -363,10 +363,14 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+			Error: "ScanID must be a UUID",
+		})
 	}
 
 	scan, err := h.scanService.GetScanByID(ctx, scanID)
 	if err != nil {
+		slog.Error("Failed to get scan by ID", slog.String("scan_id", scanID.String()), slog.Any("error", err))
 		if errors.Is(err, customerrors.ErrScanNotFound) {
 			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})
 		}
@@ -380,6 +384,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 	)
 	host, err := h.hostService.GetHostByID(ctx, scan.HostID)
 	if err != nil {
+		slog.Error("Failed to get host by ID", slog.String("host_id", scan.HostID.String()), slog.Any("error", err))
 		if errors.Is(err, customerrors.ErrHostNotFound) {
 			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("No host found for scan %s", scanID.String())})
 		}
