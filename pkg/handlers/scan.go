@@ -394,7 +394,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
 
-	severityCounts, err := h.scanService.GetSeverityCounts(scanID)
+	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
 	if err != nil {
 		slog.Error("failed to fetch severity counts",
 			slog.String("scan_id", scanID.String()),
@@ -418,9 +418,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 	scanVulnersItemsResponse.Vulnerabilities = scanVulnerItems
 	scanVulnersItemsResponse.TotalVulnerabilities = len(scanVulnersItemsResponse.Vulnerabilities)
 	// Associate SeverityCounts
-	if severityCounts != nil {
-		scanVulnersItemsResponse.SeverityCounts = *severityCounts
-	}
+	scanVulnersItemsResponse.SeverityCounts = severityCounts
 
 	return api.WriteJSON(w, http.StatusOK, scanVulnersItemsResponse)
 }

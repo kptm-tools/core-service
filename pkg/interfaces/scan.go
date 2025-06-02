@@ -29,7 +29,7 @@ type IScanService interface {
 	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
 	GetScoreCardTrendsForTenant(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
-	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
+	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
 	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
 	ScanScheduleDisableJob(int) error

@@ -304,8 +304,8 @@ func (s *ScanService) GetScanVulnerabilities(ctx context.Context, scanID uuid.UU
 	return s.vulnRepo.GetVulnerabilitiesWithCveDetailByScanID(ctx, scanID)
 }
 
-func (s *ScanService) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error) {
-	return s.storage.GetSeverityCounts(scanID)
+func (s *ScanService) GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+	return s.vulnRepo.GetSeverityCountsByScanID(ctx, scanID)
 }
 
 func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error {

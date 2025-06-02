@@ -180,6 +180,28 @@ func (r *VulnerRepo) GetNetworkOSVulnerability(ctx context.Context, vulnID uuid.
 	return &domNetOSVuln, nil
 }
 
+func (r *VulnerRepo) GetSeverityCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+	queries := r.getQueries(ctx)
+
+	dbCounts, err := queries.GetVulnerabilitySeverityCountsByScanID(ctx, scanID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return tools.SeverityCounts{}, customerrors.ErrScanNotFound
+		}
+		return tools.SeverityCounts{}, err
+	}
+
+	counts := tools.SeverityCounts{
+		Unknown:  int(dbCounts.UnknownVulnerabilities),
+		None:     int(dbCounts.NoneVulnerabilities),
+		Low:      int(dbCounts.LowVulnerabilities),
+		Medium:   int(dbCounts.MediumVulnerabilities),
+		High:     int(dbCounts.HighVulnerabilities),
+		Critical: int(dbCounts.CriticalVulnerabilities),
+	}
+	return counts, nil
+}
+
 func toDomainVuln(dbVuln repository.Vulnerability) tools.Vulnerability {
 	return tools.Vulnerability{
 		ID:     dbVuln.ID,

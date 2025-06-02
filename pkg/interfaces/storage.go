@@ -84,6 +84,7 @@ type VulnerabilityRepository interface {
 	GetVulnerabilityType(ctx context.Context, vulnID uuid.UUID) (repository.VulnerabilityTypeEnum, error)
 	DeleteVulnerabilityComment(context.Context, uuid.UUID) (bool, error)
 	HasComment(context.Context, uuid.UUID) (bool, error)
+	GetSeverityCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 }
 
 type OSRepository interface {
