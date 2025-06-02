@@ -365,7 +365,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		slog.Error("failed to extract scanID", slog.Any("error", err))
 	}
 
-	scan, err := h.scanService.GetScanByID(scanID)
+	scan, err := h.scanService.GetScanByID(ctx, scanID)
 	if err != nil {
 		if errors.Is(err, customerrors.ErrScanNotFound) {
 			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})

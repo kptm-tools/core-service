@@ -25,6 +25,7 @@ var _ interfaces.EventConsumer = (*NmapHandler)(nil)
 
 func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
+		ctx := context.Background()
 		slog.Info("Received NmapEvent")
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
@@ -42,7 +43,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("tool_name", string(evt.ToolResult.Tool)))
 			return
 		}
-		scan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		scan, errScan := h.scanService.GetScanByID(ctx, evt.ScanID)
 		if errScan != nil {
 			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
 			return

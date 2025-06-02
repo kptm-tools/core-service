@@ -230,12 +230,12 @@ func (s *ScanService) GetScanInsights(ctx context.Context, scanID uuid.UUID) (*d
 	return &insights, nil
 }
 
-func (s *ScanService) CalculateProtectionScore(scanID uuid.UUID) (float64, error) {
-	return s.storage.GetProtectionScore(scanID)
+func (s *ScanService) CalculateProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error) {
+	return s.scanRepo.GetProtectionScore(ctx, scanID)
 }
 
-func (s *ScanService) GetScanByID(scanID uuid.UUID) (*domain.Scan, error) {
-	scan, err := s.storage.GetScanByID(scanID)
+func (s *ScanService) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error) {
+	scan, err := s.scanRepo.GetScanByID(ctx, scanID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain scan by ID : %w", err)
 	}

@@ -1,6 +1,7 @@
 package consumers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 
@@ -23,6 +24,7 @@ var _ interfaces.EventConsumer = (*DNSLookupHandler)(nil)
 
 func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
+		ctx := context.Background()
 		slog.Info("Received DNSLookupEvent")
 
 		// 1. Parse payload
@@ -39,7 +41,7 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2.1 Check if the current scan status is still healthy
-		scan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		scan, errScan := h.scanService.GetScanByID(ctx, evt.ScanID)
 		if errScan != nil {
 			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
 			return

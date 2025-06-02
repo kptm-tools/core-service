@@ -22,8 +22,8 @@ type IScanService interface {
 	MarkScanAsFailed(scanID uuid.UUID) error
 	MarkScanAsCancelled(scanID uuid.UUID) error
 	GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
-	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
-	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
+	CalculateProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
 	HandleScanCompletion(scanID uuid.UUID) error
 	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
