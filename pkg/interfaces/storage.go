@@ -69,6 +69,9 @@ type HostRepository interface {
 
 type ScanRepository interface {
 	GetScanByID(context.Context, uuid.UUID) (*domain.Scan, error)
+	GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
+	GetProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
 }
 
 type ScanResultRepository interface {

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -22,6 +23,7 @@ import (
 type ScanService struct {
 	storage  interfaces.IStorage
 	vulnRepo interfaces.VulnerabilityRepository
+	scanRepo interfaces.ScanRepository
 }
 
 var _ interfaces.IScanService = (*ScanService)(nil)
@@ -29,10 +31,12 @@ var _ interfaces.IScanService = (*ScanService)(nil)
 func NewScanService(
 	storage interfaces.IStorage,
 	vulnerabilityRepository interfaces.VulnerabilityRepository,
+	scanRepository interfaces.ScanRepository,
 ) *ScanService {
 	return &ScanService{
 		storage:  storage,
 		vulnRepo: vulnerabilityRepository,
+		scanRepo: scanRepository,
 	}
 }
 
@@ -150,8 +154,80 @@ func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
 	return nil
 }
 
-func (s *ScanService) GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error) {
-	return s.storage.GetScanInsights(scanID)
+func (s *ScanService) GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error) {
+	var insights domain.ScanInsights
+
+	// 1. Get base data from the main query
+	baseData, err := s.scanRepo.GetScanInsightsBaseData(ctx, scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get scan base insights: %w", err)
+	}
+
+	insights.Metadata = domain.ScanInsightsMetadata{
+		ScanID:    baseData.ScanID,
+		HostAlias: baseData.HostAlias,
+		ScanDate:  baseData.ScanDate,
+	}
+	insights.TotalVulnerabilities = baseData.TotalVulnerabilities
+	insights.SeverityCounts = tools.SeverityCounts{
+		Unknown:  baseData.UnknownVulnerabilities,
+		None:     baseData.NoneVulnerabilities,
+		Low:      baseData.LowVulnerabilities,
+		Medium:   baseData.MediumVulnerabilities,
+		High:     baseData.HighVulnerabilities,
+		Critical: baseData.CriticalVulnerabilities,
+	}
+
+	// 2. Process SeverityPerType
+	var rawSeverityPerType map[string]float64
+	if err := json.Unmarshal(baseData.SeverityPerTypeJSON, &rawSeverityPerType); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal severity_per_type map: %w", err)
+	}
+
+	insights.SeverityPerType = make(map[string]string)
+	if rawSeverityPerType != nil {
+		for vulnType, cvssScore := range rawSeverityPerType {
+			insights.SeverityPerType[vulnType] = tools.MapCVSS(cvssScore).String()
+		}
+	}
+
+	// 3. Get current scan's protection score
+	currentProtectionScore, err := s.scanRepo.GetProtectionScore(ctx, scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get protection score for current scan: %w", err)
+	}
+	insights.ProtectionScore = currentProtectionScore
+
+	// 4. Handle variations by looking at the scan before this one.
+	prevScan, err := s.scanRepo.GetPreviousScan(ctx, scanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get previousScan: %w", err)
+	}
+	// At this point, we're pretty sure the current scan already exists
+	// so the previousScan query should only return nil if the previousScan is nil.
+	insights.VulnerabilityVariation = 0
+	insights.ProtectionScoreVariation = 0.0
+	// Calculate variations
+	if prevScan != nil && !prevScan.IsFailedOrCancelled() {
+		// TotalVulnerabilities
+		prevBaseData, err := s.scanRepo.GetScanInsightsBaseData(ctx, prevScan.ID)
+		if err != nil {
+			slog.Warn("Failed to get previous scan's base insight data", slog.Any("error", err))
+		} else {
+			insights.VulnerabilityVariation = insights.TotalVulnerabilities - prevBaseData.TotalVulnerabilities
+		}
+
+		// ProtectionScore
+		prevProtectionScore, err := s.scanRepo.GetProtectionScore(ctx, prevScan.ID)
+		if err != nil {
+			slog.Warn("Failed to get previous scan's protection score", slog.Any("error", err))
+		} else {
+			insights.ProtectionScoreVariation = insights.ProtectionScore - prevProtectionScore
+		}
+	}
+	// If the prevScan was nil, the variations remained as 0 values.
+
+	return &insights, nil
 }
 
 func (s *ScanService) CalculateProtectionScore(scanID uuid.UUID) (float64, error) {

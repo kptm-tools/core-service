@@ -198,13 +198,14 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 }
 
 func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: http.StatusText(http.StatusBadRequest)})
 	}
 
-	summary, err := h.scanService.GetScanInsightsByID(scanID)
+	summary, err := h.scanService.GetScanInsights(ctx, scanID)
 	if err != nil {
 		slog.Error("failed to get scan summary by ID", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})

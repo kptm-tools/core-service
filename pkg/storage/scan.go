@@ -701,7 +701,8 @@ func (s *PostgreSQLStore) GetPreviousScan(scanID uuid.UUID) (*domain.Scan, error
     FROM scans
     WHERE created_at < $1 AND host_id = $2
     ORDER BY created_at DESC
-    LIMIT 1`
+    LIMIT 1
+	`
 
 	err = s.db.QueryRow(query, createdAt, hostID).Scan(
 		&scan.ID, &scan.TenantID, &scan.OperatorID, &scan.HostID, &scan.Status, &scan.StartedAt, &scan.EndedAt, &scan.CreatedAt, &scan.UpdatedAt,

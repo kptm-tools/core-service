@@ -21,7 +21,7 @@ type IScanService interface {
 	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
 	MarkScanAsFailed(scanID uuid.UUID) error
 	MarkScanAsCancelled(scanID uuid.UUID) error
-	GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error)
+	GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
 	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
 	HandleScanCompletion(scanID uuid.UUID) error

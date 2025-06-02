@@ -62,6 +62,22 @@ type Tool struct {
 	Type        int       `json:"type,omitempty"`
 }
 
+// ScanInsightsBaseData serves as an intermediary between the domain and repository layer.
+type ScanInsightsBaseData struct {
+	ScanID                  uuid.UUID
+	HostAlias               string
+	ScanDate                time.Time
+	TotalVulnerabilities    int
+	CriticalVulnerabilities int
+	HighVulnerabilities     int
+	MediumVulnerabilities   int
+	LowVulnerabilities      int
+	NoneVulnerabilities     int
+	UnknownVulnerabilities  int
+	SeverityPerTypeJSON     []byte
+}
+
+// ScanInsights is the comprehensive struct containing all calculated insights for a scan.
 type ScanInsights struct {
 	ProtectionScore          float64              `json:"protection_score"`
 	SeverityCounts           tools.SeverityCounts `json:"severity_counts"`
@@ -72,6 +88,7 @@ type ScanInsights struct {
 	Metadata                 ScanInsightsMetadata `json:"metadata"`
 }
 
+// ScanInsightsMetadata holds basic identifying information for the scan insights.
 type ScanInsightsMetadata struct {
 	ScanID    uuid.UUID `json:"scan_id"`
 	HostAlias string    `json:"host_alias"`
