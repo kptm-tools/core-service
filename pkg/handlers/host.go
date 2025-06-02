@@ -45,7 +45,7 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 		}
 	}
 
-	host, err := h.constructHostForDB(createHostRequest, req)
+	host, err := h.newDomainHostFromCreateRequest(createHostRequest, req)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
@@ -62,10 +62,9 @@ func (h *HostHandlers) CreateHost(w http.ResponseWriter, req *http.Request) erro
 
 func (h *HostHandlers) GetHosts(w http.ResponseWriter, req *http.Request) error {
 	ctx := req.Context()
-	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
-	tenantUUID := uuid.MustParse(tenantID)
+	tenantID := req.Context().Value(middleware.ContextTenantID).(uuid.UUID)
 
-	hosts, err := h.hostService.GetHostsByTenantID(ctx, tenantUUID)
+	hosts, err := h.hostService.GetHostsByTenantID(ctx, tenantID)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
@@ -118,9 +117,9 @@ func (h *HostHandlers) PatchHostByID(w http.ResponseWriter, req *http.Request) e
 			return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 		}
 	}
-	hostToDB, err := h.constructHostForDB(createHostRequest, req)
+	hostToDB, err := h.newDomainHostFromCreateRequest(createHostRequest, req)
 	if err != nil {
-		slog.Error("Failed to constructHostForDB", slog.Any("error", err))
+		slog.Error("Failed to build new domain host from create host request", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	hostToDB.ID = id
@@ -202,7 +201,7 @@ func (h *HostHandlers) ValidateHost(w http.ResponseWriter, req *http.Request) er
 	return api.WriteJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
-func (h *HostHandlers) constructHostForDB(createHostRequest *dto.CreateHostRequest, req *http.Request) (*domain.Host, error) {
+func (h *HostHandlers) newDomainHostFromCreateRequest(createHostRequest *dto.CreateHostRequest, req *http.Request) (*domain.Host, error) {
 	ctx := req.Context()
 	result, err := h.hostService.GetDomainIPValues(createHostRequest.Value)
 	if err != nil {
