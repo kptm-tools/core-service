@@ -24,9 +24,11 @@ type PostgreSQLStore struct {
 
 	Host          interfaces.HostRepository
 	Scan          interfaces.ScanRepository
+	ScanResult    interfaces.ScanResultRepository
 	OS            interfaces.OSRepository
 	Service       interfaces.ServiceRepository
 	Vulnerability interfaces.VulnerabilityRepository
+	Cve           interfaces.CVERepository
 
 	migrations fs.FS
 	config     *config.Config
@@ -58,7 +60,9 @@ func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore,
 		Scan:          NewScanRepository(queries),
 		OS:            NewOSRepository(queries),
 		Service:       NewServiceRepository(queries),
-		Vulnerability: NewVulnerRepo(queries),
+		Vulnerability: NewVulnerRepository(queries),
+		ScanResult:    NewScanResultRepository(queries),
+		Cve:           NewCVERepository(queries),
 		migrations:    migrations,
 		config:        cfg,
 	}, nil
@@ -129,10 +133,6 @@ func (s *PostgreSQLStore) ClearCoreDB() error {
 
 func (s *PostgreSQLStore) Ping() error {
 	return s.db.Ping()
-}
-
-func (s *PostgreSQLStore) GetDB() *sql.DB {
-	return s.db
 }
 
 // DoInTX implements interfaces.TxManager

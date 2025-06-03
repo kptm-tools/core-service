@@ -69,6 +69,8 @@ type HostRepository interface {
 }
 
 type ScanRepository interface {
+	CreateScan(context.Context, domain.Scan) (*domain.Scan, error)
+	GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
 	GetScanByID(context.Context, uuid.UUID) (*domain.Scan, error)
 	GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
 	GetProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
@@ -76,7 +78,7 @@ type ScanRepository interface {
 }
 
 type ScanResultRepository interface {
-	InsertVulnerabilityResult(context.Context, *domain.ScanResult) error
+	CreateScanResult(context.Context, domain.ScanResult) error
 }
 
 type VulnerabilityRepository interface {
@@ -84,6 +86,8 @@ type VulnerabilityRepository interface {
 	GetVulnerabilityByID(context.Context, uuid.UUID) (*tools.Vulnerability, error)
 	UpdateVulnerabilityComment(context.Context, uuid.UUID, string) (bool, error)
 	GetVulnerabilitiesWithCveDetailByScanID(context.Context, uuid.UUID) ([]tools.Vulnerability, error)
+	CreateNetworkOSVulnerabilityForOS(ctx context.Context, vulnID, scanID, hostID uuid.UUID, osID int32) error
+	CreateNetworkOSVulnerabilityForService(ctx context.Context, vulnID, scanID, hostID uuid.UUID, serviceID int32) error
 	GetNetworkOSVulnerability(ctx context.Context, vulnID uuid.UUID) (*domain.NetworkOSVulnerability, error)
 	GetVulnerabilityType(ctx context.Context, vulnID uuid.UUID) (repository.VulnerabilityTypeEnum, error)
 	DeleteVulnerabilityComment(context.Context, uuid.UUID) (bool, error)
@@ -112,7 +116,4 @@ type TxFunc func(ctx context.Context) error
 // TxManager provides methods for executing functions within a database transaction.
 type TxManager interface {
 	DoInTX(ctx context.Context, fn TxFunc) error
-	// GetDB returns the underlying *sql.DB for non-transactional operations
-	// or for starting explicit transactions in complex scenarios if needed.
-	GetDB() *sql.DB
 }

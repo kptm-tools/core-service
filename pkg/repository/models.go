@@ -345,16 +345,16 @@ type OperatingSystem struct {
 }
 
 type Scan struct {
-	ID              uuid.UUID     `json:"id"`
-	TenantID        uuid.UUID     `json:"tenant_id"`
-	OperatorID      uuid.UUID     `json:"operator_id"`
-	HostID          uuid.NullUUID `json:"host_id"`
-	Status          ScanStatus    `json:"status"`
-	StartedAt       sql.NullTime  `json:"started_at"`
-	EndedAt         sql.NullTime  `json:"ended_at"`
-	CreatedAt       sql.NullTime  `json:"created_at"`
-	UpdatedAt       sql.NullTime  `json:"updated_at"`
-	ProtectionScore float64       `json:"protection_score"`
+	ID              uuid.UUID    `json:"id"`
+	TenantID        uuid.UUID    `json:"tenant_id"`
+	OperatorID      uuid.UUID    `json:"operator_id"`
+	HostID          uuid.UUID    `json:"host_id"`
+	Status          ScanStatus   `json:"status"`
+	StartedAt       sql.NullTime `json:"started_at"`
+	EndedAt         sql.NullTime `json:"ended_at"`
+	CreatedAt       sql.NullTime `json:"created_at"`
+	UpdatedAt       sql.NullTime `json:"updated_at"`
+	ProtectionScore float64      `json:"protection_score"`
 }
 
 type ScanResult struct {

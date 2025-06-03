@@ -23,7 +23,7 @@ type VulnerRepo struct {
 
 var _ interfaces.VulnerabilityRepository = (*VulnerRepo)(nil)
 
-func NewVulnerRepo(queries *repository.Queries) *VulnerRepo {
+func NewVulnerRepository(queries *repository.Queries) *VulnerRepo {
 	return &VulnerRepo{
 		defaultQueries: queries,
 	}
@@ -148,6 +148,40 @@ func (r *VulnerRepo) GetVulnerabilityType(ctx context.Context, vulnID uuid.UUID)
 		return repository.VulnerabilityTypeEnumNETWORKOS, err
 	}
 	return vuln.VulnType, nil
+}
+
+func (r *VulnerRepo) CreateNetworkOSVulnerabilityForOS(
+	ctx context.Context,
+	vulnID, scanID, hostID uuid.UUID,
+	operatingSystemID int32,
+) error {
+	queries := r.getQueries(ctx)
+	params := repository.CreateNetworkOSVulnerabilityParams{
+		VulnerabilityID:   vulnID,
+		ScanID:            scanID,
+		HostID:            hostID,
+		OperatingSystemID: sql.NullInt32{Int32: operatingSystemID, Valid: true},
+		ServiceID:         sql.NullInt32{Valid: false},
+	}
+	_, err := queries.CreateNetworkOSVulnerability(ctx, params)
+	return err
+}
+
+func (r *VulnerRepo) CreateNetworkOSVulnerabilityForService(
+	ctx context.Context,
+	vulnID, scanID, hostID uuid.UUID,
+	serviceID int32,
+) error {
+	queries := r.getQueries(ctx)
+	params := repository.CreateNetworkOSVulnerabilityParams{
+		VulnerabilityID:   vulnID,
+		ScanID:            scanID,
+		HostID:            hostID,
+		OperatingSystemID: sql.NullInt32{Valid: false},
+		ServiceID:         sql.NullInt32{Int32: serviceID, Valid: false},
+	}
+	_, err := queries.CreateNetworkOSVulnerability(ctx, params)
+	return err
 }
 
 func (r *VulnerRepo) GetNetworkOSVulnerability(ctx context.Context, vulnID uuid.UUID) (*domain.NetworkOSVulnerability, error) {

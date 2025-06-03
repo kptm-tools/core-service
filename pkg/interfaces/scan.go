@@ -15,12 +15,12 @@ import (
 
 type IScanService interface {
 	CreateScan(ctx context.Context, hostID uuid.UUID, tenantID, operatorID uuid.UUID, startedAt *time.Time) (*domain.Scan, error)
-	GetCurrentScans(string) ([]*domain.ScanSummary, error)
-	InsertScanResult(*domain.ScanResult) error
+	GetCurrentScans(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
+	InsertScanResult(context.Context, domain.ScanResult) error
 	InsertVulnerabilityResult(context.Context, *domain.ScanResult) error
 	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
-	MarkScanAsFailed(scanID uuid.UUID) error
-	MarkScanAsCancelled(scanID uuid.UUID) error
+	MarkScanAsFailed(ctx context.Context, scanID uuid.UUID) error
+	MarkScanAsCancelled(ctx context.Context, scanID uuid.UUID) error
 	GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
 	GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
@@ -31,9 +31,7 @@ type IScanService interface {
 	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
 	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
-	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
-	ScanScheduleDisableJob(int) error
-	GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error)
+	GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 }
 
 type IScanHandlers interface {

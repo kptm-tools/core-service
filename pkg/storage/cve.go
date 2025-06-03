@@ -19,7 +19,7 @@ type CVERepo struct {
 
 var _ interfaces.CVERepository = (*CVERepo)(nil)
 
-func NewCVERepo(queries *repository.Queries) *CVERepo {
+func NewCVERepository(queries *repository.Queries) *CVERepo {
 	return &CVERepo{
 		defaultQueries: queries,
 	}

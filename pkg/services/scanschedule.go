@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -23,16 +24,12 @@ func NewScanScheduleService(storage interfaces.IStorage) *ScanScheduleService {
 	}
 }
 
-func (s ScanScheduleService) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
-	isDeleted, err := s.storage.DeleteScanScheduleByID(scanScheduleID)
-	if err != nil {
-		return false, err
-	}
-
-	return isDeleted, nil
-}
-
-func (s ScanScheduleService) InsertScanScheduling(scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) error {
+func (s ScanScheduleService) CreateScanScheduling(
+	ctx context.Context,
+	scanID uuid.UUID,
+	scheduleAt time.Time,
+	frequency *domain.RepeatSchedule,
+) error {
 	var isRepeated bool
 	var cronExpr string
 	var periodName string
@@ -55,7 +52,16 @@ func (s ScanScheduleService) InsertScanScheduling(scanID uuid.UUID, scheduleAt t
 	return nil
 }
 
-func (s ScanScheduleService) PatchScanSchedule(
+func (s ScanScheduleService) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
+	isDeleted, err := s.storage.DeleteScanScheduleByID(scanScheduleID)
+	if err != nil {
+		return false, err
+	}
+
+	return isDeleted, nil
+}
+
+func (s *ScanScheduleService) PatchScanSchedule(
 	scanScheduleID int,
 	frequency *domain.RepeatSchedule,
 	scheduleAt time.Time,
@@ -66,7 +72,7 @@ func (s ScanScheduleService) PatchScanSchedule(
 		return errDisableCurrentJob
 	}
 
-	commonScanData := domain.NewScan(scheduleAt)
+	commonScanData := domain.NewScan(hostID, tenantID, operatorID, &scheduleAt)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
 	commonScanData.HostID = hostID
@@ -101,14 +107,21 @@ func (s ScanScheduleService) PatchScanSchedule(
 	return nil
 }
 
-func (s ScanScheduleService) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error) {
+func (s *ScanScheduleService) GetScanSchedulesByTenantID(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error) {
 	return s.storage.GetScanSchedules(tenantID)
 }
 
-func (s ScanScheduleService) GetCurrentHostID(scanScheduleID int) (uuid.UUID, error) {
+func (s *ScanScheduleService) GetCurrentHostID(scanScheduleID int) (uuid.UUID, error) {
 	hostID, errGetHostID := s.storage.GetCurrentHostIDFromScanSchedule(scanScheduleID)
 	if errGetHostID != nil {
 		return hostID, fmt.Errorf("failed to get current host ID: %w", errGetHostID)
 	}
 	return hostID, nil
+}
+
+func (s *ScanScheduleService) UpdateScanScheduleScanID(ctx context.Context, scanID uuid.UUID, scanScheduleID int) error {
+}
+
+func (s *ScanScheduleService) ScanScheduleDisableJob(ctx context.Context, scanScheduleID int) error {
+	return s.storage.ScanScheduleDisableJob(scanScheduleID, false)
 }

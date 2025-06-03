@@ -78,22 +78,23 @@ func NewPostgresListener(
 }
 
 func (pl *PostgresListener) startListening() {
+	ctx := context.Background()
 	for {
 		notification := <-pl.listener.Notify
 
 		slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
 
-		pl.handleNotification(notification)
+		pl.handleNotification(ctx, notification)
 	}
 }
 
-func (pl *PostgresListener) handleNotification(notification *pq.Notification) {
+func (pl *PostgresListener) handleNotification(ctx context.Context, notification *pq.Notification) {
 	if notification != nil {
 		switch notification.Channel {
 		case "scan_completed":
-			pl.handleScanCompletedNotification(notification.Extra)
+			pl.handleScanCompletedNotification(ctx, notification.Extra)
 		case "scan_cron":
-			pl.handleScanCronNotification(notification.Extra)
+			pl.handleScanCronNotification(ctx, notification.Extra)
 		}
 	}
 }
@@ -102,7 +103,7 @@ func (pl *PostgresListener) Close() error {
 	return pl.listener.Close()
 }
 
-func (pl *PostgresListener) handleScanCompletedNotification(payload string) error {
+func (pl *PostgresListener) handleScanCompletedNotification(ctx context.Context, payload string) error {
 	// Parse the notification method
 	var scanCompletedEvent cmmn.BaseEvent
 	if err := json.Unmarshal([]byte(payload), &scanCompletedEvent); err != nil {
@@ -120,7 +121,7 @@ func (pl *PostgresListener) handleScanCompletedNotification(payload string) erro
 			slog.Any("error", err))
 	}
 	// 3. Get the emails rapporteurs structure
-	rapporteurs, hostName, errGetRapporteur := pl.scanService.GetRapporteursScan(scanCompletedEvent.ScanID)
+	rapporteurs, hostName, errGetRapporteur := pl.scanService.GetScanRapporteursAndHostAlias(ctx, scanCompletedEvent.ScanID)
 	if errGetRapporteur != nil {
 		slog.Error("Can not obtain rapporteurs associated to the scan",
 			slog.String("scan_id", scanCompletedEvent.ScanID.String()),
@@ -141,9 +142,8 @@ func (pl *PostgresListener) handleScanCompletedNotification(payload string) erro
 	return nil
 }
 
-func (pl *PostgresListener) handleScanCronNotification(payload string) error {
+func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payload string) error {
 	// TODO: Use this context to mark a scan as failed after ~1 hr
-	ctx := context.Background()
 	// Parse the notification method
 	var scanCron ScanCron
 	if err := json.Unmarshal([]byte(payload), &scanCron); err != nil {

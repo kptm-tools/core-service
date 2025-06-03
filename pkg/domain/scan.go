@@ -43,7 +43,7 @@ type ScanSummary struct {
 	Host            string               `json:"host,omitempty"`
 	Vulnerabilities int                  `json:"vulnerabilities"`
 	Severities      tools.SeverityCounts `json:"severities,omitempty"`
-	Duration        float64              `json:"duration,omitempty"`
+	Duration        int32                `json:"duration,omitempty"`
 	Status          string               `json:"status,omitempty"`
 }
 
@@ -121,11 +121,16 @@ type ServiceTimePeriod struct {
 	VulnerabilityCount *int   `json:"vulnerability_count"`
 }
 
-func NewScan(startedAt time.Time) *Scan {
+func NewScan(hostID, tenantID, operatorID uuid.UUID, startedAt *time.Time) *Scan {
+	if startedAt == nil {
+		now := time.Now()
+		startedAt = &now
+	}
+
 	return &Scan{
 		ID:        uuid.New(),
 		Status:    enums.StatusPending.String(),
-		StartedAt: startedAt,
+		StartedAt: startedAt.UTC(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

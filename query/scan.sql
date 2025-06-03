@@ -3,6 +3,69 @@ SELECT *
 FROM scans
 WHERE id = $1;
 
+-- name: CreateScan :one
+INSERT INTO scans (
+  tenant_id,
+  operator_id,
+  host_id,
+  status,
+  started_at
+) VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: ListScansForTenant :many
+WITH aggregated_vulnerabilities AS (
+SELECT
+	s_cte.id AS scan_id,
+	COUNT(v.id) AS total_vulnerabilities_count,
+	SUM(CASE WHEN v.severity = 'Critical' THEN 1 ELSE 0 END) AS critical_count,
+	SUM(CASE WHEN v.severity = 'High' THEN 1 ELSE 0 END) AS high_count,
+	SUM(CASE WHEN v.severity = 'Medium' THEN 1 ELSE 0 END) AS medium_count,
+	SUM(CASE WHEN v.severity = 'Low' THEN 1 ELSE 0 END) AS low_count,
+	SUM(CASE WHEN v.severity = 'None' THEN 1 ELSE 0 END) AS none_count,
+	SUM(CASE WHEN v.severity = 'Unknown' THEN 1 ELSE 0 END) AS unknown_count
+FROM
+	scans s_cte
+LEFT JOIN
+        vulnerabilities v ON
+	s_cte.id = v.scan_id
+WHERE
+	-- Filter by tenant_id for aggregation
+	s_cte.tenant_id = $1
+GROUP BY
+	s_cte.id
+)
+SELECT
+	s.id AS scan_id,
+	s.started_at AS scan_date,
+	h.alias AS host_alias,
+	CAST(
+    EXTRACT(epoch FROM (COALESCE(s.ended_at, NOW()) - s.started_at))
+    AS INTEGER
+  ) AS duration_in_seconds,
+	s.status,
+	COALESCE(av.total_vulnerabilities_count, 0) AS total_vulnerabilities,
+	COALESCE(av.critical_count, 0) AS critical_vulnerabilities,
+	COALESCE(av.high_count, 0) AS high_vulnerabilities,
+	COALESCE(av.medium_count, 0) AS medium_vulnerabilities,
+	COALESCE(av.low_count, 0) AS low_vulnerabilities,
+	COALESCE(av.none_count, 0) AS none_vulnerabilities,
+	COALESCE(av.unknown_count, 0) AS unknown_vulnerabilities  
+FROM
+    scans s
+INNER JOIN
+    hosts h ON
+	s.host_id = h.id
+LEFT JOIN
+    aggregated_vulnerabilities av ON
+	s.id = av.scan_id
+WHERE
+	s.tenant_id = $1
+	-- Filter out scans with a specific status (passed as parameter)
+	AND s.status != 'Scheduled'
+ORDER BY
+	s.started_at DESC;
+
 -- name: GetProtectionScoreForScan :one
 WITH ScanVulnerabilityMaxCVSS AS (
     -- Step 1: For each vulnerability in the specified scan,

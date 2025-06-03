@@ -13,6 +13,49 @@ import (
 	"github.com/google/uuid"
 )
 
+const createScan = `-- name: CreateScan :one
+INSERT INTO scans (
+  tenant_id,
+  operator_id,
+  host_id,
+  status,
+  started_at
+) VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at, protection_score
+`
+
+type CreateScanParams struct {
+	TenantID   uuid.UUID    `json:"tenant_id"`
+	OperatorID uuid.UUID    `json:"operator_id"`
+	HostID     uuid.UUID    `json:"host_id"`
+	Status     ScanStatus   `json:"status"`
+	StartedAt  sql.NullTime `json:"started_at"`
+}
+
+func (q *Queries) CreateScan(ctx context.Context, arg CreateScanParams) (Scan, error) {
+	row := q.db.QueryRowContext(ctx, createScan,
+		arg.TenantID,
+		arg.OperatorID,
+		arg.HostID,
+		arg.Status,
+		arg.StartedAt,
+	)
+	var i Scan
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.OperatorID,
+		&i.HostID,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProtectionScore,
+	)
+	return i, err
+}
+
 const getPreviousScanOnHost = `-- name: GetPreviousScanOnHost :one
 SELECT
 	ps.id, ps.tenant_id, ps.operator_id, ps.host_id, ps.status, ps.started_at, ps.ended_at, ps.created_at, ps.updated_at, ps.protection_score
@@ -200,4 +243,109 @@ func (q *Queries) GetScanInsights(ctx context.Context, id uuid.UUID) (GetScanIns
 		&i.SeverityPerTypeMap,
 	)
 	return i, err
+}
+
+const listScansForTenant = `-- name: ListScansForTenant :many
+WITH aggregated_vulnerabilities AS (
+SELECT
+	s_cte.id AS scan_id,
+	COUNT(v.id) AS total_vulnerabilities_count,
+	SUM(CASE WHEN v.severity = 'Critical' THEN 1 ELSE 0 END) AS critical_count,
+	SUM(CASE WHEN v.severity = 'High' THEN 1 ELSE 0 END) AS high_count,
+	SUM(CASE WHEN v.severity = 'Medium' THEN 1 ELSE 0 END) AS medium_count,
+	SUM(CASE WHEN v.severity = 'Low' THEN 1 ELSE 0 END) AS low_count,
+	SUM(CASE WHEN v.severity = 'None' THEN 1 ELSE 0 END) AS none_count,
+	SUM(CASE WHEN v.severity = 'Unknown' THEN 1 ELSE 0 END) AS unknown_count
+FROM
+	scans s_cte
+LEFT JOIN
+        vulnerabilities v ON
+	s_cte.id = v.scan_id
+WHERE
+	-- Filter by tenant_id for aggregation
+	s_cte.tenant_id = $1
+GROUP BY
+	s_cte.id
+)
+SELECT
+	s.id AS scan_id,
+	s.started_at AS scan_date,
+	h.alias AS host_alias,
+	CAST(
+    EXTRACT(epoch FROM (COALESCE(s.ended_at, NOW()) - s.started_at))
+    AS INTEGER
+  ) AS duration_in_seconds,
+	s.status,
+	COALESCE(av.total_vulnerabilities_count, 0) AS total_vulnerabilities,
+	COALESCE(av.critical_count, 0) AS critical_vulnerabilities,
+	COALESCE(av.high_count, 0) AS high_vulnerabilities,
+	COALESCE(av.medium_count, 0) AS medium_vulnerabilities,
+	COALESCE(av.low_count, 0) AS low_vulnerabilities,
+	COALESCE(av.none_count, 0) AS none_vulnerabilities,
+	COALESCE(av.unknown_count, 0) AS unknown_vulnerabilities  
+FROM
+    scans s
+INNER JOIN
+    hosts h ON
+	s.host_id = h.id
+LEFT JOIN
+    aggregated_vulnerabilities av ON
+	s.id = av.scan_id
+WHERE
+	s.tenant_id = $1
+	-- Filter out scans with a specific status (passed as parameter)
+	AND s.status != 'Scheduled'
+ORDER BY
+	s.started_at DESC
+`
+
+type ListScansForTenantRow struct {
+	ScanID                  uuid.UUID    `json:"scan_id"`
+	ScanDate                sql.NullTime `json:"scan_date"`
+	HostAlias               string       `json:"host_alias"`
+	DurationInSeconds       int32        `json:"duration_in_seconds"`
+	Status                  ScanStatus   `json:"status"`
+	TotalVulnerabilities    int64        `json:"total_vulnerabilities"`
+	CriticalVulnerabilities int64        `json:"critical_vulnerabilities"`
+	HighVulnerabilities     int64        `json:"high_vulnerabilities"`
+	MediumVulnerabilities   int64        `json:"medium_vulnerabilities"`
+	LowVulnerabilities      int64        `json:"low_vulnerabilities"`
+	NoneVulnerabilities     int64        `json:"none_vulnerabilities"`
+	UnknownVulnerabilities  int64        `json:"unknown_vulnerabilities"`
+}
+
+func (q *Queries) ListScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListScansForTenantRow, error) {
+	rows, err := q.db.QueryContext(ctx, listScansForTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListScansForTenantRow
+	for rows.Next() {
+		var i ListScansForTenantRow
+		if err := rows.Scan(
+			&i.ScanID,
+			&i.ScanDate,
+			&i.HostAlias,
+			&i.DurationInSeconds,
+			&i.Status,
+			&i.TotalVulnerabilities,
+			&i.CriticalVulnerabilities,
+			&i.HighVulnerabilities,
+			&i.MediumVulnerabilities,
+			&i.LowVulnerabilities,
+			&i.NoneVulnerabilities,
+			&i.UnknownVulnerabilities,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

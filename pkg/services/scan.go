@@ -21,22 +21,25 @@ import (
 )
 
 type ScanService struct {
-	storage  interfaces.IStorage
-	vulnRepo interfaces.VulnerabilityRepository
-	scanRepo interfaces.ScanRepository
+	vulnRepo        interfaces.VulnerabilityRepository
+	scanRepo        interfaces.ScanRepository
+	hostRepo        interfaces.HostRepository
+	scanResultsRepo interfaces.ScanResultRepository
 }
 
 var _ interfaces.IScanService = (*ScanService)(nil)
 
 func NewScanService(
-	storage interfaces.IStorage,
 	vulnerabilityRepository interfaces.VulnerabilityRepository,
 	scanRepository interfaces.ScanRepository,
+	hostRepository interfaces.HostRepository,
+	scanResultRepository interfaces.ScanResultRepository,
 ) *ScanService {
 	return &ScanService{
-		storage:  storage,
-		vulnRepo: vulnerabilityRepository,
-		scanRepo: scanRepository,
+		vulnRepo:        vulnerabilityRepository,
+		scanRepo:        scanRepository,
+		hostRepo:        hostRepository,
+		scanResultsRepo: scanResultRepository,
 	}
 }
 
@@ -45,13 +48,7 @@ func (s ScanService) CreateScan(
 	hostID, tenantID, operatorID uuid.UUID,
 	startedAt *time.Time,
 ) (*domain.Scan, error) {
-	var startScanDate time.Time
-	if startedAt == nil {
-		startScanDate = time.Now().UTC()
-	} else {
-		startScanDate = *startedAt
-	}
-	commonScanData := domain.NewScan(startScanDate)
+	commonScanData := domain.NewScan(hostID, tenantID, operatorID, startedAt)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
 	if startedAt != nil {
@@ -60,7 +57,7 @@ func (s ScanService) CreateScan(
 	// 1. Create the scan in storage
 	scanToCreate := *commonScanData
 	scanToCreate.HostID = hostID
-	dataScan, err := s.storage.CreateScan(&scanToCreate)
+	dataScan, err := s.scanRepo.CreateScan(ctx, scanToCreate)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +75,7 @@ func (s ScanService) CreateScan(
 
 func (s ScanService) CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error) {
 	// 1. Get host details
-	host, err := s.storage.GetHostByID(ctx, hostID)
+	host, err := s.hostRepo.GetHostByID(ctx, hostID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get host: %w", err)
 	}
@@ -104,12 +101,16 @@ func (s ScanService) CreateTarget(ctx context.Context, hostID uuid.UUID) (*resul
 	}, nil
 }
 
-func (s ScanService) GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error) {
-	return s.storage.GetCurrentScans(tenantID)
+func (s ScanService) GetCurrentScans(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error) {
+	scans, err := s.scanRepo.GetScansForTenant(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current scans for tenant from db: %w", err)
+	}
+	return scans, nil
 }
 
-func (s *ScanService) InsertScanResult(scanResult *domain.ScanResult) error {
-	return s.storage.InsertScanResult(nil, scanResult)
+func (s *ScanService) InsertScanResult(ctx context.Context, result domain.ScanResult) error {
+	return s.scanResultsRepo.CreateScanResult(ctx, result)
 }
 
 func (s *ScanService) InsertVulnerabilityResult(ctx context.Context, scanResult *domain.ScanResult) error {
@@ -120,8 +121,8 @@ func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus
 	return s.storage.UpdateScanStatus(scanID, status.String())
 }
 
-func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
-	scan, err := s.storage.GetScanByID(scanID)
+func (s *ScanService) MarkScanAsFailed(ctx context.Context, scanID uuid.UUID) error {
+	scan, err := s.scanRepo.GetScanByID(ctx, scanID)
 	if err != nil {
 		return fmt.Errorf("failed to get scan by ID: %w", err)
 	}
@@ -137,8 +138,8 @@ func (s *ScanService) MarkScanAsFailed(scanID uuid.UUID) error {
 	return nil
 }
 
-func (s *ScanService) MarkScanAsCancelled(scanID uuid.UUID) error {
-	scan, err := s.storage.GetScanByID(scanID)
+func (s *ScanService) MarkScanAsCancelled(ctx context.Context, scanID uuid.UUID) error {
+	scan, err := s.scanRepo.GetScanByID(ctx, scanID)
 	if err != nil {
 		return fmt.Errorf("failed to get scan by ID: %w", err)
 	}
@@ -384,14 +385,14 @@ func (s *ScanService) GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (
 	return s.vulnRepo.GetSeverityCountsByScanID(ctx, scanID)
 }
 
-func (s ScanService) UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error {
-	return s.storage.UpdateScanScheduling(scanID, scanScheduleID)
-}
-
-func (s ScanService) ScanScheduleDisableJob(scanScheduleID int) error {
-	return s.storage.ScanScheduleDisableJob(scanScheduleID, false)
-}
-
-func (s ScanService) GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error) {
-	return s.storage.GetRapporteursAndHostAliasByScanID(id)
+func (s *ScanService) GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error) {
+	scan, err := s.scanRepo.GetScanByID(ctx, scanID)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get scan by ID: %w", err)
+	}
+	host, err := s.hostRepo.GetHostByID(ctx, scan.HostID)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get host by ID: %w", err)
+	}
+	return host.Rapporteurs, host.Name, nil
 }

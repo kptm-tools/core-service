@@ -8,6 +8,7 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/events"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/nats-io/nats.go"
@@ -15,10 +16,17 @@ import (
 
 type NmapHandler struct {
 	scanService interfaces.IScanService
+	vulnService interfaces.IVulnerabilityService
 }
 
-func NewNmapHandler(scanService interfaces.IScanService) *NmapHandler {
-	return &NmapHandler{scanService: scanService}
+func NewNmapHandler(
+	scanService interfaces.IScanService,
+	vulnerabilityService interfaces.IVulnerabilityService,
+) *NmapHandler {
+	return &NmapHandler{
+		scanService: scanService,
+		vulnService: vulnerabilityService,
+	}
 }
 
 var _ interfaces.EventConsumer = (*NmapHandler)(nil)
@@ -59,7 +67,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 
 		// 3.1 Only store ToolResult, not Vulnerabilities
-		if err := h.scanService.InsertScanResult(scanResult); err != nil {
+		if err := h.scanService.InsertScanResult(ctx, *scanResult); err != nil {
 			slog.Error("Error inserting ScanResult to DB",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
@@ -67,7 +75,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 			)
 
 			// Mark the scan as failed
-			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+			if err := h.scanService.MarkScanAsFailed(ctx, evt.ScanID); err != nil {
 				slog.Error("Error marking scan as failed",
 					slog.String("scan_id", evt.ScanID.String()),
 					slog.Any("error", err))
@@ -86,7 +94,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", evt.ToolResult.Err))
 
-			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+			if err := h.scanService.MarkScanAsFailed(ctx, evt.ScanID); err != nil {
 				slog.Error("Error marking scan as failed",
 					slog.String("scan_id", evt.ScanID.String()),
 					slog.Any("error", err))
@@ -96,15 +104,30 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
+		// 3.1 Parse the vulnerabilities from the result
+		// 3.1.1 Unmarshal the result to a tools.NmapResult variable
+		var nr tools.NmapResult
+		resultPtr, ok := scanResult.Result.Result.(*tools.NmapResult)
+		if !ok || resultPtr == nil {
+			slog.Error(
+				"Failed to assert nmap result to tools.NmapResult; actual type: %T", scanResult.Result.Result,
+				slog.String("scan_id", scan.ID.String()),
+			)
+		}
+		nr = *resultPtr
+
+		// 3.2 Pass the nmap result to the VulnService InsertNetworkOSVulnerability method
+
 		// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
-		if err := h.scanService.InsertVulnerabilityResult(ctx, scanResult); err != nil {
-			slog.Error("Error inserting VulnerabilityResult to DB",
+		if err := h.vulnService.CreateNetworkOSVulnerabilities(ctx, scan.ID, nr); err != nil {
+			slog.Error(
+				"Error inserting VulnerabilityResult to DB",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", err))
 
 			// Mark the scan as failed
-			if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+			if err := h.scanService.MarkScanAsFailed(ctx, evt.ScanID); err != nil {
 				slog.Error("Error marking scan as failed",
 					slog.String("scan_id", evt.ScanID.String()),
 					slog.Any("error", err))

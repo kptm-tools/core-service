@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
@@ -29,6 +30,45 @@ func NewScanRepository(queries *repository.Queries) *ScanRepo {
 // the defaultQueries.
 func (r *ScanRepo) getQueries(ctx context.Context) *repository.Queries {
 	return GetQueriesFromContext(ctx, r.defaultQueries)
+}
+
+func (r *ScanRepo) CreateScan(ctx context.Context, s domain.Scan) (*domain.Scan, error) {
+	queries := r.getQueries(ctx)
+	params := repository.CreateScanParams{
+		TenantID:   s.TenantID,
+		OperatorID: s.OperatorID,
+		HostID:     s.HostID,
+		Status:     repository.ScanStatus(s.Status),
+		StartedAt:  sql.NullTime{Time: s.StartedAt, Valid: true},
+	}
+	dbScan, err := queries.CreateScan(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	domScan := toDomainScan(dbScan)
+	return &domScan, nil
+}
+
+func (r *ScanRepo) GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error) {
+	queries := r.getQueries(ctx)
+	dbScans, err := queries.ListScansForTenant(ctx, tenantID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []domain.ScanSummary{}, nil
+		}
+		return nil, err
+	}
+
+	scanSummaries := make([]domain.ScanSummary, len(dbScans))
+	for i, dbScan := range dbScans {
+		scanSummaries[i] = domain.ScanSummary{
+			ScanID:   dbScan.ScanID,
+			ScanDate: dbScan.ScanDate.Time.Format(time.Kitchen),
+			Host:     dbScan.HostAlias,
+			Duration: dbScan.DurationInSeconds,
+		}
+	}
+	return scanSummaries, nil
 }
 
 func (r *ScanRepo) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error) {
@@ -100,7 +140,7 @@ func (r *ScanRepo) GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*doma
 func toDomainScan(dbScan repository.Scan) domain.Scan {
 	return domain.Scan{
 		ID:         dbScan.ID,
-		HostID:     dbScan.HostID.UUID,
+		HostID:     dbScan.HostID,
 		TenantID:   dbScan.TenantID,
 		OperatorID: dbScan.OperatorID,
 		CreatedAt:  dbScan.CreatedAt.Time,

@@ -143,7 +143,7 @@ func (s *PostgreSQLStore) InsertOSVulnerabilities(
 ) error {
 	// 1. Store or Update OS
 	params := repository.CreateOSParams{
-		HostID: scan.HostID.UUID,
+		HostID: scan.HostID,
 		ScanID: scan.ID,
 		OsName: sql.NullString{String: osData.Name, Valid: osData.Name != ""},
 		Family: sql.NullString{String: osData.Family, Valid: osData.Family != ""},
@@ -165,7 +165,7 @@ func (s *PostgreSQLStore) InsertOSVulnerabilities(
 
 		// 2.2 Create Vulnerability record
 		createVulnerParams := repository.CreateVulnerabilityParams{
-			HostID:         scan.HostID.UUID,
+			HostID:         scan.HostID,
 			ScanID:         scan.ID,
 			CveID:          sql.NullString{String: vuln.CveID, Valid: vuln.CveID != ""},
 			Title:          vuln.CveID,
@@ -184,7 +184,7 @@ func (s *PostgreSQLStore) InsertOSVulnerabilities(
 		networkOSVulnerabilityParams := repository.CreateNetworkOSVulnerabilityParams{
 			VulnerabilityID:   dbVulner.ID,
 			ScanID:            scan.ID,
-			HostID:            scan.HostID.UUID,
+			HostID:            scan.HostID,
 			OperatingSystemID: sql.NullInt32{Int32: operatingSystem.ID, Valid: true},
 			ServiceID:         sql.NullInt32{Valid: false},
 		}
@@ -206,7 +206,7 @@ func (s *PostgreSQLStore) InsertPortVulnerabilities(
 ) error {
 	// 1. Store Service
 	createOrUpdateParams := repository.CreateOrUpdateServiceParams{
-		HostID:     scan.HostID.UUID,
+		HostID:     scan.HostID,
 		ScanID:     scan.ID,
 		Port:       int32(portData.ID),
 		Protocol:   sql.NullString{String: portData.Protocol, Valid: portData.Protocol != ""},
@@ -240,7 +240,7 @@ func (s *PostgreSQLStore) InsertPortVulnerabilities(
 
 		// 2.2 Store Vulnerability Record
 		createVulnerParams := repository.CreateVulnerabilityParams{
-			HostID:         scan.HostID.UUID,
+			HostID:         scan.HostID,
 			ScanID:         scan.ID,
 			CveID:          sql.NullString{String: vuln.CveID, Valid: vuln.CveID != ""},
 			Title:          vuln.CveID,
@@ -259,7 +259,7 @@ func (s *PostgreSQLStore) InsertPortVulnerabilities(
 		networkOSVulnerabilityParams := repository.CreateNetworkOSVulnerabilityParams{
 			VulnerabilityID:   dbVulner.ID,
 			ScanID:            scan.ID,
-			HostID:            scan.HostID.UUID,
+			HostID:            scan.HostID,
 			OperatingSystemID: sql.NullInt32{Valid: false},
 			ServiceID:         sql.NullInt32{Int32: service.ID, Valid: service.ID >= 0},
 		}
