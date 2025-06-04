@@ -359,7 +359,7 @@ func (r *VulnerRepo) GetHostVulnerabilityTrends(
 				sp.time_period_label,
 				COUNT(sv.id) AS vulnerability_count
 			FROM ScanPeriods sp
-			LEFT JOIN scan_vulnerabilities sv ON sv.scan_id = sp.scan_id
+			LEFT JOIN vulnerabilities sv ON sv.scan_id = sp.scan_id
 			INNER JOIN scans s ON sp.scan_id = s.id
 			WHERE s.host_id = $1
 				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
