@@ -78,20 +78,22 @@ func (r *CVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerabilit
 	}
 
 	// --- CVSS v3 Metrics
-	params.CvssV30Vector = stringToSQLNullString(metricV30.Access.String())
-	params.CvssV30BaseScore = floatToSQLNullString(metricV30.BaseScore, "%.1f", false)
-	params.CvssV30BaseSeverity = stringToSQLNullString(metricV30.Severity.String())
-	params.CvssV30ExploitabilityScore = floatToSQLNullString(metricV30.ExploitabilityScore, "%.1f", false)
-	params.CvssV30ImpactScore = floatToSQLNullString(metricV30.ImpactScore, "%.1f", false)
-	params.CvssV30AttackVector = enumToSQLNullString(metricV30.Access, func(e enums.AccessType) bool { return e == "" })
-	params.CvssV30AttackComplexity = enumToSQLNullString(metricV30.Complexity, func(e enums.ComplexityType) bool { return e == "" })
-	params.CvssV30PrivilegesRequired = enumToSQLNullString(metricV30.PrivilegesRequired, func(e enums.PrivilegesRequiredType) bool { return e == "" })
-	// TODO: These are missing
-	// params.CvssV30UserInteraction = ...
-	// params.CvssV30Scope = ...
-	// params.CvssV30ConfidentialityImpact = ...
-	params.CvssV30IntegrityImpact = enumToSQLNullString(metricV30.IntegrityImpact, func(e enums.ImpactType) bool { return e == "" })
-	params.CvssV30AvailabilityImpact = enumToSQLNullString(metricV30.AvailabilityImpact, func(e enums.ImpactType) bool { return e == "" })
+	if metricV30 != nil {
+		params.CvssV30Vector = stringToSQLNullString(metricV30.Access.String())
+		params.CvssV30BaseScore = floatToSQLNullString(metricV30.BaseScore, "%.1f", false)
+		params.CvssV30BaseSeverity = stringToSQLNullString(metricV30.Severity.String())
+		params.CvssV30ExploitabilityScore = floatToSQLNullString(metricV30.ExploitabilityScore, "%.1f", false)
+		params.CvssV30ImpactScore = floatToSQLNullString(metricV30.ImpactScore, "%.1f", false)
+		params.CvssV30AttackVector = enumToSQLNullString(metricV30.Access, func(e enums.AccessType) bool { return e == "" })
+		params.CvssV30AttackComplexity = enumToSQLNullString(metricV30.Complexity, func(e enums.ComplexityType) bool { return e == "" })
+		params.CvssV30PrivilegesRequired = enumToSQLNullString(metricV30.PrivilegesRequired, func(e enums.PrivilegesRequiredType) bool { return e == "" })
+		// TODO: These are missing
+		// params.CvssV30UserInteraction = ...
+		// params.CvssV30Scope = ...
+		// params.CvssV30ConfidentialityImpact = ...
+		params.CvssV30IntegrityImpact = enumToSQLNullString(metricV30.IntegrityImpact, func(e enums.ImpactType) bool { return e == "" })
+		params.CvssV30AvailabilityImpact = enumToSQLNullString(metricV30.AvailabilityImpact, func(e enums.ImpactType) bool { return e == "" })
+	}
 
 	// --- CVSS v31 Metrics
 	if metricV31 != nil {
@@ -122,7 +124,7 @@ func (r *CVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerabilit
 
 	// --- EPSS & RiskScore
 	params.EpssPercentile = floatToSQLNullString(vuln.EPSSPercentile, "%.4f", true)
-	params.EpssScore = floatToSQLNullString(vuln.EPSSScore, "$.2f", false)
+	params.EpssScore = floatToSQLNullString(vuln.EPSSScore, "%.2f", false)
 	params.RiskScore, err = floatToAPDNullDecimal(vuln.RiskScore, "%.2f")
 	if err != nil {
 		return nil, fmt.Errorf("failed to map RiskScore: %w", err)
