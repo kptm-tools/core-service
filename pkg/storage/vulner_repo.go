@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
@@ -16,6 +16,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/repository"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type VulnerRepo struct {
@@ -412,343 +413,398 @@ func toDomainVuln(dbVuln repository.Vulnerability) tools.Vulnerability {
 // toDomainVulnerabilityWithCveDetail converts a sqlc-generated GetVulnerabilityWithCveDetailByIDRow
 // into a domain.Vulnerability.
 // It handles null values and type conversions.
-func toDomainVulnerabilityWithCveDetail(dbVuln repository.GetVulnerabilityWithCveDetailByIDRow) tools.Vulnerability {
+func toDomainVulnerabilityWithCveDetail(dbRow repository.GetVulnerabilityWithCveDetailByIDRow) tools.Vulnerability {
 	// Initialize with direct assignments and default values
 	domVuln := tools.Vulnerability{
-		ID:          dbVuln.ID,
-		HostID:      dbVuln.HostID,
-		ScanID:      dbVuln.ScanID,
-		CveID:       nullStringToString(dbVuln.CveID),
-		Description: nullStringToString(dbVuln.Description),
-		// Severity and VulnSource/Type are directly string in sqlc struct, no null check needed
-		// but check if they should be enums in domain.
-		AnalystComment: nullStringToString(dbVuln.AnalystComment),
-		Published:      nullTimeToTime(dbVuln.PublishedDate),
-		LastUpdated:    nullTimeToTime(dbVuln.LastModifiedDate),
-		EPSSDate:       time.Time{}, // Not provided in sqlc row, default to zero value
+		ID:             dbRow.ID,
+		HostID:         dbRow.HostID,
+		ScanID:         dbRow.ScanID,
+		CveID:          nullStringToString(dbRow.CveID),
+		Description:    nullStringToString(dbRow.Description),
+		AnalystComment: nullStringToString(dbRow.AnalystComment),
+		Published:      nullTimeToTime(dbRow.PublishedDate),
+		LastUpdated:    nullTimeToTime(dbRow.LastModifiedDate),
+		Metrics:        []tools.CVSSMetric{},
 	}
 
-	// Map WeaknessType (VulnType)
-	if vulnType, ok := enums.ParseWeaknessFromString(dbVuln.Cwe.String); ok {
-		domVuln.Type = vulnType
-	} else {
-		slog.Warn("Unknown WeaknessType", slog.String("vuln_type", dbVuln.Cwe.String), slog.String("vuln_id", domVuln.ID.String()))
-		domVuln.Type = enums.WeaknessNoInfo // Or another appropriate default
+	intermediateData := IntermediateCVEDetailData{
+		DetailID:         dbRow.ID_2,    // c.id
+		DetailCveID:      dbRow.CveID_2, // c.cve_id
+		Cwe:              dbRow.Cwe,
+		PublishedDate:    dbRow.PublishedDate,
+		LastModifiedDate: dbRow.LastModifiedDate,
+		NvdDescription:   dbRow.NvdDescription,
+
+		CvssV2Vector:                dbRow.CvssV2Vector,
+		CvssV2BaseScore:             dbRow.CvssV2BaseScore,
+		CvssV2BaseSeverity:          dbRow.CvssV2BaseSeverity,
+		CvssV2ExploitabilityScore:   dbRow.CvssV2ExploitabilityScore,
+		CvssV2ImpactScore:           dbRow.CvssV2ImpactScore,
+		CvssV2AccessVector:          dbRow.CvssV2AccessVector,
+		CvssV2AccessComplexity:      dbRow.CvssV2AccessComplexity,
+		CvssV2Authentication:        dbRow.CvssV2Authentication,
+		CvssV2ConfidentialityImpact: dbRow.CvssV2ConfidentialityImpact,
+		CvssV2IntegrityImpact:       dbRow.CvssV2IntegrityImpact,
+		CvssV2AvailabilityImpact:    dbRow.CvssV2AvailabilityImpact,
+
+		CvssV30Vector:                dbRow.CvssV30Vector,
+		CvssV30BaseScore:             dbRow.CvssV30BaseScore,
+		CvssV30BaseSeverity:          dbRow.CvssV30BaseSeverity,
+		CvssV30ExploitabilityScore:   dbRow.CvssV30ExploitabilityScore,
+		CvssV30ImpactScore:           dbRow.CvssV30ImpactScore,
+		CvssV30AttackVector:          dbRow.CvssV30AttackVector,
+		CvssV30AttackComplexity:      dbRow.CvssV30AttackComplexity,
+		CvssV30PrivilegesRequired:    dbRow.CvssV30PrivilegesRequired,
+		CvssV30UserInteraction:       dbRow.CvssV30UserInteraction,
+		CvssV30Scope:                 dbRow.CvssV30Scope,
+		CvssV30ConfidentialityImpact: dbRow.CvssV30ConfidentialityImpact,
+		CvssV30IntegrityImpact:       dbRow.CvssV30IntegrityImpact,
+		CvssV30AvailabilityImpact:    dbRow.CvssV30AvailabilityImpact,
+
+		CvssV31Vector:                dbRow.CvssV31Vector,
+		CvssV31BaseScore:             dbRow.CvssV31BaseScore,
+		CvssV31BaseSeverity:          dbRow.CvssV31BaseSeverity,
+		CvssV31ExploitabilityScore:   dbRow.CvssV31ExploitabilityScore,
+		CvssV31ExploitCodeMaturity:   dbRow.CvssV31ExploitCodeMaturity,
+		CvssV31ImpactScore:           dbRow.CvssV31ImpactScore,
+		CvssV31AttackVector:          dbRow.CvssV31AttackVector,
+		CvssV31AttackComplexity:      dbRow.CvssV31AttackComplexity,
+		CvssV31PrivilegesRequired:    dbRow.CvssV31PrivilegesRequired,
+		CvssV31UserInteraction:       dbRow.CvssV31UserInteraction,
+		CvssV31Scope:                 dbRow.CvssV31Scope,
+		CvssV31ConfidentialityImpact: dbRow.CvssV31ConfidentialityImpact,
+		CvssV31IntegrityImpact:       dbRow.CvssV31IntegrityImpact,
+		CvssV31AvailabilityImpact:    dbRow.CvssV31AvailabilityImpact,
+
+		EpssScore:      dbRow.EpssScore,
+		EpssPercentile: dbRow.EpssPercentile,
+		RiskScore:      dbRow.RiskScore,
+		Likelihood:     dbRow.Likelihood,
+
+		EvaluatorComment:  dbRow.EvaluatorComment,
+		EvaluatorImpact:   dbRow.EvaluatorImpact,
+		EvaluatorSolution: dbRow.EvaluatorSolution,
+
+		NvdReferences:  dbRow.NvdReferences,
+		VendorComments: dbRow.VendorComments,
 	}
 
-	// Map CVSS v3.1 base score
-	if baseCVSSScore, err := nullDecimalToFloat64(dbVuln.CvssV31BaseScore); err != nil {
-		slog.Warn(
-			"Could not parse CvssV31BaseScore",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.BaseCVSSScore = 0.0
+	if intermediateData.DetailID.Valid {
+		populateVulnerabilityFromIntermediateDetails(&domVuln, &intermediateData)
 	} else {
-		domVuln.BaseCVSSScore = baseCVSSScore
-	}
-
-	// Map References
-	if references, err := unmarshalNvdReferences(dbVuln.NvdReferences); err != nil {
-		slog.Warn(
-			"Could not parse NvdReferences",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.References = []string{}
-	} else {
-		domVuln.References = references
-	}
-
-	// Map CVSS v3.1 Attack Vector (Access)
-	// Assuming enums.AccessType(string) is a safe conversion or needs parsing
-	if dbVuln.CvssV31AttackVector.Valid {
-		domVuln.Access = enums.AccessType(dbVuln.CvssV31AttackVector.String)
-	} else {
-		domVuln.Access = enums.AccessTypeUnknown
-	}
-
-	// Map CVSS v3.1 Attack Complexity (Complexity)
-	if dbVuln.CvssV31AttackComplexity.Valid {
-		domVuln.Complexity = enums.ComplexityType(dbVuln.CvssV31AttackComplexity.String)
-	} else {
-		domVuln.Complexity = enums.ComplexityTypeUnknown
-	}
-
-	// Map CVSS v3.1 Privileges Required
-	if dbVuln.CvssV31PrivilegesRequired.Valid {
-		domVuln.PrivilegesRequired = enums.PrivilegesRequiredType(dbVuln.CvssV31PrivilegesRequired.String)
-	} else {
-		domVuln.PrivilegesRequired = enums.PrivilegesRequiredUnknown
-	}
-
-	// Map Likelihood
-	if dbVuln.Likelihood.Valid {
-		domVuln.Likelihood = enums.LikelyhoodType(dbVuln.Likelihood.String)
-	} else {
-		domVuln.Likelihood = enums.LikelyhoodTypeUnknown
-	}
-
-	// Map RiskScore
-	if riskScore, err := nullDecimalToFloat64(dbVuln.RiskScore); err != nil {
-		slog.Warn(
-			"Could not parse RiskScore",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.RiskScore = 0.0
-	} else {
-		domVuln.RiskScore = riskScore
-	}
-
-	// Map CVSS v3.1 Impact Score
-	if impactScore, err := nullDecimalToFloat64(dbVuln.CvssV31ImpactScore); err != nil {
-		slog.Warn(
-			"Could not parse CvssV31ImpactScore",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.ImpactScore = 0.0
-	} else {
-		domVuln.ImpactScore = impactScore
-	}
-
-	// Map Exploit Score and Exploitability
-	exploitScore, err := nullDecimalToFloat64(dbVuln.CvssV31ExploitabilityScore)
-	if err != nil {
-		slog.Warn(
-			"Could not parse CvssV31ExploitabilityScore",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.Exploit.Score = 0.0
-		domVuln.Exploit.Exploitability = enums.ExploitabilityTypeUnknown
-	} else {
-		domVuln.Exploit.Score = exploitScore
-		if dbVuln.CvssV31ExploitCodeMaturity.Valid {
-			domVuln.Exploit.Exploitability = enums.ExploitabilityType(dbVuln.CvssV31ExploitCodeMaturity.String)
-		} else {
-			domVuln.Exploit.Exploitability = enums.ExploitabilityTypeUnknown
-		}
-	}
-
-	// Map CVSS v3.1 Integrity Impact
-	if dbVuln.CvssV31IntegrityImpact.Valid {
-		domVuln.IntegrityImpact = enums.ImpactType(dbVuln.CvssV31IntegrityImpact.String)
-	} else {
-		domVuln.IntegrityImpact = enums.ImpactTypeUnknown
-	}
-
-	// Map CVSS v3.1 Availability Impact
-	if dbVuln.CvssV31AvailabilityImpact.Valid {
-		domVuln.AvailabilityImpact = enums.ImpactType(dbVuln.CvssV31AvailabilityImpact.String)
-	} else {
-		domVuln.AvailabilityImpact = enums.ImpactTypeUnknown
-	}
-
-	// Map CVSS v3.1 Base Severity
-	if dbVuln.CvssV31BaseSeverity.Valid {
-		domVuln.BaseSeverity = enums.SeverityType(dbVuln.CvssV31BaseSeverity.String)
-	} else {
+		// In case cve_details does not exists due to LEFT JOIN or some shenanigans
 		domVuln.BaseSeverity = enums.SeverityTypeUnknown
 	}
+	return domVuln
+}
 
-	// Map Vendor Comments
-	if vendorComments, err := unmarshalNvdVendorComments(dbVuln.VendorComments); err != nil {
-		slog.Warn(
-			"Could not parse vendor comments",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.VendorComments = []tools.VendorComment{}
-	} else {
-		domVuln.VendorComments = vendorComments
+func toDomainVulnWithCveDetail(dbRow repository.GetVulnerabilitiesWithCveDetailsByScanIDRow) tools.Vulnerability {
+	// Initialize with direct assignments and default values
+	domVuln := tools.Vulnerability{
+		ID:             dbRow.ID,
+		HostID:         dbRow.HostID,
+		ScanID:         dbRow.ScanID,
+		CveID:          nullStringToString(dbRow.CveID),
+		Description:    nullStringToString(dbRow.Description),
+		AnalystComment: nullStringToString(dbRow.AnalystComment),
+		Published:      nullTimeToTime(dbRow.PublishedDate),
+		LastUpdated:    nullTimeToTime(dbRow.LastModifiedDate),
+		Metrics:        []tools.CVSSMetric{},
 	}
 
-	// Map EPSS Score
-	if epssScore, err := parseNullStringAsFloat64(dbVuln.EpssScore); err != nil {
-		slog.Warn(
-			"Could not parse EPSS Score",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.EPSSScore = 0.0
-	} else {
-		domVuln.EPSSScore = epssScore
+	intermediateData := IntermediateCVEDetailData{
+		DetailID:    dbRow.ID_2,
+		DetailCveID: dbRow.CveID_2,
+		Cwe:         dbRow.Cwe,
+		// ... Mirror ALL THE SAME field assignments as in the function above ...
+		PublishedDate:    dbRow.PublishedDate,
+		LastModifiedDate: dbRow.LastModifiedDate,
+		NvdDescription:   dbRow.NvdDescription,
+
+		CvssV2Vector:                dbRow.CvssV2Vector,
+		CvssV2BaseScore:             dbRow.CvssV2BaseScore,
+		CvssV2BaseSeverity:          dbRow.CvssV2BaseSeverity,
+		CvssV2ExploitabilityScore:   dbRow.CvssV2ExploitabilityScore,
+		CvssV2ImpactScore:           dbRow.CvssV2ImpactScore,
+		CvssV2AccessVector:          dbRow.CvssV2AccessVector,
+		CvssV2AccessComplexity:      dbRow.CvssV2AccessComplexity,
+		CvssV2Authentication:        dbRow.CvssV2Authentication,
+		CvssV2ConfidentialityImpact: dbRow.CvssV2ConfidentialityImpact,
+		CvssV2IntegrityImpact:       dbRow.CvssV2IntegrityImpact,
+		CvssV2AvailabilityImpact:    dbRow.CvssV2AvailabilityImpact,
+
+		CvssV30Vector:                dbRow.CvssV30Vector,
+		CvssV30BaseScore:             dbRow.CvssV30BaseScore,
+		CvssV30BaseSeverity:          dbRow.CvssV30BaseSeverity,
+		CvssV30ExploitabilityScore:   dbRow.CvssV30ExploitabilityScore,
+		CvssV30ImpactScore:           dbRow.CvssV30ImpactScore,
+		CvssV30AttackVector:          dbRow.CvssV30AttackVector,
+		CvssV30AttackComplexity:      dbRow.CvssV30AttackComplexity,
+		CvssV30PrivilegesRequired:    dbRow.CvssV30PrivilegesRequired,
+		CvssV30UserInteraction:       dbRow.CvssV30UserInteraction,
+		CvssV30Scope:                 dbRow.CvssV30Scope,
+		CvssV30ConfidentialityImpact: dbRow.CvssV30ConfidentialityImpact,
+		CvssV30IntegrityImpact:       dbRow.CvssV30IntegrityImpact,
+		CvssV30AvailabilityImpact:    dbRow.CvssV30AvailabilityImpact,
+
+		CvssV31Vector:                dbRow.CvssV31Vector,
+		CvssV31BaseScore:             dbRow.CvssV31BaseScore,
+		CvssV31BaseSeverity:          dbRow.CvssV31BaseSeverity,
+		CvssV31ExploitabilityScore:   dbRow.CvssV31ExploitabilityScore,
+		CvssV31ExploitCodeMaturity:   dbRow.CvssV31ExploitCodeMaturity,
+		CvssV31ImpactScore:           dbRow.CvssV31ImpactScore,
+		CvssV31AttackVector:          dbRow.CvssV31AttackVector,
+		CvssV31AttackComplexity:      dbRow.CvssV31AttackComplexity,
+		CvssV31PrivilegesRequired:    dbRow.CvssV31PrivilegesRequired,
+		CvssV31UserInteraction:       dbRow.CvssV31UserInteraction,
+		CvssV31Scope:                 dbRow.CvssV31Scope,
+		CvssV31ConfidentialityImpact: dbRow.CvssV31ConfidentialityImpact,
+		CvssV31IntegrityImpact:       dbRow.CvssV31IntegrityImpact,
+		CvssV31AvailabilityImpact:    dbRow.CvssV31AvailabilityImpact,
+
+		EpssScore:      dbRow.EpssScore,
+		EpssPercentile: dbRow.EpssPercentile,
+		RiskScore:      dbRow.RiskScore,
+		Likelihood:     dbRow.Likelihood,
+
+		EvaluatorComment:  dbRow.EvaluatorComment,
+		EvaluatorImpact:   dbRow.EvaluatorImpact,
+		EvaluatorSolution: dbRow.EvaluatorSolution,
+
+		NvdReferences:  dbRow.NvdReferences,
+		VendorComments: dbRow.VendorComments,
 	}
 
-	// Map EPSS Percentile
-	if epssPercentile, err := parseNullStringAsFloat64(dbVuln.EpssPercentile); err != nil {
-		slog.Warn(
-			"Could not parse EPSS Percentile",
-			slog.String("vuln_id", domVuln.ID.String()),
-			slog.Any("error", err),
-		)
-		domVuln.EPSSPercentile = 0.0
+	// Check if cve_details part exists (e.g. ID_2 is c.id from cve_details)
+	if intermediateData.DetailID.Valid {
+		populateVulnerabilityFromIntermediateDetails(&domVuln, &intermediateData)
 	} else {
-		domVuln.EPSSPercentile = epssPercentile
+		domVuln.BaseSeverity = enums.SeverityTypeUnknown // Default if no CVE details
 	}
 
 	return domVuln
 }
 
-func toDomainVulnWithCveDetail(dbVuln repository.GetVulnerabilitiesWithCveDetailsByScanIDRow) tools.Vulnerability {
-	domVuln := tools.Vulnerability{
-		ID:             dbVuln.ID,
-		HostID:         dbVuln.HostID,
-		ScanID:         dbVuln.ScanID,
-		CveID:          dbVuln.CveID.String,
-		VendorComments: []tools.VendorComment{},
+// IntermediateCVEDetailData holds the fields from the cve_details table
+// as they are selected by your sqlc queries.
+type IntermediateCVEDetailData struct {
+	DetailID         uuid.NullUUID
+	DetailCveID      sql.NullString
+	Cwe              sql.NullString
+	PublishedDate    sql.NullTime
+	LastModifiedDate sql.NullTime
+	NvdDescription   sql.NullString
+
+	CvssV2Vector                sql.NullString
+	CvssV2BaseScore             sql.NullString
+	CvssV2BaseSeverity          sql.NullString
+	CvssV2ExploitabilityScore   sql.NullString
+	CvssV2ImpactScore           sql.NullString
+	CvssV2AccessVector          sql.NullString
+	CvssV2AccessComplexity      sql.NullString
+	CvssV2Authentication        sql.NullString
+	CvssV2ConfidentialityImpact sql.NullString
+	CvssV2IntegrityImpact       sql.NullString
+	CvssV2AvailabilityImpact    sql.NullString
+
+	CvssV30Vector                sql.NullString
+	CvssV30BaseScore             sql.NullString
+	CvssV30BaseSeverity          sql.NullString
+	CvssV30ExploitabilityScore   sql.NullString
+	CvssV30ImpactScore           sql.NullString
+	CvssV30AttackVector          sql.NullString
+	CvssV30AttackComplexity      sql.NullString
+	CvssV30PrivilegesRequired    sql.NullString
+	CvssV30UserInteraction       sql.NullString
+	CvssV30Scope                 sql.NullString
+	CvssV30ConfidentialityImpact sql.NullString
+	CvssV30IntegrityImpact       sql.NullString
+	CvssV30AvailabilityImpact    sql.NullString
+
+	CvssV31Vector                sql.NullString
+	CvssV31BaseScore             apd.NullDecimal
+	CvssV31BaseSeverity          sql.NullString
+	CvssV31ExploitabilityScore   apd.NullDecimal
+	CvssV31ExploitCodeMaturity   sql.NullString
+	CvssV31ImpactScore           apd.NullDecimal
+	CvssV31AttackVector          sql.NullString
+	CvssV31AttackComplexity      sql.NullString
+	CvssV31PrivilegesRequired    sql.NullString
+	CvssV31UserInteraction       sql.NullString
+	CvssV31Scope                 sql.NullString
+	CvssV31ConfidentialityImpact sql.NullString
+	CvssV31IntegrityImpact       sql.NullString
+	CvssV31AvailabilityImpact    sql.NullString
+
+	EpssScore      sql.NullString
+	EpssPercentile sql.NullString
+	RiskScore      apd.NullDecimal
+	Likelihood     sql.NullString
+
+	EvaluatorComment  sql.NullString
+	EvaluatorImpact   sql.NullString
+	EvaluatorSolution sql.NullString
+
+	NvdReferences  pqtype.NullRawMessage
+	VendorComments pqtype.NullRawMessage
+}
+
+// populateVulnerabilityFromIntermediateDetails maps data from IntermediateCVEDetailData
+// to the tools.Vulnerability struct, focusing on Metrics and derived top-level fields.
+func populateVulnerabilityFromIntermediateDetails(domVuln *tools.Vulnerability, cveData *IntermediateCVEDetailData) {
+	if cveData == nil {
+		return // Nothing to map from cve_details
 	}
 
-	if dbVuln.CveID.Valid {
-		domVuln.CveID = dbVuln.CveID.String
-	} else {
-		domVuln.CveID = ""
-	}
+	// If domVuln.Description is from v.description, and cveData.NvdDescription is preferred:
+	domVuln.Description = nullStringToString(cveData.NvdDescription)
+	domVuln.Published = nullTimeToTime(cveData.PublishedDate)
+	domVuln.LastUpdated = nullTimeToTime(cveData.LastModifiedDate)
 
-	vulnCWE, ok := enums.ParseWeaknessFromString(dbVuln.Cwe.String)
-	if ok {
-		domVuln.Type = vulnCWE
-	} else {
+	if cweType, ok := enums.ParseWeaknessFromString(cveData.Cwe.String); ok {
+		domVuln.Type = cweType
+	} else if cveData.Cwe.Valid {
+		slog.Warn("Unknown CWE/WeaknessType string from DB", "cwe", cveData.Cwe.String, "cve_id", domVuln.CveID)
 		domVuln.Type = enums.WeaknessNoInfo
 	}
 
-	baseCVSSScore, err := nullDecimalToFloat64(dbVuln.CvssV31BaseScore)
-	if err != nil {
-		slog.Warn(
-			"Could not parse baseCVSSScore",
-			slog.String("vuln_id", domVuln.CveID),
-			slog.Any("error", err),
-		)
-		domVuln.BaseCVSSScore = 0.0
+	if refs, err := unmarshalNvdReferences(cveData.NvdReferences); err == nil {
+		domVuln.References = refs
+	} else if cveData.NvdReferences.Valid {
+		slog.Warn("Failed to unmarshal NvdReferences", "cve_id", domVuln.CveID, "error", err)
+	}
+	if vc, err := unmarshalNvdVendorComments(cveData.VendorComments); err == nil {
+		domVuln.VendorComments = vc
+	} else if cveData.VendorComments.Valid {
+		slog.Warn("Failed to unmarshal VendorComments", "cve_id", domVuln.CveID, "error", err)
+	}
+
+	var metrics []tools.CVSSMetric
+
+	// CVSS v2.0
+	if cveData.CvssV2BaseScore.Valid || cveData.CvssV2Vector.Valid {
+		m2 := tools.CVSSMetric{Version: enums.CVSSv20}
+		if s, err := parseNullStringAsFloat64(cveData.CvssV2BaseScore); err == nil {
+			m2.BaseScore = s
+		}
+		m2.Severity = enums.ParseSeverityType(cveData.CvssV2BaseSeverity.String, enums.SeverityTypeUnknown)
+		if s, err := parseNullStringAsFloat64(cveData.CvssV2ExploitabilityScore); err == nil {
+			m2.ExploitabilityScore = s
+		}
+		if s, err := parseNullStringAsFloat64(cveData.CvssV2ImpactScore); err == nil {
+			m2.ImpactScore = s
+		}
+		m2.Access = enums.ParseAccessType(cveData.CvssV2AccessVector.String, enums.AccessTypeUnknown)
+		m2.Complexity = enums.ParseComplexityType(cveData.CvssV2AccessComplexity.String, enums.ComplexityTypeUnknown) // Ensure ComplexityType has LOW/MEDIUM/HIGH
+		m2.IntegrityImpact = enums.ParseImpactType(cveData.CvssV2IntegrityImpact.String, enums.ImpactTypeUnknown)
+		m2.AvailabilityImpact = enums.ParseImpactType(cveData.CvssV2AvailabilityImpact.String, enums.ImpactTypeUnknown)
+		metrics = append(metrics, m2)
+	}
+
+	// CVSS v3.0
+	if cveData.CvssV30BaseScore.Valid || cveData.CvssV30Vector.Valid {
+		m30 := tools.CVSSMetric{Version: enums.CVSSv30}
+		if s, err := parseNullStringAsFloat64(cveData.CvssV30BaseScore); err == nil {
+			m30.BaseScore = s
+		}
+		m30.Severity = enums.ParseSeverityType(cveData.CvssV30BaseSeverity.String, enums.SeverityTypeUnknown)
+		if s, err := parseNullStringAsFloat64(cveData.CvssV30ExploitabilityScore); err == nil {
+			m30.ExploitabilityScore = s
+		}
+		if s, err := parseNullStringAsFloat64(cveData.CvssV30ImpactScore); err == nil {
+			m30.ImpactScore = s
+		}
+		m30.Access = enums.ParseAccessType(cveData.CvssV30AttackVector.String, enums.AccessTypeUnknown)
+		m30.Complexity = enums.ParseComplexityType(cveData.CvssV30AttackComplexity.String, enums.ComplexityTypeUnknown)
+		m30.PrivilegesRequired = enums.ParsePrivilegesRequiredType(cveData.CvssV30PrivilegesRequired.String, enums.PrivilegesRequiredUnknown)
+		m30.IntegrityImpact = enums.ParseImpactType(cveData.CvssV30IntegrityImpact.String, enums.ImpactTypeUnknown)
+		m30.AvailabilityImpact = enums.ParseImpactType(cveData.CvssV30AvailabilityImpact.String, enums.ImpactTypeUnknown)
+		metrics = append(metrics, m30)
+	}
+
+	// CVSS v3.1
+	if cveData.CvssV31BaseScore.Valid {
+		m31 := tools.CVSSMetric{Version: enums.CVSSv31}
+		if s, err := nullDecimalToFloat64(cveData.CvssV31BaseScore); err == nil {
+			m31.BaseScore = s
+		}
+		m31.Severity = enums.ParseSeverityType(cveData.CvssV31BaseSeverity.String, enums.SeverityTypeUnknown)
+		if s, err := nullDecimalToFloat64(cveData.CvssV31ExploitabilityScore); err == nil {
+			m31.ExploitabilityScore = s
+		}
+		m31.Exploitability = enums.ParseExploitabilityType(cveData.CvssV31ExploitCodeMaturity.String, enums.ExploitabilityTypeUnknown)
+		if s, err := nullDecimalToFloat64(cveData.CvssV31ImpactScore); err == nil {
+			m31.ImpactScore = s
+		}
+		m31.Access = enums.ParseAccessType(cveData.CvssV31AttackVector.String, enums.AccessTypeUnknown)
+		m31.Complexity = enums.ParseComplexityType(cveData.CvssV31AttackComplexity.String, enums.ComplexityTypeUnknown)
+		m31.PrivilegesRequired = enums.ParsePrivilegesRequiredType(cveData.CvssV31PrivilegesRequired.String, enums.PrivilegesRequiredUnknown)
+		m31.IntegrityImpact = enums.ParseImpactType(cveData.CvssV31IntegrityImpact.String, enums.ImpactTypeUnknown)
+		m31.AvailabilityImpact = enums.ParseImpactType(cveData.CvssV31AvailabilityImpact.String, enums.ImpactTypeUnknown)
+		metrics = append(metrics, m31)
+	}
+	domVuln.Metrics = metrics
+
+	// Populate Top-Level Convenience Fields from the "best" Metric
+	var primaryMetric *tools.CVSSMetric
+	// Prioritize v3.1 -> v3.0 -> v2.0
+	for i := range domVuln.Metrics {
+		mPtr := &domVuln.Metrics[i] // Get pointer for direct comparison
+		if mPtr.Version == enums.CVSSv31 {
+			primaryMetric = mPtr
+			break
+		}
+	}
+	if primaryMetric == nil {
+		for i := range domVuln.Metrics {
+			mPtr := &domVuln.Metrics[i]
+			if mPtr.Version == enums.CVSSv30 {
+				primaryMetric = mPtr
+				break
+			}
+		}
+	}
+	if primaryMetric == nil && len(domVuln.Metrics) > 0 {
+		primaryMetric = &domVuln.Metrics[0] // Fallback to the first one if no v3.x found
+	}
+
+	if primaryMetric != nil {
+		domVuln.BaseCVSSScore = primaryMetric.BaseScore
+		domVuln.ImpactScore = primaryMetric.ImpactScore
+		domVuln.BaseSeverity = primaryMetric.Severity
+		domVuln.Access = primaryMetric.Access
+		domVuln.Complexity = primaryMetric.Complexity
+		domVuln.PrivilegesRequired = primaryMetric.PrivilegesRequired
+		domVuln.IntegrityImpact = primaryMetric.IntegrityImpact
+		domVuln.AvailabilityImpact = primaryMetric.AvailabilityImpact
+		domVuln.Exploit.Score = primaryMetric.ExploitabilityScore
+		domVuln.Exploit.Exploitability = primaryMetric.Exploitability
 	} else {
-		domVuln.BaseCVSSScore = baseCVSSScore
+		// If no metrics at all, top-level fields remain zero/default.
+		// Optionally, log this situation.
+		if domVuln.CveID != "" { // Only log if it's a known CVE that surprisingly has no metrics
+			slog.Info("No CVSS metrics found to populate top-level fields", "cve_id", domVuln.CveID)
+		}
 	}
 
-	references, err := unmarshalNvdReferences(dbVuln.NvdReferences)
-	if err != nil {
-		slog.Warn(
-			"Could not parse NvdReferences",
-			slog.String("vuln_id", domVuln.CveID),
-			slog.Any("error", err),
-		)
-		domVuln.References = []string{}
-	} else {
-		domVuln.References = references
+	// Map other direct fields
+	domVuln.Likelihood = enums.ParseLikelyhoodType(cveData.Likelihood.String, enums.LikelyhoodTypeUnknown)
+	if score, err := nullDecimalToFloat64(cveData.RiskScore); err == nil && cveData.RiskScore.Valid {
+		domVuln.RiskScore = score
+	} else if cveData.RiskScore.Valid {
+		slog.Warn("Error converting RiskScore from apd.Decimal", "cve_id", domVuln.CveID, "error", err)
 	}
 
-	if dbVuln.Description.Valid {
-		domVuln.Description = dbVuln.Description.String
-	} else {
-		domVuln.Description = ""
+	if score, err := parseNullStringAsFloat64(cveData.EpssScore); err == nil && cveData.EpssScore.Valid {
+		domVuln.EPSSScore = score
+	} else if cveData.EpssScore.Valid {
+		slog.Warn("Error parsing EpssScore", "cve_id", domVuln.CveID, "value", cveData.EpssScore.String, "error", err)
 	}
-
-	if dbVuln.CvssV31AttackComplexity.Valid {
-		// This cast could blow up in the future
-		complexityType := enums.ComplexityType(dbVuln.CvssV31AttackComplexity.String)
-		domVuln.Complexity = complexityType
-	} else {
-		domVuln.Complexity = enums.ComplexityTypeUnknown
+	if score, err := parseNullStringAsFloat64(cveData.EpssPercentile); err == nil && cveData.EpssPercentile.Valid {
+		domVuln.EPSSPercentile = score
+	} else if cveData.EpssPercentile.Valid {
+		slog.Warn("Error parsing EpssPercentile", "cve_id", domVuln.CveID, "value", cveData.EpssPercentile.String, "error", err)
 	}
-
-	if dbVuln.CvssV31PrivilegesRequired.Valid {
-		privilegesRequired := enums.PrivilegesRequiredType(dbVuln.CvssV31PrivilegesRequired.String)
-		domVuln.PrivilegesRequired = privilegesRequired
-	} else {
-		domVuln.PrivilegesRequired = enums.PrivilegesRequiredUnknown
-	}
-
-	if dbVuln.Likelihood.Valid {
-		likelihood := enums.LikelyhoodType(dbVuln.Likelihood.String)
-		domVuln.Likelihood = likelihood
-	} else {
-		domVuln.Likelihood = enums.LikelyhoodTypeUnknown
-	}
-
-	riskScore, err := nullDecimalToFloat64(dbVuln.RiskScore)
-	if err != nil {
-		slog.Warn(
-			"Could not parse riskScore",
-			slog.String("vuln_id", domVuln.CveID),
-			slog.Any("error", err),
-		)
-		domVuln.RiskScore = 0.0
-	} else {
-		domVuln.RiskScore = riskScore
-	}
-
-	impactScore, err := nullDecimalToFloat64(dbVuln.CvssV31ImpactScore)
-	if err != nil {
-		slog.Warn(
-			"Could not parse impactScore",
-			slog.String("vuln_id", domVuln.CveID),
-			slog.Any("error", err),
-		)
-		domVuln.ImpactScore = 0.0
-	} else {
-		domVuln.ImpactScore = impactScore
-	}
-
-	exploitScore, err := nullDecimalToFloat64(dbVuln.CvssV31ExploitabilityScore)
-	if err != nil {
-		slog.Warn(
-			"Could not parse exploitScore",
-			slog.String("vuln_id", domVuln.CveID),
-			slog.Any("error", err),
-		)
-		domVuln.Exploit.Score = 0.0
-		domVuln.Exploit.Exploitability = enums.ExploitabilityTypeUnknown
-	} else {
-		domVuln.Exploit.Score = exploitScore
-		domVuln.Exploit.Exploitability = enums.ExploitabilityType(dbVuln.CvssV31ExploitCodeMaturity.String)
-	}
-
-	if dbVuln.CvssV31IntegrityImpact.Valid {
-		domVuln.IntegrityImpact = enums.ImpactType(dbVuln.CvssV31IntegrityImpact.String)
-	} else {
-		domVuln.IntegrityImpact = enums.ImpactTypeUnknown
-	}
-
-	if dbVuln.CvssV31AvailabilityImpact.Valid {
-		domVuln.AvailabilityImpact = enums.ImpactType(dbVuln.CvssV31AvailabilityImpact.String)
-	} else {
-		domVuln.AvailabilityImpact = enums.ImpactTypeUnknown
-	}
-
-	if dbVuln.CvssV31BaseSeverity.Valid {
-		domVuln.BaseSeverity = enums.SeverityType(dbVuln.CvssV31BaseSeverity.String)
-	} else {
-		domVuln.BaseSeverity = enums.SeverityTypeUnknown
-	}
-
-	if dbVuln.AnalystComment.Valid {
-		domVuln.AnalystComment = dbVuln.AnalystComment.String
-	} else {
-		domVuln.AnalystComment = ""
-	}
-
-	vendorComments, err := unmarshalNvdVendorComments(dbVuln.VendorComments)
-	if err != nil {
-		slog.Warn(
-			"Could not parse vendor comments",
-			slog.String("vuln_id", domVuln.CveID),
-			slog.Any("error", err),
-		)
-		domVuln.VendorComments = []tools.VendorComment{}
-	} else {
-		domVuln.VendorComments = vendorComments
-	}
-
-	if dbVuln.PublishedDate.Valid {
-		domVuln.Published = dbVuln.PublishedDate.Time
-	}
-
-	if dbVuln.LastModifiedDate.Valid {
-		domVuln.LastUpdated = dbVuln.LastModifiedDate.Time
-	}
-
-	return domVuln
 }
 
 func buildSeverityWhereClause(severityFilters []string, queryParams []any) (string, []any) {

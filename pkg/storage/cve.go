@@ -3,14 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
-	"github.com/cockroachdb/apd/v3"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/repository"
-	"github.com/sqlc-dev/pqtype"
 )
 
 type CVERepo struct {
@@ -35,71 +33,109 @@ func (r *CVERepo) getQueries(ctx context.Context) *repository.Queries {
 func (r *CVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerability) (*repository.CveDetail, error) {
 	queries := r.getQueries(ctx)
 
-	// 1. Store CVE detail of the vuln
-	baseCVSSScoreString := fmt.Sprintf("%.2f", vuln.BaseCVSSScore)
-	baseScore, _, err := apd.NewFromString(baseCVSSScoreString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create decimal from string: %w", err)
-	}
-	exploitabilityScoreString := fmt.Sprintf("%.2f", vuln.Exploit.Score)
-	exploitabilityScore, _, err := apd.NewFromString(exploitabilityScoreString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create exploitability score decimal from string: %w", err)
-	}
-	impactScoreString := fmt.Sprintf("%.2f", vuln.ImpactScore)
-	impactScore, _, err := apd.NewFromString(impactScoreString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create impact score decimal from string: %w", err)
-	}
-	riskScoreString := fmt.Sprintf("%.2f", vuln.RiskScore)
-	riskScore, _, err := apd.NewFromString(riskScoreString)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create risk score decimal from string: %w", err)
+	// --- Extract CVSS Metrics from vuln.Metrics slice ---
+	var metricV20, metricV30, metricV31 *tools.CVSSMetric
+	for i := range vuln.Metrics {
+		m := vuln.Metrics[i]
+		switch m.Version {
+		case enums.CVSSv20:
+			metricV20 = &m
+		case enums.CVSSv30:
+			metricV30 = &m
+		case enums.CVSSv31:
+			metricV31 = &m
+		}
 	}
 
-	referencesBytes, err := json.Marshal(vuln.References)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal vuln references: %w", err)
-	}
-	vendorCommentsBytes, err := json.Marshal(vuln.VendorComments)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal vuln vendor comments: %w", err)
-	}
+	// 1. Store CVE detail of the vuln
+	var err error
 
 	params := repository.CreateCVEDetailParams{
-		CveID:            vuln.CveID,
-		Cwe:              vuln.Type.String(),
-		SourceIdentifier: sql.NullString{},
+		CveID: vuln.CveID,
+		Cwe:   vuln.Type.String(),
+
 		PublishedDate:    sql.NullTime{},
 		LastModifiedDate: sql.NullTime{},
-		VulnStatus:       sql.NullString{},
 
-		// TODO: CVSS v2 Metrics go here
-
-		// TODO: CVSS v3.0 Metrics go here
-
-		CvssV31Vector:                sql.NullString{String: vuln.Access.String(), Valid: vuln.Access.String() != ""},
-		CvssV31BaseScore:             apd.NullDecimal{Decimal: *baseScore, Valid: true},
-		CvssV31BaseSeverity:          sql.NullString{String: vuln.BaseSeverity.String(), Valid: vuln.BaseSeverity.String() != ""},
-		CvssV31ExploitabilityScore:   apd.NullDecimal{Decimal: *exploitabilityScore, Valid: true},
-		CvssV31ExploitCodeMaturity:   sql.NullString{String: vuln.Exploit.Exploitability.String(), Valid: vuln.Exploit.Exploitability.String() != ""},
-		CvssV31ImpactScore:           apd.NullDecimal{Decimal: *impactScore, Valid: true},
-		CvssV31AttackVector:          sql.NullString{String: "", Valid: false},
-		CvssV31AttackComplexity:      sql.NullString{String: vuln.Complexity.String(), Valid: vuln.Complexity.String() != ""},
-		CvssV31PrivilegesRequired:    sql.NullString{String: vuln.PrivilegesRequired.String(), Valid: vuln.PrivilegesRequired.String() != ""},
-		CvssV31UserInteraction:       sql.NullString{String: "", Valid: false},
-		CvssV31Scope:                 sql.NullString{String: "", Valid: false},
-		CvssV31ConfidentialityImpact: sql.NullString{String: "", Valid: false},
-		CvssV31IntegrityImpact:       sql.NullString{String: vuln.IntegrityImpact.String(), Valid: vuln.IntegrityImpact.String() != ""},
-		CvssV31AvailabilityImpact:    sql.NullString{String: vuln.AvailabilityImpact.String(), Valid: vuln.AvailabilityImpact.String() != ""},
-
-		// TODO: Calculated metrics go here
-		RiskScore:  apd.NullDecimal{Decimal: *riskScore, Valid: riskScore != nil},
-		Likelihood: sql.NullString{String: vuln.Likelihood.String(), Valid: vuln.Likelihood.String() != ""},
-
+		Likelihood:     sql.NullString{String: vuln.Likelihood.String(), Valid: vuln.Likelihood.String() != ""},
 		NvdDescription: sql.NullString{String: vuln.Description, Valid: vuln.Description != ""},
-		NvdReferences:  pqtype.NullRawMessage{RawMessage: referencesBytes, Valid: true},
-		VendorComments: pqtype.NullRawMessage{RawMessage: vendorCommentsBytes, Valid: true},
+	}
+
+	// --- CVSS v2 Metrics
+	if metricV20 != nil {
+		params.CvssV2Vector = stringToSQLNullString(metricV20.Access.String())
+		params.CvssV2BaseScore = floatToSQLNullString(metricV20.BaseScore, "%.1f", true)
+		params.CvssV2BaseSeverity = enumToSQLNullString(metricV20.Severity, func(e enums.SeverityType) bool { return e == "" })
+		params.CvssV2ExploitabilityScore = floatToSQLNullString(metricV20.ExploitabilityScore, "%.1f", true)
+		params.CvssV2ImpactScore = floatToSQLNullString(metricV20.ImpactScore, "%.1f", true)
+		params.CvssV2AccessVector = enumToSQLNullString(metricV20.Access, func(e enums.AccessType) bool { return e == "" })
+		params.CvssV2AccessComplexity = enumToSQLNullString(metricV20.Complexity, func(e enums.ComplexityType) bool { return e == "" })
+		// TODO: We're missing these with ""?
+		// params.CvssV2Authentication = stringToSQLNullString("")
+		// params.CvssV2ConfidentialityImpact = stringToSQLNullString("")
+		params.CvssV2IntegrityImpact = enumToSQLNullString(metricV20.IntegrityImpact, func(e enums.ImpactType) bool { return e == "" })
+		params.CvssV2AvailabilityImpact = enumToSQLNullString(metricV20.AvailabilityImpact, func(e enums.ImpactType) bool { return e == "" })
+	}
+
+	// --- CVSS v3 Metrics
+	params.CvssV30Vector = stringToSQLNullString(metricV30.Access.String())
+	params.CvssV30BaseScore = floatToSQLNullString(metricV30.BaseScore, "%.1f", false)
+	params.CvssV30BaseSeverity = stringToSQLNullString(metricV30.Severity.String())
+	params.CvssV30ExploitabilityScore = floatToSQLNullString(metricV30.ExploitabilityScore, "%.1f", false)
+	params.CvssV30ImpactScore = floatToSQLNullString(metricV30.ImpactScore, "%.1f", false)
+	params.CvssV30AttackVector = enumToSQLNullString(metricV30.Access, func(e enums.AccessType) bool { return e == "" })
+	params.CvssV30AttackComplexity = enumToSQLNullString(metricV30.Complexity, func(e enums.ComplexityType) bool { return e == "" })
+	params.CvssV30PrivilegesRequired = enumToSQLNullString(metricV30.PrivilegesRequired, func(e enums.PrivilegesRequiredType) bool { return e == "" })
+	// TODO: These are missing
+	// params.CvssV30UserInteraction = ...
+	// params.CvssV30Scope = ...
+	// params.CvssV30ConfidentialityImpact = ...
+	params.CvssV30IntegrityImpact = enumToSQLNullString(metricV30.IntegrityImpact, func(e enums.ImpactType) bool { return e == "" })
+	params.CvssV30AvailabilityImpact = enumToSQLNullString(metricV30.AvailabilityImpact, func(e enums.ImpactType) bool { return e == "" })
+
+	// --- CVSS v31 Metrics
+	if metricV31 != nil {
+		// params.CvssV31Vector = stringToSQLNullString(metricV31.Vector)
+		params.CvssV31BaseScore, err = floatToAPDNullDecimal(metricV31.BaseScore, "%.1f") // DECIMAL(3,1) format
+		if err != nil {
+			return nil, fmt.Errorf("mapping CvssV31BaseScore: %w", err)
+		}
+		params.CvssV31BaseSeverity = enumToSQLNullString(metricV31.Severity, func(e enums.SeverityType) bool { return e == enums.SeverityTypeUnknown || e == "" })
+		params.CvssV31ExploitabilityScore, err = floatToAPDNullDecimal(metricV31.ExploitabilityScore, "%.1f")
+		if err != nil {
+			return nil, fmt.Errorf("mapping CvssV31ExploitabilityScore: %w", err)
+		}
+		params.CvssV31ExploitCodeMaturity = enumToSQLNullString(metricV31.Exploitability, func(e enums.ExploitabilityType) bool { return e == enums.ExploitabilityTypeUnknown || e == "" })
+		params.CvssV31ImpactScore, err = floatToAPDNullDecimal(metricV31.ImpactScore, "%.1f")
+		if err != nil {
+			return nil, fmt.Errorf("mapping CvssV31ImpactScore: %w", err)
+		}
+		params.CvssV31AttackVector = stringToSQLNullString(metricV31.Access.String())
+		params.CvssV31AttackComplexity = stringToSQLNullString(metricV31.Complexity.String())
+		params.CvssV31PrivilegesRequired = stringToSQLNullString(metricV31.PrivilegesRequired.String())
+		// params.CvssV31UserInteraction = ...
+		// params.CvssV31Scope = ...
+		// params.CvssV31ConfidentialityImpact = ...
+		params.CvssV31IntegrityImpact = stringToSQLNullString(metricV31.IntegrityImpact.String())
+		params.CvssV31AvailabilityImpact = stringToSQLNullString(metricV31.AvailabilityImpact.String())
+	}
+
+	// --- EPSS & RiskScore
+	params.EpssPercentile = floatToSQLNullString(vuln.EPSSPercentile, "%.4f", true)
+	params.EpssScore = floatToSQLNullString(vuln.EPSSScore, "$.2f", false)
+	params.RiskScore, err = floatToAPDNullDecimal(vuln.RiskScore, "%.2f")
+	if err != nil {
+		return nil, fmt.Errorf("failed to map RiskScore: %w", err)
+	}
+
+	// --- JSONB Fields ---
+	params.NvdReferences, err = marshalToPQNullRawMessage(vuln.References)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map NvdReferences: %w", err)
+	}
+	params.VendorComments, err = marshalToPQNullRawMessage(vuln.VendorComments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map VendorComments: %w", err)
 	}
 
 	cveDetail, err := queries.CreateCVEDetail(ctx, params)

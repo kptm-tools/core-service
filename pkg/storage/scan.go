@@ -300,10 +300,8 @@ func (s *PostgreSQLStore) InsertCVEDetail(ctx context.Context, qtx *repository.Q
 
 	params := repository.CreateCVEDetailParams{
 		CveID:            vuln.CveID,
-		SourceIdentifier: sql.NullString{},
 		PublishedDate:    sql.NullTime{},
 		LastModifiedDate: sql.NullTime{},
-		VulnStatus:       sql.NullString{},
 
 		// TODO: CVSS v2 Metrics go here
 

@@ -2,11 +2,9 @@
 CREATE TABLE IF NOT EXISTS cve_details (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cve_id VARCHAR(255) UNIQUE NOT NULL,
-    source_identifier VARCHAR(255),
     cwe VARCHAR(255) NOT NULL,
     published_date TIMESTAMP WITH TIME ZONE,
     last_modified_date TIMESTAMP WITH TIME ZONE,
-    vuln_status VARCHAR(50), -- e.g., 'Analyzed', 'Modified', 'Received'
 
     -- CVSS v2 Metrics
     cvss_v2_vector VARCHAR(255),
@@ -65,13 +63,8 @@ CREATE TABLE IF NOT EXISTS cve_details (
     evaluator_impact TEXT,
     evaluator_solution TEXT,
     cisa_exploit_add DATE, -- Assuming these are dates
-    cisa_action_due DATE,
-    cisa_required_action TEXT,
-    cisa_vulnerability_name TEXT,
-    cve_tags JSONB,
     nvd_description TEXT, -- The main description from NVD
     weaknesses JSONB,
-    configurations JSONB, -- Array of objects representing CPE configurations
     nvd_references JSONB,
     vendor_comments JSONB,
 

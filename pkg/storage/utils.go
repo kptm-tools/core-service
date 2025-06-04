@@ -13,6 +13,89 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
+// floatToAPDNullDecimal converts float64 to apd.NullDecimal using a specified format string.
+// Assumes that if the source float64 is present, it's a valid value to store.
+// If 0.0 from source should mean SQL NULL, your tools.Vulnerability should use *float64.
+func floatToAPDNullDecimal(f float64, formatSpecifier string) (apd.NullDecimal, error) {
+	s := fmt.Sprintf(formatSpecifier, f)
+	decVal, _, err := apd.NewFromString(s)
+	if err != nil {
+		return apd.NullDecimal{}, fmt.Errorf("string_to_apd_decimal: failed to create decimal from string '%s' (source float: %f): %w", s, f, err)
+	}
+	return apd.NullDecimal{Decimal: *decVal, Valid: true}, nil
+}
+
+// floatToSQLNullString converts float64 to sql.NullString using a specified format string.
+// Used for CVSS v2/v3.0 scores and EPSS scores as per your CreateCVEDetailParams.
+// considerZeroAsNull: if true and f is 0.0, returns SQL NULL.
+func floatToSQLNullString(f float64, formatSpecifier string, considerZeroAsNull bool) sql.NullString {
+	if considerZeroAsNull && f == 0.0 {
+		return sql.NullString{Valid: false}
+	}
+	s := fmt.Sprintf(formatSpecifier, f)
+	return sql.NullString{String: s, Valid: true}
+}
+
+// stringToSQLNullString converts a Go string to sql.NullString.
+// Empty string becomes SQL NULL.
+func stringToSQLNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+
+// enumToSQLNullString converts a Go enum (that has a .String() method) to sql.NullString.
+// If the enum's string representation is empty or matches a "zero/unknown" value, it becomes SQL NULL.
+func enumToSQLNullString[E interface{ String() string }](val E, isZeroValue func(E) bool) sql.NullString {
+	if isZeroValue(val) {
+		return sql.NullString{Valid: false}
+	}
+	sVal := val.String()
+	if sVal == "" { // Double check, as some enums might stringify their zero value to non-empty
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: sVal, Valid: true}
+}
+
+// timeToSQLNullTime converts time.Time to sql.NullTime.
+// Zero time becomes SQL NULL.
+func timeToSQLNullTime(t time.Time) sql.NullTime {
+	if t.IsZero() {
+		return sql.NullTime{Valid: false}
+	}
+	return sql.NullTime{Time: t, Valid: true}
+}
+
+// dateToSQLNullTime converts time.Time (representing a DATE) to sql.NullTime.
+// (SQL DATE columns are often mapped to sql.NullTime by sqlc if time.Time is used in Go)
+func dateToSQLNullTime(t time.Time) sql.NullTime {
+	if t.IsZero() {
+		return sql.NullTime{Valid: false}
+	}
+	// For DATE, ensure only date part is relevant, though sql.NullTime takes time.Time
+	return sql.NullTime{Time: t, Valid: true}
+}
+
+// marshalToPQNullRawMessage converts an interface to pqtype.NullRawMessage for JSONB.
+func marshalToPQNullRawMessage(data interface{}) (pqtype.NullRawMessage, error) {
+	if data == nil {
+		return pqtype.NullRawMessage{Valid: false}, nil
+	}
+
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return pqtype.NullRawMessage{}, fmt.Errorf("marshal_to_jsonb: failed to marshal data: %w", err)
+	}
+
+	// If marshalled result is "null" (e.g. from a nil pointer that was not caught by data == nil), treat as NULL.
+	// Or if it's an empty JSON array/object and you want that as NULL. For now, "null" is key.
+	if string(bytes) == "null" {
+		return pqtype.NullRawMessage{Valid: false}, nil
+	}
+	return pqtype.NullRawMessage{RawMessage: bytes, Valid: true}, nil
+}
+
 // nullStringToString converts sql.NullString to string, returning "" if null.
 func nullStringToString(ns sql.NullString) string {
 	return ns.String

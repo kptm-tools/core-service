@@ -16,11 +16,9 @@ import (
 const createCVEDetail = `-- name: CreateCVEDetail :one
 INSERT INTO cve_details (
     cve_id,
-    source_identifier,
     cwe,
     published_date,
     last_modified_date,
-    vuln_status,
     cvss_v2_vector,
     cvss_v2_base_score,
     cvss_v2_base_severity,
@@ -66,14 +64,8 @@ INSERT INTO cve_details (
     evaluator_comment,
     evaluator_impact,
     evaluator_solution,
-    cisa_exploit_add,
-    cisa_action_due,
-    cisa_required_action,
-    cisa_vulnerability_name,
-    cve_tags,
     nvd_description,
     weaknesses,
-    configurations,
     nvd_references,
     vendor_comments
 ) VALUES (
@@ -82,15 +74,12 @@ INSERT INTO cve_details (
     $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
     $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
     $41, $42, $43, $44, $45, $46, $47, $48, $49, $50,
-    $51, $52, $53, $54, $55, $56, $57, $58, $59, $60,
-    $61
-) 
+    $51, $52, $53
+  ) 
 ON CONFLICT (cve_id) DO UPDATE SET
-    source_identifier = EXCLUDED.source_identifier,
     cwe = EXCLUDED.cwe,
     published_date = EXCLUDED.published_date,
     last_modified_date = EXCLUDED.last_modified_date,
-    vuln_status = EXCLUDED.vuln_status,
     cvss_v2_vector = EXCLUDED.cvss_v2_vector,
     cvss_v2_base_score = EXCLUDED.cvss_v2_base_score,
     cvss_v2_base_severity = EXCLUDED.cvss_v2_base_severity,
@@ -136,27 +125,19 @@ ON CONFLICT (cve_id) DO UPDATE SET
     evaluator_comment = EXCLUDED.evaluator_comment,
     evaluator_impact = EXCLUDED.evaluator_impact,
     evaluator_solution = EXCLUDED.evaluator_solution,
-    cisa_exploit_add = EXCLUDED.cisa_exploit_add,
-    cisa_action_due = EXCLUDED.cisa_action_due,
-    cisa_required_action = EXCLUDED.cisa_required_action,
-    cisa_vulnerability_name = EXCLUDED.cisa_vulnerability_name,
-    cve_tags = EXCLUDED.cve_tags,
     nvd_description = EXCLUDED.nvd_description,
     weaknesses = EXCLUDED.weaknesses,
-    configurations = EXCLUDED.configurations,
     nvd_references = EXCLUDED.nvd_references,
     vendor_comments = EXCLUDED.vendor_comments,
     updated_at = NOW()
-RETURNING id, cve_id, source_identifier, cwe, published_date, last_modified_date, vuln_status, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, evaluator_comment, evaluator_impact, evaluator_solution, cisa_exploit_add, cisa_action_due, cisa_required_action, cisa_vulnerability_name, cve_tags, nvd_description, weaknesses, configurations, nvd_references, vendor_comments, created_at, updated_at
+RETURNING id, cve_id, cwe, published_date, last_modified_date, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, evaluator_comment, evaluator_impact, evaluator_solution, cisa_exploit_add, nvd_description, weaknesses, nvd_references, vendor_comments, created_at, updated_at
 `
 
 type CreateCVEDetailParams struct {
 	CveID                        string                `json:"cve_id"`
-	SourceIdentifier             sql.NullString        `json:"source_identifier"`
 	Cwe                          string                `json:"cwe"`
 	PublishedDate                sql.NullTime          `json:"published_date"`
 	LastModifiedDate             sql.NullTime          `json:"last_modified_date"`
-	VulnStatus                   sql.NullString        `json:"vuln_status"`
 	CvssV2Vector                 sql.NullString        `json:"cvss_v2_vector"`
 	CvssV2BaseScore              sql.NullString        `json:"cvss_v2_base_score"`
 	CvssV2BaseSeverity           sql.NullString        `json:"cvss_v2_base_severity"`
@@ -202,14 +183,8 @@ type CreateCVEDetailParams struct {
 	EvaluatorComment             sql.NullString        `json:"evaluator_comment"`
 	EvaluatorImpact              sql.NullString        `json:"evaluator_impact"`
 	EvaluatorSolution            sql.NullString        `json:"evaluator_solution"`
-	CisaExploitAdd               sql.NullTime          `json:"cisa_exploit_add"`
-	CisaActionDue                sql.NullTime          `json:"cisa_action_due"`
-	CisaRequiredAction           sql.NullString        `json:"cisa_required_action"`
-	CisaVulnerabilityName        sql.NullString        `json:"cisa_vulnerability_name"`
-	CveTags                      pqtype.NullRawMessage `json:"cve_tags"`
 	NvdDescription               sql.NullString        `json:"nvd_description"`
 	Weaknesses                   pqtype.NullRawMessage `json:"weaknesses"`
-	Configurations               pqtype.NullRawMessage `json:"configurations"`
 	NvdReferences                pqtype.NullRawMessage `json:"nvd_references"`
 	VendorComments               pqtype.NullRawMessage `json:"vendor_comments"`
 }
@@ -217,11 +192,9 @@ type CreateCVEDetailParams struct {
 func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams) (CveDetail, error) {
 	row := q.db.QueryRowContext(ctx, createCVEDetail,
 		arg.CveID,
-		arg.SourceIdentifier,
 		arg.Cwe,
 		arg.PublishedDate,
 		arg.LastModifiedDate,
-		arg.VulnStatus,
 		arg.CvssV2Vector,
 		arg.CvssV2BaseScore,
 		arg.CvssV2BaseSeverity,
@@ -267,14 +240,8 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 		arg.EvaluatorComment,
 		arg.EvaluatorImpact,
 		arg.EvaluatorSolution,
-		arg.CisaExploitAdd,
-		arg.CisaActionDue,
-		arg.CisaRequiredAction,
-		arg.CisaVulnerabilityName,
-		arg.CveTags,
 		arg.NvdDescription,
 		arg.Weaknesses,
-		arg.Configurations,
 		arg.NvdReferences,
 		arg.VendorComments,
 	)
@@ -282,11 +249,9 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 	err := row.Scan(
 		&i.ID,
 		&i.CveID,
-		&i.SourceIdentifier,
 		&i.Cwe,
 		&i.PublishedDate,
 		&i.LastModifiedDate,
-		&i.VulnStatus,
 		&i.CvssV2Vector,
 		&i.CvssV2BaseScore,
 		&i.CvssV2BaseSeverity,
@@ -333,13 +298,8 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 		&i.EvaluatorImpact,
 		&i.EvaluatorSolution,
 		&i.CisaExploitAdd,
-		&i.CisaActionDue,
-		&i.CisaRequiredAction,
-		&i.CisaVulnerabilityName,
-		&i.CveTags,
 		&i.NvdDescription,
 		&i.Weaknesses,
-		&i.Configurations,
 		&i.NvdReferences,
 		&i.VendorComments,
 		&i.CreatedAt,

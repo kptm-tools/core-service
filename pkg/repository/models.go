@@ -244,11 +244,9 @@ type Credential struct {
 type CveDetail struct {
 	ID                           uuid.UUID             `json:"id"`
 	CveID                        string                `json:"cve_id"`
-	SourceIdentifier             sql.NullString        `json:"source_identifier"`
 	Cwe                          string                `json:"cwe"`
 	PublishedDate                sql.NullTime          `json:"published_date"`
 	LastModifiedDate             sql.NullTime          `json:"last_modified_date"`
-	VulnStatus                   sql.NullString        `json:"vuln_status"`
 	CvssV2Vector                 sql.NullString        `json:"cvss_v2_vector"`
 	CvssV2BaseScore              sql.NullString        `json:"cvss_v2_base_score"`
 	CvssV2BaseSeverity           sql.NullString        `json:"cvss_v2_base_severity"`
@@ -295,13 +293,8 @@ type CveDetail struct {
 	EvaluatorImpact              sql.NullString        `json:"evaluator_impact"`
 	EvaluatorSolution            sql.NullString        `json:"evaluator_solution"`
 	CisaExploitAdd               sql.NullTime          `json:"cisa_exploit_add"`
-	CisaActionDue                sql.NullTime          `json:"cisa_action_due"`
-	CisaRequiredAction           sql.NullString        `json:"cisa_required_action"`
-	CisaVulnerabilityName        sql.NullString        `json:"cisa_vulnerability_name"`
-	CveTags                      pqtype.NullRawMessage `json:"cve_tags"`
 	NvdDescription               sql.NullString        `json:"nvd_description"`
 	Weaknesses                   pqtype.NullRawMessage `json:"weaknesses"`
-	Configurations               pqtype.NullRawMessage `json:"configurations"`
 	NvdReferences                pqtype.NullRawMessage `json:"nvd_references"`
 	VendorComments               pqtype.NullRawMessage `json:"vendor_comments"`
 	CreatedAt                    sql.NullTime          `json:"created_at"`
