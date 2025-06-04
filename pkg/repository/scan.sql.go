@@ -56,6 +56,78 @@ func (q *Queries) CreateScan(ctx context.Context, arg CreateScanParams) (Scan, e
 	return i, err
 }
 
+const getLatestScanByHostID = `-- name: GetLatestScanByHostID :one
+SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at, protection_score
+FROM scans
+WHERE
+  host_id = $1
+  AND started_at >= COALESCE($2, '1900-01-01'::timestamp)
+  AND started_at <= COALESCE($3, NOW()::timestamp)
+ORDER BY
+  started_at DESC
+LIMIT 1
+`
+
+type GetLatestScanByHostIDParams struct {
+	HostID      uuid.UUID    `json:"host_id"`
+	StartedAt   sql.NullTime `json:"started_at"`
+	StartedAt_2 sql.NullTime `json:"started_at_2"`
+}
+
+func (q *Queries) GetLatestScanByHostID(ctx context.Context, arg GetLatestScanByHostIDParams) (Scan, error) {
+	row := q.db.QueryRowContext(ctx, getLatestScanByHostID, arg.HostID, arg.StartedAt, arg.StartedAt_2)
+	var i Scan
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.OperatorID,
+		&i.HostID,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProtectionScore,
+	)
+	return i, err
+}
+
+const getOldestScanByHostID = `-- name: GetOldestScanByHostID :one
+SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at, protection_score
+FROM scans
+WHERE
+  host_id = $1
+  AND started_at >= COALESCE($2, '1900-01-01'::timestamp)
+  AND started_at <= COALESCE($3, NOW()::timestamp)
+ORDER BY
+  started_at ASC
+LIMIT 1
+`
+
+type GetOldestScanByHostIDParams struct {
+	HostID      uuid.UUID    `json:"host_id"`
+	StartedAt   sql.NullTime `json:"started_at"`
+	StartedAt_2 sql.NullTime `json:"started_at_2"`
+}
+
+func (q *Queries) GetOldestScanByHostID(ctx context.Context, arg GetOldestScanByHostIDParams) (Scan, error) {
+	row := q.db.QueryRowContext(ctx, getOldestScanByHostID, arg.HostID, arg.StartedAt, arg.StartedAt_2)
+	var i Scan
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.OperatorID,
+		&i.HostID,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProtectionScore,
+	)
+	return i, err
+}
+
 const getPreviousScanOnHost = `-- name: GetPreviousScanOnHost :one
 SELECT
 	ps.id, ps.tenant_id, ps.operator_id, ps.host_id, ps.status, ps.started_at, ps.ended_at, ps.created_at, ps.updated_at, ps.protection_score
@@ -131,6 +203,74 @@ func (q *Queries) GetProtectionScoreForScan(ctx context.Context, scanID uuid.UUI
 	return protection_score, err
 }
 
+const getReportsByTenantID = `-- name: GetReportsByTenantID :many
+SELECT
+  s.id AS scan_id,
+  h.domain AS host_name,
+  h.ip AS ip,
+  s.started_at as scan_date,
+  (SELECT COUNT(sv.id) FROM vulnerabilities sv WHERE sv.scan_id = s.id) AS total_severities,
+  CASE
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM vulnerabilities sv
+      WHERE sv.scan_id = s.id
+        AND sv.analyst_comment IS NOT NULL
+    ) THEN 'PENDING' -- CommentStatusPending: No commens on any vulnerability
+    WHEN EXISTS (
+      SELECT 1
+      FROM vulnerabilities sv
+      WHERE sv.scan_id = s.id
+        AND sv.analyst_comment IS NOT NULL
+        AND sv.severity = 'Critical'
+    ) THEN 'CRITICAL' -- CommentStatusCritical: Comment on at least one Critical vulnerability
+    ELSE 'NEW COMMENT' -- CommentStatusNewComment: At least one comment, but no Critical Severity Comments
+  END AS comment_status
+FROM scans s
+INNER JOIN hosts h ON s.host_id = h.id
+WHERE s.tenant_id = $1 AND s.status = 'Completed'
+ORDER BY scan_date DESC
+`
+
+type GetReportsByTenantIDRow struct {
+	ScanID          uuid.UUID      `json:"scan_id"`
+	HostName        sql.NullString `json:"host_name"`
+	Ip              sql.NullString `json:"ip"`
+	ScanDate        sql.NullTime   `json:"scan_date"`
+	TotalSeverities int64          `json:"total_severities"`
+	CommentStatus   string         `json:"comment_status"`
+}
+
+func (q *Queries) GetReportsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]GetReportsByTenantIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getReportsByTenantID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetReportsByTenantIDRow
+	for rows.Next() {
+		var i GetReportsByTenantIDRow
+		if err := rows.Scan(
+			&i.ScanID,
+			&i.HostName,
+			&i.Ip,
+			&i.ScanDate,
+			&i.TotalSeverities,
+			&i.CommentStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getScanByID = `-- name: GetScanByID :one
 SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at, protection_score
 FROM scans
@@ -152,6 +292,30 @@ func (q *Queries) GetScanByID(ctx context.Context, id uuid.UUID) (Scan, error) {
 		&i.UpdatedAt,
 		&i.ProtectionScore,
 	)
+	return i, err
+}
+
+const getScanDetailsForSummary = `-- name: GetScanDetailsForSummary :one
+SELECT
+  h.alias AS host_alias,
+  s.host_id
+FROM
+  scans s
+JOIN
+  hosts h ON s.host_id = h.id
+WHERE 
+  s.id = $1
+`
+
+type GetScanDetailsForSummaryRow struct {
+	HostAlias string    `json:"host_alias"`
+	HostID    uuid.UUID `json:"host_id"`
+}
+
+func (q *Queries) GetScanDetailsForSummary(ctx context.Context, id uuid.UUID) (GetScanDetailsForSummaryRow, error) {
+	row := q.db.QueryRowContext(ctx, getScanDetailsForSummary, id)
+	var i GetScanDetailsForSummaryRow
+	err := row.Scan(&i.HostAlias, &i.HostID)
 	return i, err
 }
 
@@ -348,4 +512,53 @@ func (q *Queries) ListScansForTenant(ctx context.Context, tenantID uuid.UUID) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProtectionScoreForScan = `-- name: UpdateProtectionScoreForScan :exec
+UPDATE scans
+SET protection_score=$1, updated_at=now()
+WHERE id=$2
+`
+
+type UpdateProtectionScoreForScanParams struct {
+	ProtectionScore float64   `json:"protection_score"`
+	ID              uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateProtectionScoreForScan(ctx context.Context, arg UpdateProtectionScoreForScanParams) error {
+	_, err := q.db.ExecContext(ctx, updateProtectionScoreForScan, arg.ProtectionScore, arg.ID)
+	return err
+}
+
+const updateScanStatus = `-- name: UpdateScanStatus :exec
+UPDATE scans
+SET status = $1, updated_at = now()
+WHERE id = $2
+`
+
+type UpdateScanStatusParams struct {
+	Status ScanStatus `json:"status"`
+	ID     uuid.UUID  `json:"id"`
+}
+
+func (q *Queries) UpdateScanStatus(ctx context.Context, arg UpdateScanStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateScanStatus, arg.Status, arg.ID)
+	return err
+}
+
+const updateScanStatusAndEndedAt = `-- name: UpdateScanStatusAndEndedAt :exec
+UPDATE scans
+SET status = $1, updated_at = now(), ended_at = $2
+WHERE id = $3
+`
+
+type UpdateScanStatusAndEndedAtParams struct {
+	Status  ScanStatus   `json:"status"`
+	EndedAt sql.NullTime `json:"ended_at"`
+	ID      uuid.UUID    `json:"id"`
+}
+
+func (q *Queries) UpdateScanStatusAndEndedAt(ctx context.Context, arg UpdateScanStatusAndEndedAtParams) error {
+	_, err := q.db.ExecContext(ctx, updateScanStatusAndEndedAt, arg.Status, arg.EndedAt, arg.ID)
+	return err
 }

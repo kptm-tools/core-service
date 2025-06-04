@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -9,11 +10,13 @@ import (
 )
 
 type IScanScheduleService interface {
-	InsertScanScheduling(scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) error
-	DeleteScanScheduleByID(int) (bool, error)
-	PatchScanSchedule(scanScheduleID int, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID, operatorID, hostID uuid.UUID) error
-	GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error)
-	GetCurrentHostID(scanScheduleID int) (uuid.UUID, error)
+	CreateScanSchedule(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) (*domain.ScanSchedule, error)
+	DeleteScanScheduleByID(context.Context, int) (bool, error)
+	PatchScanSchedule(ctx context.Context, scanScheduleID int, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID, operatorID, hostID uuid.UUID) error
+	GetScanSchedulesByTenantID(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanScheduleSummary, error)
+	GetCurrentHostID(ctx context.Context, scanScheduleID int) (uuid.UUID, error)
+	UpdateScanScheduleScanID(ctx context.Context, scanID uuid.UUID, scanScheduleID int) error
+	ScanScheduleDisableJob(context.Context, int) error
 }
 
 type IScanScheduleHandlers interface {

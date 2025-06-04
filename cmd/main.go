@@ -63,7 +63,7 @@ func main() {
 	tenantService := services.NewTenantService(coreStore)
 	scanService := services.NewScanService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.ScanResult)
 	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve)
-	scanScheduleService := services.NewScanScheduleService(coreStore)
+	scanScheduleService := services.NewScanScheduleService(coreStore, coreStore.Scan, coreStore.ScanSchedule)
 	emailService := services.NewEmailService(
 		c.SMTP.Host,
 		c.SMTP.Port,
@@ -100,11 +100,11 @@ func main() {
 	reportHub := report.NewReportHub(wsConfig, scanService, authService)
 
 	// Event Subscriptions
-	if err := events.SetupEventBus(eventBus, scanService); err != nil {
+	if err := events.SetupEventBus(eventBus, scanService, vulnService); err != nil {
 		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 
-	storageListener, err := storage.NewPostgresListener(c, scanService, emailService, eventBus)
+	storageListener, err := storage.NewPostgresListener(c, scanService, scanScheduleService, emailService, eventBus)
 	if err != nil {
 		logger.Error("Error creating db listener", slog.Any("error", err))
 		os.Exit(1)

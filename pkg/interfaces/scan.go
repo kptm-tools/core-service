@@ -17,16 +17,15 @@ type IScanService interface {
 	CreateScan(ctx context.Context, hostID uuid.UUID, tenantID, operatorID uuid.UUID, startedAt *time.Time) (*domain.Scan, error)
 	GetCurrentScans(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
 	InsertScanResult(context.Context, domain.ScanResult) error
-	InsertVulnerabilityResult(context.Context, *domain.ScanResult) error
-	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
+	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, status enums.ScanStatus) error
 	MarkScanAsFailed(ctx context.Context, scanID uuid.UUID) error
 	MarkScanAsCancelled(ctx context.Context, scanID uuid.UUID) error
 	GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
 	GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
-	HandleScanCompletion(scanID uuid.UUID) error
-	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
-	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
+	HandleScanCompletion(ctx context.Context, scanID uuid.UUID) error
+	GetScanVulnerabilitySummaryByID(ctx context.Context, scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	GetAllReportsForTenant(context.Context, uuid.UUID) ([]domain.ReportItem, error)
 	GetScoreCardTrendsForTenant(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
 	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)

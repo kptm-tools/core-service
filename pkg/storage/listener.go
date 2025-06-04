@@ -17,10 +17,11 @@ import (
 )
 
 type PostgresListener struct {
-	listener     *pq.Listener
-	eventBus     cmmn.EventBus
-	scanService  interfaces.IScanService
-	emailService interfaces.IEmailService
+	listener        *pq.Listener
+	eventBus        cmmn.EventBus
+	scanService     interfaces.IScanService
+	scheduleService interfaces.IScanScheduleService
+	emailService    interfaces.IEmailService
 }
 
 type ScanCron struct {
@@ -37,6 +38,7 @@ type ScanCron struct {
 func NewPostgresListener(
 	cfg *config.Config,
 	scanService interfaces.IScanService,
+	scheduleService interfaces.IScanScheduleService,
 	emailService interfaces.IEmailService,
 	eventBus cmmn.EventBus,
 ) (*PostgresListener, error) {
@@ -115,7 +117,7 @@ func (pl *PostgresListener) handleScanCompletedNotification(ctx context.Context,
 
 	slog.Debug("Parsed scan completed event", slog.String("scanID", scanCompletedEvent.ScanID.String()))
 	// Use scanService to handle scanCompleted
-	if err := pl.scanService.HandleScanCompletion(scanCompletedEvent.ScanID); err != nil {
+	if err := pl.scanService.HandleScanCompletion(ctx, scanCompletedEvent.ScanID); err != nil {
 		slog.Error("Failed to handle scan completion",
 			slog.String("scanID", scanCompletedEvent.ScanID.String()),
 			slog.Any("error", err))
@@ -143,7 +145,6 @@ func (pl *PostgresListener) handleScanCompletedNotification(ctx context.Context,
 }
 
 func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payload string) error {
-	// TODO: Use this context to mark a scan as failed after ~1 hr
 	// Parse the notification method
 	var scanCron ScanCron
 	if err := json.Unmarshal([]byte(payload), &scanCron); err != nil {
@@ -174,7 +175,7 @@ func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payl
 	pl.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
 	if !scanCron.HasPeriod {
-		errDisable := pl.scanService.ScanScheduleDisableJob(scanCron.ScanScheduleID)
+		errDisable := pl.scheduleService.ScanScheduleDisableJob(ctx, scanCron.ScanScheduleID)
 		if errDisable != nil {
 			slog.Error("Failed to disable job of scan scheduling", slog.Any("error", errDisable))
 		}
@@ -192,7 +193,7 @@ func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payl
 			return errCreationScan
 		}
 		// 2. Update scan scheduling with new scanID
-		errUpdateScanSchedule := pl.scanService.UpdateScanScheduleScanID(scan.ID, scanCron.ScanScheduleID)
+		errUpdateScanSchedule := pl.scheduleService.UpdateScanScheduleScanID(ctx, scan.ID, scanCron.ScanScheduleID)
 		if errUpdateScanSchedule != nil {
 			slog.Error("Failed to update scan_scheduling", slog.Any("error", err))
 		}

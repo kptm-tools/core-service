@@ -126,7 +126,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 			slog.Error("Failed to create scans", slog.Any("error", err))
 			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		}
-		errScanSchedule := h.scanScheduleService.InsertScanScheduling(scan.ID, dateSchedule, scanRequest.Frequency)
+		_, errScanSchedule := h.scanScheduleService.CreateScanSchedule(ctx, scan.ID, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {
 			slog.Error("Error inserting scan schedule",
 				slog.String("scan_id", scan.ID.String()),
@@ -143,6 +143,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 }
 
 func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
+	ctx := req.Context()
 	scanID, err := GetUUID(req)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
@@ -167,7 +168,7 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 	}
 
 	// 2. Update scan status and ended_at in our storage
-	if err := h.scanService.MarkScanAsCancelled(scanID); err != nil {
+	if err := h.scanService.MarkScanAsCancelled(ctx, scanID); err != nil {
 		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
 		var alreadyFinishedErr *customerrors.ScanAlreadyFinishedError
 		if errors.As(err, &alreadyFinishedErr) {
@@ -176,7 +177,7 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	// 3. Get the emails rapporteurs structure
-	rapporteurs, hostName, errorGerRapporteurs := h.scanService.GetRapporteursScan(scanID)
+	rapporteurs, hostName, errorGerRapporteurs := h.scanService.GetScanRapporteursAndHostAlias(ctx, scanID)
 	if errorGerRapporteurs != nil {
 		slog.Error("Can not obtain rapporteurs associated to the scan",
 			slog.String("scan_id", scanID.String()),
@@ -215,6 +216,7 @@ func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("err", err))
@@ -231,7 +233,7 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
 	}
 
-	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID, timePeriodFilter, severityFilters)
+	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(ctx, scanID, timePeriodFilter, severityFilters)
 	if err != nil {
 		slog.Error("failed to get scan vulnerabilities summary",
 			slog.String("scan_id", scanID.String()),
@@ -264,12 +266,17 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 }
 
 func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	ctx := r.Context()
+	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		slog.Error("Failed type assertion for tenantID", slog.String("type", fmt.Sprintf("%T", tenantID)))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "TenantID is invalid"})
+	}
 
-	reportItems, err := h.scanService.GetAllReportsForTenant(tenantID)
+	reportItems, err := h.scanService.GetAllReportsForTenant(ctx, tenantID)
 	if err != nil {
 		slog.Error("Failed to get all reports for tenant",
-			slog.String("tenant_id", tenantID),
+			slog.String("tenant_id", tenantID.String()),
 			slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
@@ -430,12 +437,13 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 }
 
 func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	id, err := GetID(r)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(id)
+	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(ctx, id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}

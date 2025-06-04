@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,14 +19,16 @@ import (
 )
 
 type VulnerRepo struct {
+	db             *sql.DB
 	defaultQueries *repository.Queries
 }
 
 var _ interfaces.VulnerabilityRepository = (*VulnerRepo)(nil)
 
-func NewVulnerRepository(queries *repository.Queries) *VulnerRepo {
+func NewVulnerRepository(queries *repository.Queries, db *sql.DB) *VulnerRepo {
 	return &VulnerRepo{
 		defaultQueries: queries,
+		db:             db,
 	}
 }
 
@@ -234,6 +237,168 @@ func (r *VulnerRepo) GetSeverityCountsByScanID(ctx context.Context, scanID uuid.
 		Critical: int(dbCounts.CriticalVulnerabilities),
 	}
 	return counts, nil
+}
+
+func (r *VulnerRepo) GetScanVulnerabilityAggregates(
+	ctx context.Context,
+	params domain.VulnerabilityAggregatesParams,
+) (*domain.VulnerabilityAggregatesResult, error) {
+	queries := r.getQueries(ctx)
+	sqlcParams := repository.GetScanVulnerabilityAggregatesByScanIDParams{
+		ScanID: params.ScanID,
+	}
+	if len(params.SeverityFilters) > 0 {
+		sqlcParams.SeverityFilters = params.SeverityFilters
+	} else {
+		sqlcParams.SeverityFilters = nil
+	}
+	row, err := queries.GetScanVulnerabilityAggregatesByScanID(ctx, sqlcParams)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrScanNotFound
+		}
+		return nil, err
+	}
+	return &domain.VulnerabilityAggregatesResult{
+		TotalVulnerabilities: int(row.TotalVulnerabilities),
+		SeverityCounts: tools.SeverityCounts{
+			Critical: int(row.CriticalVulnerabilities), High: int(row.HighVulnerabilities),
+			Medium: int(row.MediumVulnerabilities), Low: int(row.MediumVulnerabilities),
+			None: int(row.NoneVulnerabilities), Unknown: int(row.UnknownVulnerabilities),
+		},
+	}, nil
+}
+
+func (r *VulnerRepo) GetVulnerabilityCategoriesByScan(
+	ctx context.Context,
+	params domain.VulnerabilityCategoriesParams,
+) ([]domain.ServiceCategoryData, error) {
+	queries := r.getQueries(ctx)
+	sqlcParams := repository.GetVulnerabilityCategoriesByScanParams{
+		ScanID: params.ScanID,
+	}
+	if len(params.SeverityFilters) > 0 {
+		sqlcParams.SeverityFilters = params.SeverityFilters
+	} else {
+		sqlcParams.SeverityFilters = nil
+	}
+
+	rows, err := queries.GetVulnerabilityCategoriesByScan(ctx, sqlcParams)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []domain.ServiceCategoryData{}, nil
+		}
+		return nil, err
+	}
+	categories := make([]domain.ServiceCategoryData, len(rows))
+	for i, row := range rows {
+		categories[i] = domain.ServiceCategoryData{
+			Category: row.Category.String,
+			Count:    int(row.Count),
+		}
+	}
+	return categories, nil
+}
+
+func (r *VulnerRepo) GetHostVulnerabilityTrends(
+	ctx context.Context,
+	params domain.VulnerabilityTrendsParams,
+) ([]domain.ServiceTimePeriod, error) {
+	// This query is kind of complicated, but what it does is fill out time_periods and labels,
+	// even when there is no data for said time_period. E.g: we only have data
+	// for February, but we want to have the counts for other months to be 0 too.
+	// It also has a CTE called ScanPeriods, which identifies if there was a scan at all
+	// during that period. This allows us to differentiate if we got a 0 count because there
+	// are no vulnerabilities, or because there is no scan.
+	baseTrendQuery := `
+		WITH TimePeriods AS (
+			SELECT
+				CASE
+					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
+					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(date_series, 'Q')
+					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+					ELSE 'Unknown Period'
+				END AS time_period_label,
+				CASE
+					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'YYYY-MM')
+					WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
+					WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+					ELSE '1'
+				END AS ordering_period,
+				date_series
+			FROM generate_series(
+				DATE_TRUNC('year', CURRENT_DATE),
+				DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
+				CASE
+					WHEN $2 = 'Month' THEN INTERVAL '1 month'
+					WHEN $2 = 'Quarter' THEN INTERVAL '3 month'
+					WHEN $2 = 'Semester' THEN INTERVAL '6 month'
+					ELSE INTERVAL '1 month'
+				END
+			) AS date_series
+		),
+		ScanPeriods AS (
+			SELECT
+        DISTINCT ON (time_period_label)
+				CASE
+					WHEN $2 = 'Month' THEN TO_CHAR(s.started_at, 'FMMonth')
+					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(s.started_at, 'Q')
+					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(s.started_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
+					ELSE 'Unknown Period'
+				END AS time_period_label,
+				s.id AS scan_id,
+				s.started_at AS scan_started_at
+			FROM scans s
+			WHERE s.host_id = $1
+				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+      ORDER BY time_period_label, s.started_at DESC
+		),
+		VulnerabilityCounts AS (
+			SELECT
+				sp.time_period_label,
+				COUNT(sv.id) AS vulnerability_count
+			FROM ScanPeriods sp
+			LEFT JOIN scan_vulnerabilities sv ON sv.scan_id = sp.scan_id
+			INNER JOIN scans s ON sp.scan_id = s.id
+			WHERE s.host_id = $1
+				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+				-- Severity Filter Dynamic Condition goes here
+				%s
+			GROUP BY sp.time_period_label
+		)
+		SELECT
+			tp.time_period_label AS time_period,
+			vc.vulnerability_count AS vulnerability_count -- Now vc.vulnerability_count will be NULL if no scan
+		FROM TimePeriods tp
+		LEFT JOIN ScanPeriods sp ON tp.time_period_label = sp.time_period_label -- Join with ScanPeriods to ensure time period has a scan
+		LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
+		ORDER BY tp.ordering_period;
+	`
+
+	trendQueryParams := []any{params.HostID, params.TimePeriodFilter.String()}
+	trendSeverityWhereClause, trendQueryParams := buildSeverityWhereClause(params.SeverityFilters, trendQueryParams)
+	forattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
+	slog.Debug("Executing Host Trend Query",
+		slog.Any("query_params", trendQueryParams))
+
+	trendsRows, err := r.db.Query(forattedTrendQuery, trendQueryParams...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query vulnerability trends for host %s: %w", params.HostID.String(), err)
+	}
+	defer trendsRows.Close()
+
+	var timePeriods []domain.ServiceTimePeriod
+	for trendsRows.Next() {
+		var timePeriodData domain.ServiceTimePeriod
+		if err := trendsRows.Scan(&timePeriodData.TimePeriod, &timePeriodData.VulnerabilityCount); err != nil {
+			return nil, fmt.Errorf("failed to scan into time period: %w", err)
+		}
+		timePeriods = append(timePeriods, timePeriodData)
+	}
+	if trendsRows.Err() != nil {
+		return nil, fmt.Errorf("failed to iterate trend rows: %w", err)
+	}
+	return timePeriods, nil
 }
 
 func toDomainVuln(dbVuln repository.Vulnerability) tools.Vulnerability {
@@ -584,4 +749,18 @@ func toDomainVulnWithCveDetail(dbVuln repository.GetVulnerabilitiesWithCveDetail
 	}
 
 	return domVuln
+}
+
+func buildSeverityWhereClause(severityFilters []string, queryParams []any) (string, []any) {
+	severityWhereClause := ""
+	if len(severityFilters) > 0 {
+		placeholders := make([]string, len(severityFilters))
+		for i, severity := range severityFilters {
+			placeholders[i] = fmt.Sprintf("$%d", len(queryParams)+1)
+			queryParams = append(queryParams, severity)
+		}
+		severityWhereClause = fmt.Sprintf("AND sv.severity ILIKE ANY(array[%s])", strings.Join(placeholders, ","))
+	}
+
+	return severityWhereClause, queryParams
 }

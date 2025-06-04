@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/repository"
@@ -44,14 +45,6 @@ type IStorage interface {
 	GetScanVulnerabilityCount(uuid.UUID) (int, error)
 	GetSeverityCounts(uuid.UUID) (*tools.SeverityCounts, error)
 	GetVulnerabilityByID(int) (*domain.Vulnerability, error)
-	CreateScanScheduling(uuid.UUID, string, bool, string, int, time.Time) error
-	ScanScheduleDisableJob(int, bool) error
-	UpdateScanScheduling(uuid.UUID, int) error
-	DeleteScanScheduleByID(int) (bool, error)
-	GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error)
-	PatchScanScheduleByID(int, uuid.UUID, string, bool, string, int, time.Time) error
-	GetCurrentHostIDFromScanSchedule(int) (uuid.UUID, error)
-	ScanScheduleEnableJob(string, bool, int) error
 	GetHostVulnerabilityTrends(hostID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
 	GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
 	UpdateVulnerabilityComment(ID int, comment string) (bool, error)
@@ -73,8 +66,25 @@ type ScanRepository interface {
 	GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
 	GetScanByID(context.Context, uuid.UUID) (*domain.Scan, error)
 	GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
-	GetProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetLatestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
+	GetOldestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
 	GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	GetProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetReportsByTenantID(context.Context, uuid.UUID) ([]domain.ReportItem, error)
+	UpdateProtectionScore(ctx context.Context, scanID uuid.UUID, newScore float64) error
+	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus) error
+	UpdateScanStatusAndEndedAt(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus, endedAt time.Time) error
+}
+
+type ScanScheduleRepository interface {
+	CreateScanSchedule(context.Context, domain.ScanSchedule) (*domain.ScanSchedule, error)
+	GetScanScheduleByID(context.Context, int) (*domain.ScanSchedule, error)
+	GetScanSchedulesByTenantID(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanScheduleSummary, error)
+	UpdateScanScheduling(context.Context, uuid.UUID, int) error
+	DeleteScanScheduleByID(context.Context, int) (bool, error)
+	PatchScanScheduleByID(context.Context, int, uuid.UUID, string, bool, string, int, time.Time) error
+	EnableJob(context.Context, string, bool, int) error
+	DisableJob(context.Context, int, bool) error
 }
 
 type ScanResultRepository interface {
@@ -93,6 +103,9 @@ type VulnerabilityRepository interface {
 	DeleteVulnerabilityComment(context.Context, uuid.UUID) (bool, error)
 	HasComment(context.Context, uuid.UUID) (bool, error)
 	GetSeverityCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetScanVulnerabilityAggregates(context.Context, domain.VulnerabilityAggregatesParams) (*domain.VulnerabilityAggregatesResult, error)
+	GetVulnerabilityCategoriesByScan(context.Context, domain.VulnerabilityCategoriesParams) ([]domain.ServiceCategoryData, error)
+	GetHostVulnerabilityTrends(context.Context, domain.VulnerabilityTrendsParams) ([]domain.ServiceTimePeriod, error)
 }
 
 type OSRepository interface {

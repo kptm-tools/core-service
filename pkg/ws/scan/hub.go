@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -67,6 +68,7 @@ func (h *ScanHub) Serve(w http.ResponseWriter, r *http.Request) {
 
 // Run spins up the select statement for managing clients and periodically sending scan data.
 func (h *ScanHub) Run() {
+	ctx := context.Background()
 	ticker := time.NewTicker(h.scanInterval)
 	defer ticker.Stop()
 
@@ -88,11 +90,11 @@ func (h *ScanHub) Run() {
 			for _, client := range h.clients {
 				scanClient := client.(*ScanClient) // Assert back to ScanClient struct
 
-				scans, err := h.scanService.GetCurrentScans(scanClient.tenantID)
+				scans, err := h.scanService.GetCurrentScans(ctx, scanClient.tenantID)
 				if err != nil {
 					slog.Error("Failed to get scans",
 						slog.String("client_id", client.GetID()),
-						slog.String("tenant_id", scanClient.tenantID),
+						slog.String("tenant_id", scanClient.tenantID.String()),
 						slog.Any("error", err))
 				}
 

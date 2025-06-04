@@ -480,7 +480,12 @@ func (s *PostgreSQLStore) UpdateScanStatus(scanID uuid.UUID, status string) erro
 	return nil
 }
 
-func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error {
+func (s *PostgreSQLStore) UpdateScanStatusAndEndedAt(
+	tx *sql.Tx,
+	scanID uuid.UUID,
+	status string,
+	endedAt time.Time,
+) error {
 	query := `UPDATE scans
             SET status = $1, updated_at = CURRENT_TIMESTAMP, ended_at = $2
             WHERE id = $3`
@@ -1175,7 +1180,14 @@ func (s *PostgreSQLStore) GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCo
 	return &severityCounts, nil
 }
 
-func (s *PostgreSQLStore) CreateScanScheduling(scanID uuid.UUID, cronExpression string, isRepeated bool, periodName string, periodQuantity int, scheduledDate time.Time) error {
+func (s *PostgreSQLStore) CreateScanScheduling(
+	scanID uuid.UUID,
+	cronExpression string,
+	isRepeated bool,
+	periodName string,
+	periodQuantity int,
+	scheduledDate time.Time,
+) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
@@ -1216,15 +1228,6 @@ func (s *PostgreSQLStore) ScanScheduleDisableJob(scanScheduleID int, withDelete 
 	err := s.db.QueryRow(query, scanScheduleID, withDelete).Scan(&result)
 	if err != nil || result == 0 {
 		return fmt.Errorf("failed to unregister job: %w", err)
-	}
-	return nil
-}
-
-func (s *PostgreSQLStore) UpdateScanScheduling(scanID uuid.UUID, scanScheduleID int) error {
-	query := `UPDATE scan_scheduling SET scan_id=$1, updated_at=now() WHERE id=$2`
-	_, err := s.db.Exec(query, scanID, scanScheduleID)
-	if err != nil {
-		return fmt.Errorf("failed to update scan scheduling: %w", err)
 	}
 	return nil
 }

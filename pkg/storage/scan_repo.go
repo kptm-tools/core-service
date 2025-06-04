@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -122,6 +123,21 @@ func (r *ScanRepo) GetProtectionScore(ctx context.Context, scanID uuid.UUID) (fl
 	return score, nil
 }
 
+func (r *ScanRepo) UpdateProtectionScore(ctx context.Context, scanID uuid.UUID, newScore float64) error {
+	queries := r.getQueries(ctx)
+	params := repository.UpdateProtectionScoreForScanParams{
+		ProtectionScore: newScore,
+		ID:              scanID,
+	}
+	if err := queries.UpdateProtectionScoreForScan(ctx, params); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return customerrors.ErrScanNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 // GetPreviousScan gets the scan that came just before the scan with the specified ScanID, for that
 // same host. It returns nil if no previous scan exists.
 func (r *ScanRepo) GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error) {
@@ -130,6 +146,137 @@ func (r *ScanRepo) GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*doma
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // No previous scan exists
+		}
+		return nil, err
+	}
+	domScan := toDomainScan(dbScan)
+	return &domScan, nil
+}
+
+func (r *ScanRepo) UpdateScanStatus(
+	ctx context.Context,
+	scanID uuid.UUID,
+	status enums.ScanStatus,
+) error {
+	queries := r.getQueries(ctx)
+	params := repository.UpdateScanStatusParams{
+		Status: repository.ScanStatus(status.String()),
+		ID:     scanID,
+	}
+	if err := queries.UpdateScanStatus(ctx, params); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return customerrors.ErrScanNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *ScanRepo) UpdateScanStatusAndEndedAt(
+	ctx context.Context,
+	scanID uuid.UUID,
+	status enums.ScanStatus,
+	endedAt time.Time,
+) error {
+	queries := r.getQueries(ctx)
+	params := repository.UpdateScanStatusAndEndedAtParams{
+		Status:  repository.ScanStatus(status.String()),
+		EndedAt: sql.NullTime{Time: endedAt, Valid: true},
+		ID:      scanID,
+	}
+	if err := queries.UpdateScanStatusAndEndedAt(ctx, params); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return customerrors.ErrScanNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *ScanRepo) GetReportsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]domain.ReportItem, error) {
+	queries := r.getQueries(ctx)
+	dbReports, err := queries.GetReportsByTenantID(ctx, tenantID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []domain.ReportItem{}, nil
+		}
+		return nil, err
+	}
+
+	reports := make([]domain.ReportItem, len(dbReports))
+	for i, dbReport := range dbReports {
+		reports[i] = domain.ReportItem{
+			ScanID:          dbReport.ScanID,
+			HostName:        dbReport.HostName.String,
+			IP:              dbReport.Ip.String,
+			ScanDate:        dbReport.ScanDate.Time,
+			TotalSeverities: int(dbReport.TotalSeverities),
+			CommentStatus:   domain.CommmentStatus(dbReport.CommentStatus),
+		}
+	}
+	return reports, nil
+}
+
+func (r *ScanRepo) GetOldestScanByHostID(
+	ctx context.Context,
+	hostID uuid.UUID,
+	fromDate *time.Time,
+	toDate *time.Time,
+) (*domain.Scan, error) {
+	queries := r.getQueries(ctx)
+	var sqlFromDate sql.NullTime
+	if fromDate != nil {
+		sqlFromDate = sql.NullTime{Time: *fromDate, Valid: true}
+	}
+
+	var sqlToDate sql.NullTime
+	if toDate != nil {
+		sqlToDate = sql.NullTime{Time: *toDate, Valid: true}
+	}
+
+	params := repository.GetOldestScanByHostIDParams{
+		HostID:      hostID,
+		StartedAt:   sqlFromDate,
+		StartedAt_2: sqlToDate,
+	}
+	dbScan, err := queries.GetOldestScanByHostID(ctx, params)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrHostNotFound
+		}
+		return nil, err
+	}
+	domScan := toDomainScan(dbScan)
+	return &domScan, nil
+}
+
+func (r *ScanRepo) GetLatestScanByHostID(
+	ctx context.Context,
+	hostID uuid.UUID,
+	fromDate *time.Time,
+	toDate *time.Time,
+) (*domain.Scan, error) {
+	queries := r.getQueries(ctx)
+
+	var sqlFromDate sql.NullTime
+	if fromDate != nil {
+		sqlFromDate = sql.NullTime{Time: *fromDate, Valid: true}
+	}
+
+	var sqlToDate sql.NullTime
+	if toDate != nil {
+		sqlToDate = sql.NullTime{Time: *toDate, Valid: true}
+	}
+
+	params := repository.GetLatestScanByHostIDParams{
+		HostID:      hostID,
+		StartedAt:   sqlFromDate,
+		StartedAt_2: sqlToDate,
+	}
+	dbScan, err := queries.GetLatestScanByHostID(ctx, params)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrHostNotFound
 		}
 		return nil, err
 	}

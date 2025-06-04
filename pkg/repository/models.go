@@ -17,10 +17,10 @@ import (
 type PeriodEnum string
 
 const (
-	PeriodEnumDay   PeriodEnum = "day"
-	PeriodEnumWeek  PeriodEnum = "week"
-	PeriodEnumMonth PeriodEnum = "month"
-	PeriodEnumYear  PeriodEnum = "year"
+	PeriodEnumDay   PeriodEnum = "Day"
+	PeriodEnumWeek  PeriodEnum = "Week"
+	PeriodEnumMonth PeriodEnum = "Month"
+	PeriodEnumYear  PeriodEnum = "Year"
 )
 
 func (e *PeriodEnum) Scan(src interface{}) error {
@@ -369,7 +369,8 @@ type ScanResult struct {
 
 type ScanScheduling struct {
 	ID             int32          `json:"id"`
-	ScanID         uuid.NullUUID  `json:"scan_id"`
+	ScanID         uuid.UUID      `json:"scan_id"`
+	HostID         uuid.UUID      `json:"host_id"`
 	LastRunDate    sql.NullTime   `json:"last_run_date"`
 	ScheduledDate  sql.NullTime   `json:"scheduled_date"`
 	PeriodName     NullPeriodEnum `json:"period_name"`

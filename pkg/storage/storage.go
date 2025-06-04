@@ -24,6 +24,7 @@ type PostgreSQLStore struct {
 
 	Host          interfaces.HostRepository
 	Scan          interfaces.ScanRepository
+	ScanSchedule  interfaces.ScanScheduleRepository
 	ScanResult    interfaces.ScanResultRepository
 	OS            interfaces.OSRepository
 	Service       interfaces.ServiceRepository
@@ -58,9 +59,10 @@ func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore,
 
 		Host:          NewHostRepository(queries),
 		Scan:          NewScanRepository(queries),
+		ScanSchedule:  NewScanScheduleRepository(queries),
 		OS:            NewOSRepository(queries),
 		Service:       NewServiceRepository(queries),
-		Vulnerability: NewVulnerRepository(queries),
+		Vulnerability: NewVulnerRepository(queries, sqlDB),
 		ScanResult:    NewScanResultRepository(queries),
 		Cve:           NewCVERepository(queries),
 		migrations:    migrations,

@@ -10,6 +10,8 @@ sql:
         out: "pkg/repository"
         sql_package: "database/sql"
         overrides:
+          - db_type: "period_enum"
+            go_type: "github.com/kptm-tools/core-service/pkg/domain.PeriodEnum"
           - db_type: "uuid"
             go_type:
               import: "github.com/google/uuid"

@@ -66,6 +66,11 @@ WHERE
 ORDER BY
 	s.started_at DESC;
 
+-- name: UpdateProtectionScoreForScan :exec
+UPDATE scans
+SET protection_score=$1, updated_at=now()
+WHERE id=$2;
+
 -- name: GetProtectionScoreForScan :one
 WITH ScanVulnerabilityMaxCVSS AS (
     -- Step 1: For each vulnerability in the specified scan,
@@ -168,4 +173,75 @@ WHERE
 	AND ps.created_at < cs.created_at
 ORDER BY
 	ps.created_at DESC
+LIMIT 1;
+
+-- name: UpdateScanStatus :exec
+UPDATE scans
+SET status = $1, updated_at = now()
+WHERE id = $2;
+
+-- name: UpdateScanStatusAndEndedAt :exec
+UPDATE scans
+SET status = $1, updated_at = now(), ended_at = $2
+WHERE id = $3;
+
+-- name: GetReportsByTenantID :many
+SELECT
+  s.id AS scan_id,
+  h.domain AS host_name,
+  h.ip AS ip,
+  s.started_at as scan_date,
+  (SELECT COUNT(sv.id) FROM vulnerabilities sv WHERE sv.scan_id = s.id) AS total_severities,
+  CASE
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM vulnerabilities sv
+      WHERE sv.scan_id = s.id
+        AND sv.analyst_comment IS NOT NULL
+    ) THEN 'PENDING' -- CommentStatusPending: No commens on any vulnerability
+    WHEN EXISTS (
+      SELECT 1
+      FROM vulnerabilities sv
+      WHERE sv.scan_id = s.id
+        AND sv.analyst_comment IS NOT NULL
+        AND sv.severity = 'Critical'
+    ) THEN 'CRITICAL' -- CommentStatusCritical: Comment on at least one Critical vulnerability
+    ELSE 'NEW COMMENT' -- CommentStatusNewComment: At least one comment, but no Critical Severity Comments
+  END AS comment_status
+FROM scans s
+INNER JOIN hosts h ON s.host_id = h.id
+WHERE s.tenant_id = $1 AND s.status = 'Completed'
+ORDER BY scan_date DESC;
+
+-- name: GetScanDetailsForSummary :one
+SELECT
+  h.alias AS host_alias,
+  s.host_id
+FROM
+  scans s
+JOIN
+  hosts h ON s.host_id = h.id
+WHERE 
+  s.id = $1;
+
+-- name: GetLatestScanByHostID :one
+SELECT *
+FROM scans
+WHERE
+  host_id = $1
+  AND started_at >= COALESCE($2, '1900-01-01'::timestamp)
+  AND started_at <= COALESCE($3, NOW()::timestamp)
+ORDER BY
+  started_at DESC
+LIMIT 1;
+
+-- name: GetOldestScanByHostID :one
+SELECT *
+FROM scans
+WHERE
+  host_id = $1
+  AND started_at >= COALESCE($2, '1900-01-01'::timestamp)
+  AND started_at <= COALESCE($3, NOW()::timestamp)
+ORDER BY
+  started_at ASC
 LIMIT 1;

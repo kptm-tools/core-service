@@ -113,12 +113,8 @@ func (s *ScanService) InsertScanResult(ctx context.Context, result domain.ScanRe
 	return s.scanResultsRepo.CreateScanResult(ctx, result)
 }
 
-func (s *ScanService) InsertVulnerabilityResult(ctx context.Context, scanResult *domain.ScanResult) error {
-	return s.storage.InsertVulnerabilityResult(ctx, scanResult)
-}
-
-func (s *ScanService) UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error {
-	return s.storage.UpdateScanStatus(scanID, status.String())
+func (s *ScanService) UpdateScanStatus(ctx context.Context, scanID uuid.UUID, status enums.ScanStatus) error {
+	return s.scanRepo.UpdateScanStatus(ctx, scanID, status)
 }
 
 func (s *ScanService) MarkScanAsFailed(ctx context.Context, scanID uuid.UUID) error {
@@ -131,7 +127,7 @@ func (s *ScanService) MarkScanAsFailed(ctx context.Context, scanID uuid.UUID) er
 		return customerrors.NewScanAlreadyFinishedError(scanID, scan.Status)
 	}
 
-	err = s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusFailed.String(), time.Now().UTC())
+	err = s.scanRepo.UpdateScanStatusAndEndedAt(ctx, scanID, enums.StatusFailed, time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
@@ -148,7 +144,7 @@ func (s *ScanService) MarkScanAsCancelled(ctx context.Context, scanID uuid.UUID)
 		return customerrors.NewScanAlreadyFinishedError(scanID, scan.Status)
 	}
 
-	err = s.storage.UpdateScanStatusAndEndedAt(nil, scanID, enums.StatusCancelled.String(), time.Now().UTC())
+	err = s.scanRepo.UpdateScanStatusAndEndedAt(ctx, scanID, enums.StatusCancelled, time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("failed to update scan status and ended_at: %w", err)
 	}
@@ -243,41 +239,17 @@ func (s *ScanService) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domai
 	return scan, nil
 }
 
-func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
+func (s *ScanService) HandleScanCompletion(ctx context.Context, scanID uuid.UUID) error {
 	slog.Info("Scan Service handling scan completion...")
 
-	whoIsResult, err := s.storage.GetWhoisResult(scanID)
-	if err != nil {
-		return fmt.Errorf("failed to get WhoisResult: %w", err)
-	}
-
-	dnsLookupResult, err := s.storage.GetDNSLookupResult(scanID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch DNSLookupResult: %w", err)
-	}
-
-	harvesterResult, err := s.storage.GetHarvesterResult(scanID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch HarvesterResult: %w", err)
-	}
-
-	nmapResult, err := s.storage.GetNmapResult(scanID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch NmapResult: %w", err)
-	}
-
-	protectionScore, err := results.CalculateProtectionScore(
-		*whoIsResult,
-		*dnsLookupResult,
-		*harvesterResult,
-		*nmapResult,
-	)
+	// Protection score
+	protectionScore, err := s.scanRepo.GetProtectionScore(ctx, scanID)
 	if err != nil {
 		return fmt.Errorf("failed to calculate protection score: %w", err)
 	}
 
 	// Update protection score
-	if err := s.storage.UpdateProtectionScore(scanID, protectionScore); err != nil {
+	if err := s.scanRepo.UpdateProtectionScore(ctx, scanID, protectionScore); err != nil {
 		return fmt.Errorf("failed to update protection score on scan: %w", err)
 	}
 
@@ -285,29 +257,89 @@ func (s *ScanService) HandleScanCompletion(scanID uuid.UUID) error {
 }
 
 func (s *ScanService) GetScanVulnerabilitySummaryByID(
+	ctx context.Context,
 	scanID uuid.UUID,
 	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
 ) (*domain.ScanVulnerabilitySummaryData, error) {
 	slog.Debug("Fetching scan vulnerabilities summary...", slog.String("scan_id", scanID.String()))
 
-	summaryData, err := s.storage.GetScanVulnerabilitiesSummary(scanID, timePeriodFilter, severityFilters)
+	summaryData := domain.ScanVulnerabilitySummaryData{ScanID: scanID}
+
+	// 1. Get Host Alias and Host ID from scan
+	scan, err := s.scanRepo.GetScanByID(ctx, scanID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch vulnerabilities summary: %w", err)
+		return nil, fmt.Errorf("failed to get scan by ID: %w", err)
+	}
+	target, err := s.CreateTarget(ctx, scan.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target: %w", err)
+	}
+	if target != nil {
+		scan.Target = *target
 	}
 
-	return summaryData, nil
+	summaryData.Domain = scan.Target.Value
+
+	// 2. Get Vulnerability Aggregates (Summary)
+	aggParams := domain.VulnerabilityAggregatesParams{
+		ScanID:          scanID,
+		SeverityFilters: severityFilters,
+	}
+	vulnAggregates, err := s.vulnRepo.GetScanVulnerabilityAggregates(ctx, aggParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch vulnerability aggregates", err)
+	}
+	summaryData.TotalVulnerabilities = vulnAggregates.TotalVulnerabilities
+	summaryData.SeverityCounts = vulnAggregates.SeverityCounts
+
+	// 3. Get Vulnerability Categories
+	catParams := domain.VulnerabilityCategoriesParams{
+		ScanID:          scanID,
+		SeverityFilters: severityFilters,
+	}
+	categoryData, err := s.vulnRepo.GetVulnerabilityCategoriesByScan(ctx, catParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch category data: %w", err)
+	}
+	summaryData.CategoryData = categoryData
+
+	// 4. Get Host Trend Data
+	trendParams := domain.VulnerabilityTrendsParams{
+		HostID:           scan.HostID,
+		TimePeriodFilter: timePeriodFilter,
+		SeverityFilters:  severityFilters,
+	}
+	timePeriods, err := s.vulnRepo.GetHostVulnerabilityTrends(ctx, trendParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vulnerability trends for host %s: %w", scan.HostID.String(), err)
+	}
+	vulnerabilityTrends := domain.ServiceVulnerabilityTrends{
+		TimePeriods: timePeriods,
+	}
+
+	// 4.1 Calculate TotalVulnCount and PeriodCount for the time period
+	var totalVulnCountForAvg, periodCountForAvg float64
+	for _, periodData := range timePeriods {
+		if periodData.VulnerabilityCount != nil {
+			totalVulnCountForAvg += float64(*periodData.VulnerabilityCount)
+			periodCountForAvg++
+		}
+	}
+	if periodCountForAvg > 0 {
+		vulnerabilityTrends.AverageVulnerabilityCount = totalVulnCountForAvg / periodCountForAvg
+	} else {
+		vulnerabilityTrends.AverageVulnerabilityCount = 0.0
+	}
+	summaryData.VulnerabilityTrends = vulnerabilityTrends
+
+	return &summaryData, nil
 }
 
-func (s *ScanService) GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error) {
-	reportItems, err := s.storage.GetReportsByTenantID(tenantID)
+func (s *ScanService) GetAllReportsForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ReportItem, error) {
+	reportItems, err := s.scanRepo.GetReportsByTenantID(ctx, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch reports from storage: %w", err)
-	}
-
-	// If err is nil and reportItems is nil, it means sql.ErrNoRows was handled in storage
-	if reportItems == nil {
-		return []*domain.ReportItem{}, nil
 	}
 
 	return reportItems, nil
@@ -318,7 +350,7 @@ func (s *ScanService) GetScoreCardTrendsForTenant(
 	tenantID uuid.UUID,
 	fromDate, toDate *time.Time,
 ) ([]*domain.ScoreCardTrendItem, error) {
-	hosts, err := s.storage.GetHostsByTenantID(ctx, tenantID, []uuid.UUID{})
+	hosts, err := s.hostRepo.GetHostsByTenantID(ctx, tenantID, []uuid.UUID{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}
@@ -327,7 +359,7 @@ func (s *ScanService) GetScoreCardTrendsForTenant(
 
 	scoreCardItems := make([]*domain.ScoreCardTrendItem, 0, len(hosts))
 	for _, host := range hosts {
-		oldestScan, latestScan, err := s.getOldestLatestScans(host.ID, fromDate, toDate)
+		oldestScan, latestScan, err := s.getOldestLatestScans(ctx, host.ID, fromDate, toDate)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch oldest and latest scan: %w", err)
 		}
@@ -348,14 +380,18 @@ func (s *ScanService) GetScoreCardTrendsForTenant(
 	return scoreCardItems, nil
 }
 
-func (s *ScanService) getOldestLatestScans(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, *domain.Scan, error) {
-	oldestScan, err := s.storage.GetOldestScanByHostID(hostID, fromDate, toDate)
+func (s *ScanService) getOldestLatestScans(
+	ctx context.Context,
+	hostID uuid.UUID,
+	fromDate, toDate *time.Time,
+) (*domain.Scan, *domain.Scan, error) {
+	oldestScan, err := s.scanRepo.GetOldestScanByHostID(ctx, hostID, fromDate, toDate)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, fmt.Errorf("failed to get oldest scan: %w", err)
 		}
 	}
-	latestScan, err := s.storage.GetLatestScanByHostID(hostID, fromDate, toDate)
+	latestScan, err := s.scanRepo.GetLatestScanByHostID(ctx, hostID, fromDate, toDate)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, fmt.Errorf("failed to get latest scan: %w", err)
@@ -395,4 +431,8 @@ func (s *ScanService) GetScanRapporteursAndHostAlias(ctx context.Context, scanID
 		return nil, "", fmt.Errorf("failed to get host by ID: %w", err)
 	}
 	return host.Rapporteurs, host.Name, nil
+}
+
+func calculateDateRange(currentTime time.Time, filter domain.TimePeriodFilter) (*time.Time, *time.Time) {
+	return nil, nil
 }

@@ -28,12 +28,13 @@ func NewScanScheduleHandlers(scanScheduleService interfaces.IScanScheduleService
 }
 
 func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	id, err := GetID(r)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(id)
+	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(ctx, id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
@@ -88,13 +89,13 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 			Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 		})
 	}
-	hostID, errGetHostID := h.scanScheduleService.GetCurrentHostID(id)
+	hostID, errGetHostID := h.scanScheduleService.GetCurrentHostID(ctx, id)
 	if errGetHostID != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
 			Error: "There is no host configured configured for this scan schedule",
 		})
 	}
-	errUpdate := h.scanScheduleService.PatchScanSchedule(id, updateScanScheduleRequest.Frequency, parsedToDate, tenantID, userID, hostID)
+	errUpdate := h.scanScheduleService.PatchScanSchedule(ctx, id, updateScanScheduleRequest.Frequency, parsedToDate, tenantID, userID, hostID)
 	if errUpdate != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "Update can not be terminated because of " + errUpdate.Error(),
@@ -104,6 +105,7 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 }
 
 func (h *ScanScheduleHandlers) GetScanSchedules(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
 	tenantUUID, errTenantID := uuid.Parse(tenantID)
 	if errTenantID != nil {
@@ -111,7 +113,7 @@ func (h *ScanScheduleHandlers) GetScanSchedules(w http.ResponseWriter, r *http.R
 			Error: "ID is of tenant is not an UUID",
 		})
 	}
-	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedules(tenantUUID)
+	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedulesByTenantID(ctx, tenantUUID)
 	if errGetData != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "tenantID does not exist",

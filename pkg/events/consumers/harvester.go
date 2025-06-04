@@ -58,11 +58,11 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2.2 Check for errors in the result
-		handleToolResultError(evt.ScanID, evt.ToolResult, h.scanService)
+		handleToolResultError(ctx, evt.ScanID, evt.ToolResult, h.scanService)
 
 		// 3. Save ToolResult to DB
 		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
-		if err := h.scanService.InsertScanResult(scanResult); err != nil {
+		if err := h.scanService.InsertScanResult(ctx, *scanResult); err != nil {
 			slog.Error("Error inserting Scanresult to DB",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
