@@ -298,8 +298,15 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 
 func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	tenantIDStr := ctx.Value(middleware.ContextTenantID).(string)
-	tenantID := uuid.MustParse(tenantIDStr)
+	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		slog.Error(
+			"Failed to assert tenantID to uuid.UUID type",
+			"expected_type", "uuid.UUID",
+			"actual_type", fmt.Sprintf("$T", tenantID),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
 
 	fromDate, toDate, err := h.parseDateRange(w, r)
 	if err != nil {
@@ -309,9 +316,11 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 	var scoreCardTrendItems []*domain.ScoreCardTrendItem
 	scoreCardTrendItems, err = h.scanService.GetScoreCardTrendsForTenant(ctx, tenantID, fromDate, toDate)
 	if err != nil {
-		slog.Error("Failed to get ScoreCard trends for tenant",
+		slog.Error(
+			"Failed to get ScoreCard trends for tenant",
 			slog.String("tenant_id", tenantID.String()),
-			slog.Any("error", err))
+			slog.Any("error", err),
+		)
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 

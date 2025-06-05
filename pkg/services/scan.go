@@ -355,8 +355,6 @@ func (s *ScanService) GetScoreCardTrendsForTenant(
 		return nil, fmt.Errorf("failed to fetch hosts for tenant %s: %w", tenantID, err)
 	}
 
-	slog.Debug("Got hosts", slog.Any("hosts", hosts))
-
 	scoreCardItems := make([]*domain.ScoreCardTrendItem, 0, len(hosts))
 	for _, host := range hosts {
 		oldestScan, latestScan, err := s.getOldestLatestScans(ctx, host.ID, fromDate, toDate)
@@ -366,10 +364,19 @@ func (s *ScanService) GetScoreCardTrendsForTenant(
 
 		var oldestProtectionScore, latestProtectionScore *float64
 		if oldestScan != nil {
-			oldestProtectionScore = oldestScan.ProtectionScore
+			oldScore, err := s.scanRepo.GetProtectionScore(ctx, oldestScan.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to calculate oldest scan %s protection score: %w", oldestScan.ID.String(), err)
+			}
+			oldestProtectionScore = &oldScore
 		}
+
 		if latestScan != nil {
-			latestProtectionScore = latestScan.ProtectionScore
+			latestScore, err := s.scanRepo.GetProtectionScore(ctx, latestScan.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to calculate latest scan %s protection score: %w", latestScan.ID.String(), err)
+			}
+			latestProtectionScore = &latestScore
 		}
 
 		scoreCardItem := domain.NewScoreCardTrendItem(host.Name, oldestProtectionScore, latestProtectionScore)
@@ -397,11 +404,6 @@ func (s *ScanService) getOldestLatestScans(
 			return nil, nil, fmt.Errorf("failed to get latest scan: %w", err)
 		}
 	}
-
-	slog.Debug("Got oldest and latest scan",
-		slog.Any("oldest_scan", oldestScan),
-		slog.Any("latest_scan", latestScan),
-	)
 
 	// If the oldest scan and latest scan are the same, only return the latest scan
 	if oldestScan != nil && latestScan != nil {
