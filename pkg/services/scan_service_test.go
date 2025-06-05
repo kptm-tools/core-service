@@ -1,43 +1,60 @@
-package services
+package services_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/mocks"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
+	mock "github.com/kptm-tools/core-service/pkg/mocks/mock_storage"
+	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetReportsByTenantID_NoReports(t *testing.T) {
-	mockStore := &mocks.MockStorage{
-		MockGetReportsByTenantID: func(tenantID string) ([]*domain.ReportItem, error) {
-			return nil, nil
+	// mockStore := &mocks.MockStorage{
+	// 	MockGetReportsByTenantID: func(tenantID string) ([]*domain.ReportItem, error) {
+	// 		return nil, nil
+	// 	},
+	// }
+	mockScanRepo := &mock.MockScanRepo{
+		MockGetReportsByTenantID: func(ctx context.Context, u uuid.UUID) ([]domain.ReportItem, error) {
+			return []domain.ReportItem{}, nil
 		},
 	}
 
-	scansService := NewScanService(mockStore)
+	scansService := services.NewScanService(
+		&mock.MockVulnerabilityRepo{},
+		mockScanRepo,
+		&mock.MockHostRepo{},
+		&mock.MockScanResultRepo{},
+	)
 
-	tenantID := "test-tenant"
-	reports, err := scansService.GetAllReportsForTenant(tenantID)
+	tenantID := uuid.Nil
+	reports, err := scansService.GetAllReportsForTenant(context.Background(), tenantID)
 
 	assert.NoError(t, err)
 	assert.Empty(t, reports)
 }
 
 func Test_GetReportsByTenantID_StorageError(t *testing.T) {
-	mockStore := &mocks.MockStorage{
-		MockGetReportsByTenantID: func(tenantID string) ([]*domain.ReportItem, error) {
+	mockScanRepo := &mock.MockScanRepo{
+		MockGetReportsByTenantID: func(ctx context.Context, u uuid.UUID) ([]domain.ReportItem, error) {
 			return nil, errors.New("database connection failed")
 		},
 	}
 
-	scansService := NewScanService(mockStore)
+	scansService := services.NewScanService(
+		&mock.MockVulnerabilityRepo{},
+		mockScanRepo,
+		&mock.MockHostRepo{},
+		&mock.MockScanResultRepo{},
+	)
 
-	tenantID := "test-tenant"
-	reports, err := scansService.GetAllReportsForTenant(tenantID)
+	reports, err := scansService.GetAllReportsForTenant(context.Background(), uuid.Nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, reports)
@@ -45,7 +62,7 @@ func Test_GetReportsByTenantID_StorageError(t *testing.T) {
 }
 
 func Test_GetReportsByTenantID_Success(t *testing.T) {
-	sampleReports := []*domain.ReportItem{
+	sampleReports := []domain.ReportItem{
 		{
 			ScanID:          uuid.New(),
 			HostName:        "example.com",
@@ -63,16 +80,20 @@ func Test_GetReportsByTenantID_Success(t *testing.T) {
 			CommentStatus:   domain.CommentStatusNewComment,
 		},
 	}
-	mockStore := &mocks.MockStorage{
-		MockGetReportsByTenantID: func(tenantID string) ([]*domain.ReportItem, error) {
+	mockScanRepo := &mock.MockScanRepo{
+		MockGetReportsByTenantID: func(ctx context.Context, u uuid.UUID) ([]domain.ReportItem, error) {
 			return sampleReports, nil
 		},
 	}
 
-	scansService := NewScanService(mockStore)
+	scansService := services.NewScanService(
+		&mock.MockVulnerabilityRepo{},
+		mockScanRepo,
+		&mock.MockHostRepo{},
+		&mock.MockScanResultRepo{},
+	)
 
-	tenantID := "test-tenant"
-	reports, err := scansService.GetAllReportsForTenant(tenantID)
+	reports, err := scansService.GetAllReportsForTenant(context.Background(), uuid.Nil)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, reports)
@@ -80,39 +101,76 @@ func Test_GetReportsByTenantID_Success(t *testing.T) {
 }
 
 func Test_ScanScheduleDisableJob_Error(t *testing.T) {
-	mockStore := &mocks.MockStorage{
-		MockScanScheduleDisableJob: func(scanScheduleID int, withDelete bool) error {
+	mockScheduleRepo := &mock.MockScanScheduleRepo{
+		MockDisableJob: func(ctx context.Context, i int, b bool) error {
 			return errors.New("failed to unregister job")
 		},
 	}
-	scansService := NewScanService(mockStore)
-	errDisable := scansService.ScanScheduleDisableJob(1)
+
+	scansService := services.NewScanScheduleService(
+		&mock.MockTxManager{
+			MockDoInTx: func(ctx context.Context, tf interfaces.TxFunc) error { return nil },
+		},
+		&mock.MockScanRepo{},
+		mockScheduleRepo,
+	)
+	errDisable := scansService.ScanScheduleDisableJob(context.Background(), 1)
 	assert.Error(t, errDisable)
 	assert.Contains(t, errDisable.Error(), "failed to unregister job")
 }
 
 func Test_ScanScheduleDisableJob_Success(t *testing.T) {
-	mockStore := &mocks.MockStorage{}
-	scansService := NewScanService(mockStore)
-	errDisable := scansService.ScanScheduleDisableJob(1)
+	scansService := services.NewScanScheduleService(
+		&mock.MockTxManager{
+			MockDoInTx: func(ctx context.Context, tf interfaces.TxFunc) error {
+				return nil
+			},
+		},
+		&mock.MockScanRepo{},
+		&mock.MockScanScheduleRepo{
+			MockDisableJob: func(ctx context.Context, i int, b bool) error { return nil },
+		},
+	)
+
+	errDisable := scansService.ScanScheduleDisableJob(context.Background(), 1)
 	assert.NoError(t, errDisable)
 }
 
 func Test_UpdateScanScheduling_Error(t *testing.T) {
-	mockStore := &mocks.MockStorage{
-		MockUpdateScanScheduling: func(scanID uuid.UUID, scanScheduleID int) error {
-			return errors.New("failed to update scan scheduling")
+	scansService := services.NewScanScheduleService(
+		&mock.MockTxManager{
+			MockDoInTx: func(ctx context.Context, tf interfaces.TxFunc) error {
+				return nil
+			},
 		},
-	}
-	scansService := NewScanService(mockStore)
-	errUpdate := scansService.UpdateScanScheduleScanID(uuid.New(), 1)
+		&mock.MockScanRepo{},
+		&mock.MockScanScheduleRepo{
+			MockUpdateScanScheduling: func(ctx context.Context, u uuid.UUID, i int) error {
+				return errors.New("failed to update scan scheduling")
+			},
+		},
+	)
+
+	errUpdate := scansService.UpdateScanScheduleScanID(context.Background(), uuid.Nil, 1)
 	assert.Error(t, errUpdate)
 	assert.Contains(t, errUpdate.Error(), "failed to update scan scheduling")
 }
 
 func Test_UpdateScanScheduling_Success(t *testing.T) {
-	mockStore := &mocks.MockStorage{}
-	scansService := NewScanService(mockStore)
-	errUpdate := scansService.UpdateScanScheduleScanID(uuid.New(), 1)
+	scansService := services.NewScanScheduleService(
+		&mock.MockTxManager{
+			MockDoInTx: func(ctx context.Context, tf interfaces.TxFunc) error {
+				return nil
+			},
+		},
+		&mock.MockScanRepo{},
+		&mock.MockScanScheduleRepo{
+			MockUpdateScanScheduling: func(ctx context.Context, u uuid.UUID, i int) error {
+				return nil
+			},
+		},
+	)
+
+	errUpdate := scansService.UpdateScanScheduleScanID(context.Background(), uuid.Nil, 1)
 	assert.NoError(t, errUpdate)
 }
