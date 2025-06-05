@@ -13,13 +13,7 @@ import (
 )
 
 type IStorage interface {
-	CreateHost(context.Context, *domain.Host) (*domain.Host, error)
 	GetHostsByTenantID(ctx context.Context, tenantID uuid.UUID, hostsIDFilter []uuid.UUID) ([]*domain.Host, error)
-	GetHostByID(context.Context, uuid.UUID) (*domain.Host, error)
-	DeleteHostByID(uuid.UUID) (bool, error)
-	PatchHostByID(context.Context, *domain.Host) (*domain.Host, error)
-	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
-	GetTenants() ([]*domain.Tenant, error)
 	Ping() error
 	ExistAlias(string) (bool, error)
 	GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error)

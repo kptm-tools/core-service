@@ -13,28 +13,19 @@ import (
 	"github.com/kptm-tools/core-service/pkg/middleware"
 )
 
-type TenantHandlers struct {
-	tenantService interfaces.ITenantService
+type DashboardHandlers struct {
+	dashboardService interfaces.ITenantService
 }
 
-var _ interfaces.ITenantHandlers = (*TenantHandlers)(nil)
+var _ interfaces.ITenantHandlers = (*DashboardHandlers)(nil)
 
-func NewTenantHandlers(tenantService interfaces.ITenantService) *TenantHandlers {
-	return &TenantHandlers{
-		tenantService: tenantService,
+func NewDashboardHandlers(dashboardService interfaces.ITenantService) *DashboardHandlers {
+	return &DashboardHandlers{
+		dashboardService: dashboardService,
 	}
 }
 
-func (h *TenantHandlers) GetTenants(w http.ResponseWriter, req *http.Request) error {
-	tenants, err := h.tenantService.GetTenants()
-	if err != nil {
-		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
-	}
-
-	return api.WriteJSON(w, http.StatusOK, tenants)
-}
-
-func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) error {
+func (h *DashboardHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) error {
 	ctx := req.Context()
 	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
 	if !ok {
@@ -59,7 +50,7 @@ func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
 	}
 
-	tenantDasboardData, err := h.tenantService.GetTenantDashboardData(ctx, tenantID, trendsTimePeriodFilter, trendsSeverityFilter, hostIDFilter)
+	tenantDasboardData, err := h.dashboardService.GetTenantDashboardData(ctx, tenantID, trendsTimePeriodFilter, trendsSeverityFilter, hostIDFilter)
 	if err != nil {
 		slog.Error("Error getting tenant dashboard data",
 			slog.String("tenant_id", tenantID.String()),

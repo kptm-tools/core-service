@@ -13,40 +13,24 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
-type TenantService struct {
-	storage  interfaces.IStorage
+type DashboardService struct {
 	vulnRepo interfaces.VulnerabilityRepository
 	scanRepo interfaces.ScanRepository
 	hostRepo interfaces.HostRepository
 }
 
-var _ interfaces.ITenantService = (*TenantService)(nil)
+var _ interfaces.ITenantService = (*DashboardService)(nil)
 
-func NewTenantService(
-	storage interfaces.IStorage,
+func NewDashboardService(
 	vulnerabilityRepository interfaces.VulnerabilityRepository,
 	scanRepository interfaces.ScanRepository,
 	hostRepository interfaces.HostRepository,
-) *TenantService {
-	return &TenantService{
-		storage:  storage,
+) *DashboardService {
+	return &DashboardService{
 		vulnRepo: vulnerabilityRepository,
 		scanRepo: scanRepository,
 		hostRepo: hostRepository,
 	}
-}
-
-func (s *TenantService) CreateTenant(t *domain.Tenant) (*domain.Tenant, error) {
-	return s.storage.CreateTenant(t)
-}
-
-func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
-	tenants, err := s.storage.GetTenants()
-	if err != nil {
-		return nil, err
-	}
-
-	return tenants, nil
 }
 
 // GetTenantDashboardData gets the Dashboard data for that Tenant.
@@ -54,7 +38,7 @@ func (s *TenantService) GetTenants() ([]*domain.Tenant, error) {
 // If a host has no latest scan, it's data is skipped for certain graphs such as the heatMap
 // and # of vulnerabilities in HostsWithGreatestVulnerabilities, since saying no vulnerabilities
 // were found would be misleading, because the data just doesn't exist at that moment.
-func (s *TenantService) GetTenantDashboardData(
+func (s *DashboardService) GetTenantDashboardData(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	trendsTimePeriodFilter domain.TimePeriodFilter,
@@ -127,7 +111,7 @@ func (s *TenantService) GetTenantDashboardData(
 	return &dashboardData, nil
 }
 
-func (s *TenantService) getHostLatestScanMap(
+func (s *DashboardService) getHostLatestScanMap(
 	ctx context.Context,
 	hosts []*domain.Host,
 ) (map[uuid.UUID]*domain.Scan, error) {
@@ -149,7 +133,7 @@ func (s *TenantService) getHostLatestScanMap(
 	return hostLatestScanMap, nil
 }
 
-func (s *TenantService) GetTenantSecurityPosture(
+func (s *DashboardService) GetTenantSecurityPosture(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	hostsIDFilter []uuid.UUID,
@@ -215,7 +199,7 @@ func (s *TenantService) GetTenantSecurityPosture(
 // getHostSeverityHeatMap returns a heatmap with the amount of severities found for each host.
 // In case a host has no scans, it is skipped, to avoid giving the false impression that said host
 // has no vulnerabilities (it just doesn't have data yet).
-func (s *TenantService) getHostSeverityHeatMap(
+func (s *DashboardService) getHostSeverityHeatMap(
 	ctx context.Context,
 	hosts []*domain.Host,
 	hostLatestScanMap map[uuid.UUID]*domain.Scan,
@@ -245,7 +229,7 @@ func (s *TenantService) getHostSeverityHeatMap(
 	return severityHeatMap, nil
 }
 
-func (s *TenantService) GetHostsVulnerabilityTrends(
+func (s *DashboardService) GetHostsVulnerabilityTrends(
 	ctx context.Context,
 	hostIDs []uuid.UUID,
 	timePeriodFilter domain.TimePeriodFilter,
@@ -299,7 +283,7 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 	return aggregatedTimePeriods, nil
 }
 
-func (s *TenantService) getLatestScanData(
+func (s *DashboardService) getLatestScanData(
 	ctx context.Context,
 	scans []*domain.Scan,
 ) (*domain.LastScanData, error) {
@@ -359,7 +343,7 @@ func (s *TenantService) getLatestScanData(
 	return &latestScanData, nil
 }
 
-func (s *TenantService) GetHostsSortedByMostVulnerabilities(
+func (s *DashboardService) GetHostsSortedByMostVulnerabilities(
 	ctx context.Context,
 	hosts []*domain.Host,
 	latestScanMap map[uuid.UUID]*domain.Scan,
