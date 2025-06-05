@@ -12,6 +12,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/repository"
+	"github.com/lib/pq"
 )
 
 type ScanRepo struct {
@@ -44,6 +45,11 @@ func (r *ScanRepo) CreateScan(ctx context.Context, s domain.Scan) (*domain.Scan,
 	}
 	dbScan, err := queries.CreateScan(ctx, params)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			if pqErr.Code == "23503" && pqErr.Constraint == "scans_host_id_fkey" {
+				return nil, customerrors.ErrHostNotFound
+			}
+		}
 		return nil, err
 	}
 	domScan := toDomainScan(dbScan)
