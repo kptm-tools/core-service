@@ -8,19 +8,31 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
 type TenantService struct {
-	storage interfaces.IStorage
+	storage  interfaces.IStorage
+	vulnRepo interfaces.VulnerabilityRepository
+	scanRepo interfaces.ScanRepository
+	hostRepo interfaces.HostRepository
 }
 
 var _ interfaces.ITenantService = (*TenantService)(nil)
 
-func NewTenantService(storage interfaces.IStorage) *TenantService {
+func NewTenantService(
+	storage interfaces.IStorage,
+	vulnerabilityRepository interfaces.VulnerabilityRepository,
+	scanRepository interfaces.ScanRepository,
+	hostRepository interfaces.HostRepository,
+) *TenantService {
 	return &TenantService{
-		storage: storage,
+		storage:  storage,
+		vulnRepo: vulnerabilityRepository,
+		scanRepo: scanRepository,
+		hostRepo: hostRepository,
 	}
 }
 
@@ -56,18 +68,18 @@ func (s *TenantService) GetTenantDashboardData(
 	}
 
 	// 2. Populate a map[domain.Host]domain.Scan with all latest scans for later reference
-	hosts, err := s.storage.GetHostsByTenantID(ctx, tenantID, hostsIDFilter)
+	hosts, err := s.hostRepo.GetHostsByTenantID(ctx, tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hosts by tenantID %s: %w", tenantID, err)
 	}
 
-	hostLatestScanMap, err := s.getHostLatestScanMap(hosts)
+	hostLatestScanMap, err := s.getHostLatestScanMap(ctx, hosts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to getHostLatestScanMap: %w", err)
 	}
 
 	// 3. Calculate the Heat Map
-	heatMap, err := s.getHostSeverityHeatMap(hosts, hostLatestScanMap)
+	heatMap, err := s.getHostSeverityHeatMap(ctx, hosts, hostLatestScanMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get HostSeverityHeatMap: %w", err)
 	}
@@ -79,7 +91,7 @@ func (s *TenantService) GetTenantDashboardData(
 		hostIDs = append(hostIDs, host.ID)
 	}
 
-	trendsTimePeriods, err := s.GetHostsVulnerabilityTrends(hostIDs, trendsTimePeriodFilter, trendsSeverityFilters)
+	trendsTimePeriods, err := s.GetHostsVulnerabilityTrends(ctx, hostIDs, trendsTimePeriodFilter, trendsSeverityFilters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vulnerability trends for hosts: %w", err)
 	}
@@ -90,7 +102,7 @@ func (s *TenantService) GetTenantDashboardData(
 		latestScans = append(latestScans, scan)
 	}
 
-	latestScanData, err := s.getLatestScanData(latestScans)
+	latestScanData, err := s.getLatestScanData(ctx, latestScans)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest scan data: %w", err)
 	}
@@ -99,7 +111,7 @@ func (s *TenantService) GetTenantDashboardData(
 	}
 
 	// 6. Calculate HostsWithGreatestVulnerabilities
-	sortedHostsWithGreatestVulnerabilities, err := s.GetHostsSortedByMostVulnerabilities(hosts, hostLatestScanMap)
+	sortedHostsWithGreatestVulnerabilities, err := s.GetHostsSortedByMostVulnerabilities(ctx, hosts, hostLatestScanMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sortedHostsWithGreatesVulnerabilities: %w", err)
 	}
@@ -115,10 +127,13 @@ func (s *TenantService) GetTenantDashboardData(
 	return &dashboardData, nil
 }
 
-func (s *TenantService) getHostLatestScanMap(hosts []*domain.Host) (map[uuid.UUID]*domain.Scan, error) {
+func (s *TenantService) getHostLatestScanMap(
+	ctx context.Context,
+	hosts []*domain.Host,
+) (map[uuid.UUID]*domain.Scan, error) {
 	hostLatestScanMap := make(map[uuid.UUID]*domain.Scan, len(hosts))
 	for _, host := range hosts {
-		latestScan, err := s.storage.GetLatestScanByHostID(host.ID, nil, nil)
+		latestScan, err := s.scanRepo.GetLatestScanByHostID(ctx, host.ID, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get last scan for host %d: %w", host.ID, err)
 		}
@@ -139,7 +154,7 @@ func (s *TenantService) GetTenantSecurityPosture(
 	tenantID uuid.UUID,
 	hostsIDFilter []uuid.UUID,
 ) (*domain.OverallSecurityPostureData, error) {
-	hosts, err := s.storage.GetHostsByTenantID(ctx, tenantID, hostsIDFilter)
+	hosts, err := s.hostRepo.GetHostsByTenantID(ctx, tenantID, hostsIDFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get hosts for tenant %s: %w", tenantID, err)
 	}
@@ -150,7 +165,7 @@ func (s *TenantService) GetTenantSecurityPosture(
 	previousHostCount := 0
 
 	for _, host := range hosts {
-		latestScan, err := s.storage.GetLatestScanByHostID(host.ID, nil, nil)
+		latestScan, err := s.scanRepo.GetLatestScanByHostID(ctx, host.ID, nil, nil)
 		if err != nil {
 			slog.Warn(
 				"Error getting latest scan for host",
@@ -164,7 +179,7 @@ func (s *TenantService) GetTenantSecurityPosture(
 			currentHostCount++
 		}
 
-		previousScan, err := s.storage.GetScanBeforeLatestByHostID(host.ID, nil, nil)
+		previousScan, err := s.scanRepo.GetPreviousScan(ctx, latestScan.ID)
 		if err != nil {
 			slog.Warn(
 				"Error getting scan before latest for host",
@@ -201,6 +216,7 @@ func (s *TenantService) GetTenantSecurityPosture(
 // In case a host has no scans, it is skipped, to avoid giving the false impression that said host
 // has no vulnerabilities (it just doesn't have data yet).
 func (s *TenantService) getHostSeverityHeatMap(
+	ctx context.Context,
 	hosts []*domain.Host,
 	hostLatestScanMap map[uuid.UUID]*domain.Scan,
 ) ([]domain.HostAliasSeverityCountPair, error) {
@@ -214,14 +230,14 @@ func (s *TenantService) getHostSeverityHeatMap(
 			if scan == nil {
 				continue
 			}
-			severityCounts, err := s.storage.GetSeverityCounts(scan.ID)
+			severityCounts, err := s.vulnRepo.GetSeverityCountsByScanID(ctx, scan.ID)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get host severity counts: %w", err)
 			}
 			severityHeatMap = append(severityHeatMap,
 				domain.HostAliasSeverityCountPair{
 					Alias:         host.Name,
-					SeverityCount: *severityCounts,
+					SeverityCount: severityCounts,
 				})
 		}
 	}
@@ -230,6 +246,7 @@ func (s *TenantService) getHostSeverityHeatMap(
 }
 
 func (s *TenantService) GetHostsVulnerabilityTrends(
+	ctx context.Context,
 	hostIDs []uuid.UUID,
 	timePeriodFilter domain.TimePeriodFilter,
 	severityFilters []string,
@@ -251,7 +268,12 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 	}
 
 	for _, hostID := range hostIDs {
-		hostTrends, err := s.storage.GetHostVulnerabilityTrends(hostID, timePeriodFilter, severityFilters)
+		params := domain.VulnerabilityTrendsParams{
+			HostID:           hostID,
+			TimePeriodFilter: timePeriodFilter,
+			SeverityFilters:  severityFilters,
+		}
+		hostTrends, err := s.vulnRepo.GetHostVulnerabilityTrends(ctx, params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get trends for hostID %d: %w", hostID, err)
 		}
@@ -277,7 +299,10 @@ func (s *TenantService) GetHostsVulnerabilityTrends(
 	return aggregatedTimePeriods, nil
 }
 
-func (s *TenantService) getLatestScanData(scans []*domain.Scan) (*domain.LastScanData, error) {
+func (s *TenantService) getLatestScanData(
+	ctx context.Context,
+	scans []*domain.Scan,
+) (*domain.LastScanData, error) {
 	// 5.1 Loop over hostLatestScanMap and get the one with the latest date
 	var latestScan *domain.Scan
 	var latestDate time.Time // Starts as zero-value for time.Time
@@ -297,23 +322,45 @@ func (s *TenantService) getLatestScanData(scans []*domain.Scan) (*domain.LastSca
 	}
 
 	// 5.2 Get severity counts for that scan
-	latestScanInsights, err := s.storage.GetScanInsights(latestScan.ID)
+	latestScanInsights, err := s.scanRepo.GetScanInsightsBaseData(ctx, latestScan.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get severityCounts for latest scan %s: %w", latestScan.ID.String(), err)
 	}
 
+	// 5.3 Get base insights for previous scan to calculate variation
+	vulnVariation := 0
+	previousScan, err := s.scanRepo.GetPreviousScan(ctx, latestScan.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get previous scan: %w", err)
+	}
+	if previousScan != nil {
+		previousTotalVulns, err := s.vulnRepo.GetVulnerabilityCountByScanID(ctx, previousScan.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get total vulnerabilities for previous scan %s: %w", previousScan.ID.String(), err)
+		}
+		vulnVariation = latestScanInsights.TotalVulnerabilities - previousTotalVulns
+	}
+
 	latestScanData := domain.LastScanData{
-		HostAlias:                     latestScanInsights.Metadata.HostAlias,
+		HostAlias:                     latestScanInsights.HostAlias,
 		TotalVulnerabilities:          latestScanInsights.TotalVulnerabilities,
-		TotalVulnerabilitiesVariation: latestScanInsights.VulnerabilityVariation,
-		SeverityCounts:                latestScanInsights.SeverityCounts,
-		ScanDate:                      latestScanInsights.Metadata.ScanDate,
+		TotalVulnerabilitiesVariation: vulnVariation,
+		SeverityCounts: tools.SeverityCounts{
+			Unknown:  latestScanInsights.UnknownVulnerabilities,
+			None:     latestScanInsights.NoneVulnerabilities,
+			Low:      latestScanInsights.LowVulnerabilities,
+			Medium:   latestScanInsights.MediumVulnerabilities,
+			High:     latestScanInsights.HighVulnerabilities,
+			Critical: latestScanInsights.CriticalVulnerabilities,
+		},
+		ScanDate: latestScanInsights.ScanDate,
 	}
 
 	return &latestScanData, nil
 }
 
 func (s *TenantService) GetHostsSortedByMostVulnerabilities(
+	ctx context.Context,
 	hosts []*domain.Host,
 	latestScanMap map[uuid.UUID]*domain.Scan,
 ) ([]domain.HostAliasVulnerabilityPair, error) {
@@ -331,7 +378,7 @@ func (s *TenantService) GetHostsSortedByMostVulnerabilities(
 		}
 
 		host := hostMap[hostID]
-		vulnerabilityCount, err := s.storage.GetScanVulnerabilityCount(scan.ID)
+		vulnerabilityCount, err := s.vulnRepo.GetVulnerabilityCountByScanID(ctx, scan.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to count scan %s vulnerabilities: %w", scan.ID.String(), err)
 		}

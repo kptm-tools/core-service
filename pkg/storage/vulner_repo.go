@@ -301,6 +301,18 @@ func (r *VulnerRepo) GetVulnerabilityCategoriesByScan(
 	return categories, nil
 }
 
+func (r *VulnerRepo) GetVulnerabilityCountByScanID(ctx context.Context, scanID uuid.UUID) (int, error) {
+	queries := r.getQueries(ctx)
+	count, err := queries.GetVulnerabilityCountByScanID(ctx, scanID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, customerrors.ErrScanNotFound
+		}
+		return 0, err
+	}
+	return int(count), nil
+}
+
 func (r *VulnerRepo) GetHostVulnerabilityTrends(
 	ctx context.Context,
 	params domain.VulnerabilityTrendsParams,

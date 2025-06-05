@@ -36,8 +36,11 @@ func (h *TenantHandlers) GetTenants(w http.ResponseWriter, req *http.Request) er
 
 func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) error {
 	ctx := req.Context()
-	tenantIDStr := ctx.Value(middleware.ContextTenantID).(string)
-	tenantID := uuid.MustParse(tenantIDStr)
+	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		slog.Error("Failed to assert tenantID to UUID")
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
 
 	hostIDFilter, err := parseHostsIDFilterFromURLQuery(req, "host_ids")
 	if err != nil {
@@ -59,7 +62,7 @@ func (h *TenantHandlers) GetDashboard(w http.ResponseWriter, req *http.Request) 
 	tenantDasboardData, err := h.tenantService.GetTenantDashboardData(ctx, tenantID, trendsTimePeriodFilter, trendsSeverityFilter, hostIDFilter)
 	if err != nil {
 		slog.Error("Error getting tenant dashboard data",
-			slog.String("tenant_id", tenantIDStr),
+			slog.String("tenant_id", tenantID.String()),
 			slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
 			Error: http.StatusText(http.StatusInternalServerError),

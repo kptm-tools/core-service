@@ -60,7 +60,7 @@ func main() {
 	healthService := services.NewHealthcheckService(c, coreStore)
 	authService := services.NewAuthService(ctx, coreStore)
 	hostService := services.NewHostService(coreStore.Host)
-	tenantService := services.NewTenantService(coreStore)
+	tenantService := services.NewTenantService(coreStore, coreStore.Vulnerability, coreStore.Scan, coreStore.Host)
 	scanService := services.NewScanService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.ScanResult)
 	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve)
 	scanScheduleService := services.NewScanScheduleService(coreStore, coreStore.Scan, coreStore.ScanSchedule)

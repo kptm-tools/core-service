@@ -21,7 +21,6 @@ type IStorage interface {
 	CreateTenant(*domain.Tenant) (*domain.Tenant, error)
 	GetTenants() ([]*domain.Tenant, error)
 	Ping() error
-	CreateScan(*domain.Scan) (*domain.Scan, error)
 	ExistAlias(string) (bool, error)
 	GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error)
 	GetScanByID(UUID uuid.UUID) (*domain.Scan, error)
@@ -104,6 +103,7 @@ type VulnerabilityRepository interface {
 	HasComment(context.Context, uuid.UUID) (bool, error)
 	GetSeverityCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 	GetScanVulnerabilityAggregates(context.Context, domain.VulnerabilityAggregatesParams) (*domain.VulnerabilityAggregatesResult, error)
+	GetVulnerabilityCountByScanID(ctx context.Context, scanID uuid.UUID) (int, error)
 	GetVulnerabilityCategoriesByScan(context.Context, domain.VulnerabilityCategoriesParams) ([]domain.ServiceCategoryData, error)
 	GetHostVulnerabilityTrends(context.Context, domain.VulnerabilityTrendsParams) ([]domain.ServiceTimePeriod, error)
 }

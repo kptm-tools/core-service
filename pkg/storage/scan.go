@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/lib/pq"
 	"github.com/sqlc-dev/pqtype"
 
 	"github.com/google/uuid"
@@ -53,33 +52,6 @@ func (s *PostgreSQLStore) ClearScanVulnerabilitiesTable() error {
 	}
 
 	return nil
-}
-
-func (s *PostgreSQLStore) CreateScan(sc *domain.Scan) (*domain.Scan, error) {
-	var insertedScan domain.Scan
-	query := `
-    INSERT INTO scans (tenant_id, operator_id, host_id, status, started_at)
-                values ($1, $2, $3, $4, $5)
-    RETURNING id, tenant_id, operator_id, host_id, status, started_at`
-
-	err := s.db.QueryRow(query, sc.TenantID, sc.OperatorID, sc.HostID, sc.Status, sc.StartedAt).Scan(
-		&insertedScan.ID,
-		&insertedScan.TenantID,
-		&insertedScan.OperatorID,
-		&insertedScan.HostID,
-		&insertedScan.Status,
-		&insertedScan.StartedAt,
-	)
-	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
-			if pqErr.Code == "23503" && pqErr.Constraint == "scans_host_id_fkey" {
-				return nil, customerrors.ErrScanHostFKNotFound
-			}
-		}
-		return nil, fmt.Errorf("failed to insert scan: %w", err)
-	}
-
-	return &insertedScan, nil
 }
 
 func (s *PostgreSQLStore) InsertVulnerabilityResult(ctx context.Context, sr *domain.ScanResult) error {
