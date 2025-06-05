@@ -19,7 +19,7 @@ type DashboardService struct {
 	hostRepo interfaces.HostRepository
 }
 
-var _ interfaces.ITenantService = (*DashboardService)(nil)
+var _ interfaces.IDashboardService = (*DashboardService)(nil)
 
 func NewDashboardService(
 	vulnerabilityRepository interfaces.VulnerabilityRepository,

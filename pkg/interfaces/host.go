@@ -28,3 +28,12 @@ type IHostHandlers interface {
 	ValidateHost(w http.ResponseWriter, req *http.Request) error
 	ValidateAlias(w http.ResponseWriter, req *http.Request) error
 }
+
+type HostRepository interface {
+	CreateHost(ctx context.Context, host *domain.Host) (*domain.Host, error)
+	GetHostByID(context.Context, uuid.UUID) (*domain.Host, error)
+	GetHostsByTenantID(ctx context.Context, tenantID uuid.UUID, hostsIDFilter []uuid.UUID) ([]*domain.Host, error)
+	DeleteHostByID(context.Context, uuid.UUID) (bool, error)
+	PatchHostByID(context.Context, domain.Host) (*domain.Host, error)
+	AliasExists(context.Context, string) (bool, error)
+}

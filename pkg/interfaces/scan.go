@@ -43,3 +43,22 @@ type IScanHandlers interface {
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
 	DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error
 }
+
+type ScanRepository interface {
+	CreateScan(context.Context, domain.Scan) (*domain.Scan, error)
+	GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
+	GetScanByID(context.Context, uuid.UUID) (*domain.Scan, error)
+	GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
+	GetLatestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
+	GetOldestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
+	GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	GetProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetReportsByTenantID(context.Context, uuid.UUID) ([]domain.ReportItem, error)
+	UpdateProtectionScore(ctx context.Context, scanID uuid.UUID, newScore float64) error
+	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus) error
+	UpdateScanStatusAndEndedAt(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus, endedAt time.Time) error
+}
+
+type ScanResultRepository interface {
+	CreateScanResult(context.Context, domain.ScanResult) error
+}

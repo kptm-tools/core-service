@@ -24,3 +24,14 @@ type IScanScheduleHandlers interface {
 	PatchScanSchedule(w http.ResponseWriter, r *http.Request) error
 	GetScanSchedules(w http.ResponseWriter, r *http.Request) error
 }
+
+type ScanScheduleRepository interface {
+	CreateScanSchedule(context.Context, domain.ScanSchedule) (*domain.ScanSchedule, error)
+	GetScanScheduleByID(context.Context, int) (*domain.ScanSchedule, error)
+	GetScanSchedulesByTenantID(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanScheduleSummary, error)
+	UpdateScanScheduling(context.Context, uuid.UUID, int) error
+	DeleteScanScheduleByID(context.Context, int) (bool, error)
+	PatchScanScheduleByID(context.Context, int, uuid.UUID, string, bool, string, int, time.Time) error
+	EnableJob(context.Context, string, bool, int) error
+	DisableJob(context.Context, int, bool) error
+}
