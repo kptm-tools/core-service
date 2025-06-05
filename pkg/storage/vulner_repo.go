@@ -182,7 +182,7 @@ func (r *VulnerRepo) CreateNetworkOSVulnerabilityForService(
 		ScanID:            scanID,
 		HostID:            hostID,
 		OperatingSystemID: sql.NullInt32{Valid: false},
-		ServiceID:         sql.NullInt32{Int32: serviceID, Valid: false},
+		ServiceID:         sql.NullInt32{Int32: serviceID, Valid: true},
 	}
 	_, err := queries.CreateNetworkOSVulnerability(ctx, params)
 	return err
