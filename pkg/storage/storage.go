@@ -99,40 +99,6 @@ func (s *PostgreSQLStore) Migrate() error {
 	return nil
 }
 
-func (s *PostgreSQLStore) ClearCoreDB() error {
-	if err := s.ClearScanVulnerabilitiesTable(); err != nil {
-		return err
-	}
-
-	if err := s.ClearScanVulnerabilitiesTable(); err != nil {
-		return err
-	}
-
-	// Attempt to clear Scans Table
-	if err := s.ClearScanTable(); err != nil {
-		return err
-	}
-
-	// Attempt to clear Hosts Table
-	if err := s.ClearHostsTable(); err != nil {
-		return err
-	}
-	// Attempt to clear Tenants Table
-	if err := s.ClearTenantsTable(); err != nil {
-		return err
-	}
-	// Attempt to clear Scans Table
-	if err := s.ClearScanTable(); err != nil {
-		return err
-	}
-	// Attempt to clear Scan Results Table
-	if err := s.ClearScanResultsTable(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *PostgreSQLStore) Ping() error {
 	return s.db.Ping()
 }

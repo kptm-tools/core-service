@@ -2,7 +2,6 @@ package interfaces
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,36 +12,7 @@ import (
 )
 
 type IStorage interface {
-	GetHostsByTenantID(ctx context.Context, tenantID uuid.UUID, hostsIDFilter []uuid.UUID) ([]*domain.Host, error)
 	Ping() error
-	ExistAlias(string) (bool, error)
-	GetCurrentScans(tenantID string) ([]*domain.ScanSummary, error)
-	GetScanByID(UUID uuid.UUID) (*domain.Scan, error)
-	InsertScanResult(*sql.Tx, *domain.ScanResult) error
-	InsertVulnerabilityResult(context.Context, *domain.ScanResult) error
-	UpdateScanStatus(scanID uuid.UUID, status string) error
-	UpdateScanStatusAndEndedAt(tx *sql.Tx, scanID uuid.UUID, status string, endedAt time.Time) error
-	GetScanInsights(scanID uuid.UUID) (*domain.ScanInsights, error)
-	GetProtectionScore(scanID uuid.UUID) (float64, error)
-	UpdateProtectionScore(scanID uuid.UUID, score float64) error
-	GetWhoisResult(scanID uuid.UUID) (*tools.WhoIsResult, error)
-	GetDNSLookupResult(scanID uuid.UUID) (*tools.DNSLookupResult, error)
-	GetHarvesterResult(scanID uuid.UUID) (*tools.HarvesterResult, error)
-	GetNmapResult(scanID uuid.UUID) (*tools.NmapResult, error)
-	GetScanVulnerabilitiesSummary(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
-	GetReportsByTenantID(string) ([]*domain.ReportItem, error)
-	GetLatestScanByHostID(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, error)
-	GetScanBeforeLatestByHostID(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, error)
-	GetOldestScanByHostID(hostID uuid.UUID, fromDate, toDate *time.Time) (*domain.Scan, error)
-	GetScanVulnerabilities(uuid.UUID) ([]*domain.Vulnerability, error)
-	GetScanVulnerabilityCount(uuid.UUID) (int, error)
-	GetSeverityCounts(uuid.UUID) (*tools.SeverityCounts, error)
-	GetVulnerabilityByID(int) (*domain.Vulnerability, error)
-	GetHostVulnerabilityTrends(hostID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) ([]domain.ServiceTimePeriod, error)
-	GetRapporteursAndHostAliasByScanID(scanID uuid.UUID) ([]*domain.Rapporteur, string, error)
-	UpdateVulnerabilityComment(ID int, comment string) (bool, error)
-	DeleteVulnerabilityComment(ID int) (bool, error)
-	HasComment(ID int) (bool, error)
 }
 
 type HostRepository interface {
