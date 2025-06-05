@@ -1,4 +1,4 @@
-package mocks
+package mock_storage
 
 import (
 	"database/sql"
@@ -373,12 +373,14 @@ func (m *MockStorage) UpdateVulnerabilityComment(ID int, comment string) (bool, 
 	}
 	return true, nil
 }
+
 func (m *MockStorage) DeleteVulnerabilityComment(ID int) (bool, error) {
 	if m.MockDeleteVulnerabilityComment != nil {
 		return m.MockDeleteVulnerabilityComment(ID)
 	}
 	return true, nil
 }
+
 func (m *MockStorage) HasComment(ID int) (bool, error) {
 	if m.MockHasComment != nil {
 		return m.MockHasComment(ID)

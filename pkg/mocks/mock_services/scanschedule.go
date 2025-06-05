@@ -1,9 +1,10 @@
-package mocks
+package mock_services
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"time"
 )
 
 type MockScanScheduleService struct {

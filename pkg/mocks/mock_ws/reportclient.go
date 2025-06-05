@@ -1,4 +1,4 @@
-package mocks
+package mock_ws
 
 import (
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -26,7 +26,7 @@ func (m *MockReportClient) GetID() string {
 }
 
 func (m *MockReportClient) GetHub() interfaces.IHub {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -35,12 +35,12 @@ func (m *MockReportClient) GetSend() chan []byte {
 }
 
 func (m *MockReportClient) ReadMessages() {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *MockReportClient) WriteMessages() {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

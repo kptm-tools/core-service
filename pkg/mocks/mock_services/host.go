@@ -1,4 +1,4 @@
-package mocks
+package mock_services
 
 import "github.com/kptm-tools/core-service/pkg/domain"
 
