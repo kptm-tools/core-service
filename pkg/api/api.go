@@ -20,7 +20,7 @@ type APIServer struct {
 	healthHandlers       interfaces.IHealthcheckHandlers
 	hostHandlers         interfaces.IHostHandlers
 	authHandlers         interfaces.IAuthHandlers
-	tenantHandlers       interfaces.ITenantHandlers
+	tenantHandlers       interfaces.IDashboardHandlers
 	scanHandlers         interfaces.IScanHandlers
 	vulnHandlers         interfaces.IVulnerabilityHandlers
 	scanScheduleHandlers interfaces.IScanScheduleHandlers
@@ -38,7 +38,7 @@ func NewAPIServer(
 	listenAddr string,
 	heHandlers interfaces.IHealthcheckHandlers,
 	hoHandlers interfaces.IHostHandlers,
-	teHandlers interfaces.ITenantHandlers,
+	teHandlers interfaces.IDashboardHandlers,
 	aHandlers interfaces.IAuthHandlers,
 	sHandlers interfaces.IScanHandlers,
 	vHandlers interfaces.IVulnerabilityHandlers,

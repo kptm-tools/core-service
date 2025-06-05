@@ -14,12 +14,12 @@ import (
 )
 
 type DashboardHandlers struct {
-	dashboardService interfaces.ITenantService
+	dashboardService interfaces.IDashboardService
 }
 
-var _ interfaces.ITenantHandlers = (*DashboardHandlers)(nil)
+var _ interfaces.IDashboardHandlers = (*DashboardHandlers)(nil)
 
-func NewDashboardHandlers(dashboardService interfaces.ITenantService) *DashboardHandlers {
+func NewDashboardHandlers(dashboardService interfaces.IDashboardService) *DashboardHandlers {
 	return &DashboardHandlers{
 		dashboardService: dashboardService,
 	}
