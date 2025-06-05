@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/sqlc-dev/pqtype"
 )
@@ -58,25 +57,6 @@ func enumToSQLNullString[E interface{ String() string }](val E, isZeroValue func
 	return sql.NullString{String: sVal, Valid: true}
 }
 
-// timeToSQLNullTime converts time.Time to sql.NullTime.
-// Zero time becomes SQL NULL.
-func timeToSQLNullTime(t time.Time) sql.NullTime {
-	if t.IsZero() {
-		return sql.NullTime{Valid: false}
-	}
-	return sql.NullTime{Time: t, Valid: true}
-}
-
-// dateToSQLNullTime converts time.Time (representing a DATE) to sql.NullTime.
-// (SQL DATE columns are often mapped to sql.NullTime by sqlc if time.Time is used in Go)
-func dateToSQLNullTime(t time.Time) sql.NullTime {
-	if t.IsZero() {
-		return sql.NullTime{Valid: false}
-	}
-	// For DATE, ensure only date part is relevant, though sql.NullTime takes time.Time
-	return sql.NullTime{Time: t, Valid: true}
-}
-
 // marshalToPQNullRawMessage converts an interface to pqtype.NullRawMessage for JSONB.
 func marshalToPQNullRawMessage(data interface{}) (pqtype.NullRawMessage, error) {
 	if data == nil {
@@ -104,11 +84,6 @@ func nullStringToString(ns sql.NullString) string {
 // nullTimeToTime converts sql.NullTime to time.Time, returning time.Time{} if null.
 func nullTimeToTime(nt sql.NullTime) time.Time {
 	return nt.Time
-}
-
-// nullUUIDToUUID converts uuid.NullUUID to uuid.UUID, returning uuid.Nil if null.
-func nullUUIDToUUID(nu uuid.NullUUID) uuid.UUID {
-	return nu.UUID
 }
 
 // nullDecimalToFloat64 converts apd.NullDecimal to float64.
