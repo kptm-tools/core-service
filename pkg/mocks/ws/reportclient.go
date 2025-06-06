@@ -1,4 +1,4 @@
-package mock_ws
+package mockws
 
 import (
 	"github.com/kptm-tools/common/common/pkg/enums"

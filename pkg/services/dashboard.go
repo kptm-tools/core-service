@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
@@ -252,7 +253,7 @@ func (s *DashboardService) GetHostsVulnerabilityTrends(
 	}
 
 	for _, hostID := range hostIDs {
-		params := domain.VulnerabilityTrendsParams{
+		params := dto.VulnerabilityTrendsParams{
 			HostID:           hostID,
 			TimePeriodFilter: timePeriodFilter,
 			SeverityFilters:  severityFilters,

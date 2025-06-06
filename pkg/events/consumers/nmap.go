@@ -3,6 +3,7 @@ package consumers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -33,7 +34,6 @@ var _ interfaces.EventConsumer = (*NmapHandler)(nil)
 
 func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
-		ctx := context.Background()
 		slog.Info("Received NmapEvent")
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
@@ -110,8 +110,10 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		resultPtr, ok := scanResult.Result.Result.(*tools.NmapResult)
 		if !ok || resultPtr == nil {
 			slog.Error(
-				"Failed to assert nmap result to tools.NmapResult; actual type: %T", scanResult.Result.Result,
-				slog.String("scan_id", scan.ID.String()),
+				"Failed to assert nmap result type", // Static, searchable message
+				"scan_id", scan.ID.String(),         // Structured context
+				"expected_type", "*tools.NmapResult",
+				"actual_type", fmt.Sprintf("%T", scanResult.Result.Result),
 			)
 		}
 		nr = *resultPtr

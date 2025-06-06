@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	mocks "github.com/kptm-tools/core-service/pkg/mocks/mock_storage"
+	mocks "github.com/kptm-tools/core-service/pkg/mocks/storage"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/stretchr/testify/assert"
 )

@@ -303,7 +303,7 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 		slog.Error(
 			"Failed to assert tenantID to uuid.UUID type",
 			"expected_type", "uuid.UUID",
-			"actual_type", fmt.Sprintf("$T", tenantID),
+			"actual_type", fmt.Sprintf("%T", tenantID),
 		)
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}

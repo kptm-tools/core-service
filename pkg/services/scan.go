@@ -17,6 +17,7 @@ import (
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
@@ -182,10 +183,8 @@ func (s *ScanService) GetScanInsights(ctx context.Context, scanID uuid.UUID) (*d
 	}
 
 	insights.SeverityPerType = make(map[string]string)
-	if rawSeverityPerType != nil {
-		for vulnType, cvssScore := range rawSeverityPerType {
-			insights.SeverityPerType[vulnType] = tools.MapCVSS(cvssScore).String()
-		}
+	for vulnType, cvssScore := range rawSeverityPerType {
+		insights.SeverityPerType[vulnType] = tools.MapCVSS(cvssScore).String()
 	}
 
 	// 3. Get current scan's protection score
@@ -282,19 +281,19 @@ func (s *ScanService) GetScanVulnerabilitySummaryByID(
 	summaryData.Domain = scan.Target.Value
 
 	// 2. Get Vulnerability Aggregates (Summary)
-	aggParams := domain.VulnerabilityAggregatesParams{
+	aggParams := dto.VulnerabilityAggregatesParams{
 		ScanID:          scanID,
 		SeverityFilters: severityFilters,
 	}
 	vulnAggregates, err := s.vulnRepo.GetScanVulnerabilityAggregates(ctx, aggParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch vulnerability aggregates", err)
+		return nil, fmt.Errorf("failed to fetch vulnerability aggregates: %w", err)
 	}
 	summaryData.TotalVulnerabilities = vulnAggregates.TotalVulnerabilities
 	summaryData.SeverityCounts = vulnAggregates.SeverityCounts
 
 	// 3. Get Vulnerability Categories
-	catParams := domain.VulnerabilityCategoriesParams{
+	catParams := dto.VulnerabilityCategoriesParams{
 		ScanID:          scanID,
 		SeverityFilters: severityFilters,
 	}
@@ -305,7 +304,7 @@ func (s *ScanService) GetScanVulnerabilitySummaryByID(
 	summaryData.CategoryData = categoryData
 
 	// 4. Get Host Trend Data
-	trendParams := domain.VulnerabilityTrendsParams{
+	trendParams := dto.VulnerabilityTrendsParams{
 		HostID:           scan.HostID,
 		TimePeriodFilter: timePeriodFilter,
 		SeverityFilters:  severityFilters,

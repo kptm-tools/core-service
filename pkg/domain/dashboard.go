@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 )
@@ -100,28 +99,7 @@ type HostAliasVulnerabilityPair struct {
 	VulnerabilityCount int    `json:"vulnerability_count"`
 }
 
-// VulnerabilityAggregatesParams are the params used to filter vulnerability aggregates
-type VulnerabilityAggregatesParams struct {
-	ScanID          uuid.UUID
-	SeverityFilters []string // Empty slice means no severity filter
-}
-
 type VulnerabilityAggregatesResult struct {
 	TotalVulnerabilities int
 	SeverityCounts       tools.SeverityCounts
-}
-
-// VulnerabilityCategoriesParams are the params used to get the
-// vulnerability categories of a scan.
-type VulnerabilityCategoriesParams struct {
-	ScanID          uuid.UUID
-	SeverityFilters []string
-}
-
-// VulnerabilityTrendsParams are the params used to get the vulnerability
-// trends for a particular host.
-type VulnerabilityTrendsParams struct {
-	HostID           uuid.UUID
-	TimePeriodFilter TimePeriodFilter
-	SeverityFilters  []string
 }

@@ -1,4 +1,4 @@
-package mock_storage
+package mockstorage
 
 import (
 	"context"

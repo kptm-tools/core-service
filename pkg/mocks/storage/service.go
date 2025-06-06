@@ -1,4 +1,4 @@
-package mock_storage
+package mockstorage
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/testutil"
 )
 
 type MockServiceRepo struct {
@@ -21,12 +22,12 @@ func (m *MockServiceRepo) CreateOrUpdateService(ctx context.Context, hostID uuid
 	if m.MockCreateOrUpdateService != nil {
 		return m.MockCreateOrUpdateService(ctx, hostID, scanID, portData)
 	}
-	panic(fmt.Sprintf("MockServiceRepo: method CreateOrUpdateService called but not implemented for test: %s", ctx.Value("test_name")))
+	panic(fmt.Sprintf("MockServiceRepo: method CreateOrUpdateService called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }
 
 func (m *MockServiceRepo) GetServiceByID(ctx context.Context, id int32) (*domain.Service, error) {
 	if m.MockGetServiceByID != nil {
 		return m.MockGetServiceByID(ctx, id)
 	}
-	panic(fmt.Sprintf("MockServiceRepo: method GetServiceByID called but not implemented for test: %s", ctx.Value("test_name")))
+	panic(fmt.Sprintf("MockServiceRepo: method GetServiceByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

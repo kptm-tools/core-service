@@ -1,14 +1,16 @@
 package samples
 
 import (
+	"math"
+	"strconv"
+	"time"
+
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	whoisparser "github.com/likexian/whois-parser"
-	"math"
-	"strconv"
-	"time"
 )
 
 func generateEmails(size int) []string {
@@ -140,7 +142,8 @@ func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
 	vulns := make([]tools.Vulnerability, size)
 	for i := range vulns {
 		vulns[i] = tools.Vulnerability{
-			ID:                 "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
+			ID:                 uuid.New(),
+			CveID:              "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
 			Type:               enums.AllWeaknessTypes[gofakeit.IntRange(0, len(enums.AllWeaknessTypes)-1)],
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
 			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
@@ -176,7 +179,7 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 	severityType[5] = enums.SeverityTypeNone
 
 	exploitableType := make([]enums.ExploitabilityType, 5)
-	exploitableType[0] = enums.ExploitabilityTypeUndefined
+	exploitableType[0] = enums.ExploitabilityTypeNotDefined
 	exploitableType[1] = enums.ExploitabilityTypeUnknown
 	exploitableType[2] = enums.ExploitabilityTypeFunctional
 	exploitableType[3] = enums.ExploitabilityTypeUnproven

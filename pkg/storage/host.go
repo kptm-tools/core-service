@@ -39,7 +39,7 @@ func (r *HostRepo) CreateHost(ctx context.Context, host *domain.Host) (*domain.H
 	queries := r.getQueries(ctx)
 	rapporteursBytes, err := json.Marshal(host.Rapporteurs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal rapporteurs slice into bytes", err)
+		return nil, fmt.Errorf("failed to marshal rapporteurs slice into bytes: %w", err)
 	}
 
 	// 1. Insert into host

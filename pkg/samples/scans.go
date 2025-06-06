@@ -1,9 +1,10 @@
 package samples
 
 import (
-	"github.com/brianvoe/gofakeit/v7"
 	"strconv"
 	"time"
+
+	"github.com/brianvoe/gofakeit/v7"
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -24,7 +25,7 @@ func GenerateMetaData(size int, services []string) []domain.Metadata {
 }
 
 func SampleScans(size int, tenants []domain.Tenant, hosts []domain.Host) []domain.Scan {
-	operators, services, targets := generateDefaultConstants()
+	operators, _, targets := generateDefaultConstants()
 
 	fromYears := 1
 	domainScans := make([]domain.Scan, size)
@@ -52,18 +53,18 @@ func SampleScans(size int, tenants []domain.Tenant, hosts []domain.Host) []domai
 		endedTime := creationTime.Add(time.Minute * time.Duration(gofakeit.IntRange(1, 100)))
 		domainScans[i] = domain.Scan{
 			ID:         uuid.New(),
-			TenantID:   tenants[indexTenant].ProviderID,
+			TenantID:   tenants[indexTenant].ID,
 			OperatorID: operators[indexTenant],
 			HostID:     host.ID,
-			HostsStatus: []domain.StatusHost{
-				{
-					Host:     hostValue,
-					Metadata: GenerateMetaData(gofakeit.Number(1, 4), services),
-				},
-			},
-			HostsResults: []domain.ResultHost{
-				{Host: hostValue},
-			},
+			// HostsStatus: []domain.StatusHost{
+			// 	{
+			// 		Host:     hostValue,
+			// 		Metadata: GenerateMetaData(gofakeit.Number(1, 4), services),
+			// 	},
+			// },
+			// HostsResults: []domain.ResultHost{
+			// 	{Host: hostValue},
+			// },
 			Target: results.Target{
 				Alias: host.Name,
 				Value: hostValue,
@@ -79,22 +80,22 @@ func SampleScans(size int, tenants []domain.Tenant, hosts []domain.Host) []domai
 	return domainScans
 }
 
-func getHostsFromTenant(hosts []domain.Host, tenant domain.Tenant, operator string) []domain.Host {
+func getHostsFromTenant(hosts []domain.Host, tenant domain.Tenant, operatorID uuid.UUID) []domain.Host {
 	var domainHosts []domain.Host
 	for _, host := range hosts {
-		if host.TenantID == tenant.ProviderID && host.OperatorID == operator {
+		if host.TenantID == tenant.ID && host.OperatorID == operatorID {
 			domainHosts = append(domainHosts, host)
 		}
 	}
 	return domainHosts
 }
 
-func generateDefaultConstants() ([]string, []string, []string) {
-	operators := make([]string, 2)
+func generateDefaultConstants() ([]uuid.UUID, []string, []string) {
+	operators := make([]uuid.UUID, 2)
 	services := make([]string, 4)
 	targets := make([]string, 3)
-	operators[0] = "00000000-0000-0000-0000-111111111111"
-	operators[1] = "00000000-0000-0000-0000-222222222222"
+	operators[0] = uuid.MustParse("00000000-0000-0000-0000-111111111111")
+	operators[1] = uuid.MustParse("00000000-0000-0000-0000-222222222222")
 	services[0] = "nmap"
 	services[1] = "whois"
 	services[2] = "dns_lookup"

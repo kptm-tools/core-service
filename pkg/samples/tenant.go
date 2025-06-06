@@ -12,14 +12,14 @@ func SampleTenants() []domain.Tenant {
 	c := config.LoadConfig()
 	return []domain.Tenant{
 		{
-			ID:            uuid.NewString(),
+			ID:            uuid.New(),
 			ProviderID:    c.FusionAuth.BlueprintTenantID,
 			ApplicationID: c.FusionAuth.BlueprintApplicationID,
 			CreatedAt:     time.Now().UTC(),
 			UpdatedAt:     time.Now().UTC(),
 		},
 		{
-			ID:            uuid.NewString(),
+			ID:            uuid.New(),
 			ProviderID:    "11111111-0000-0000-0000-000000000000",
 			ApplicationID: "00000000-1111-0000-0000-000000000000",
 			CreatedAt:     time.Now().UTC(),

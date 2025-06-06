@@ -1,9 +1,9 @@
-package mock_ws
+package mockws
 
 import (
 	"net/http"
 
-	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
@@ -12,7 +12,7 @@ type MockReportHub struct {
 	MockRun                    func()
 	MockRegister               func(client interfaces.IClient)
 	MockUnregister             func(client interfaces.IClient)
-	MockGetRoomVulnerabilities func(scanID string) []*domain.Vulnerability
+	MockGetRoomVulnerabilities func(scanID string) []tools.Vulnerability
 	MockAddToRoom              func(scanID string)
 	MockRemoveFromRoom         func(scanID string)
 }
@@ -40,7 +40,7 @@ func (m *MockReportHub) Unregister(client interfaces.IClient) {
 	}
 }
 
-func (m *MockReportHub) GetRoomVulnerabilities(scanID string) []*domain.Vulnerability {
+func (m *MockReportHub) GetRoomVulnerabilities(scanID string) []tools.Vulnerability {
 	if m.MockGetRoomVulnerabilities != nil {
 		return m.MockGetRoomVulnerabilities(scanID)
 	}

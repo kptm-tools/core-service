@@ -1,4 +1,4 @@
-package mock_storage
+package mockstorage
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/repository"
+	"github.com/kptm-tools/core-service/pkg/testutil"
 )
 
 type MockCVERepo struct {
@@ -19,5 +20,5 @@ func (m *MockCVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerab
 	if m.MockCreateOrUpdateCVE != nil {
 		return m.MockCreateOrUpdateCVE(ctx, vuln)
 	}
-	panic(fmt.Sprintf("MockCVERepo: method CreateOrUpdateCVE called but not implemented for test: %s", ctx.Value("test_name")))
+	panic(fmt.Sprintf("MockCVERepo: method CreateOrUpdateCVE called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

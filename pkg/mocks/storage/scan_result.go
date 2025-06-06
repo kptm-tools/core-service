@@ -1,4 +1,4 @@
-package mock_storage
+package mockstorage
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/testutil"
 )
 
 type MockScanResultRepo struct {
@@ -18,5 +19,5 @@ func (m *MockScanResultRepo) CreateScanResult(ctx context.Context, result domain
 	if m.MockCreateScanResult != nil {
 		return m.MockCreateScanResult(ctx, result)
 	}
-	panic(fmt.Sprintf("MockScanResultRepo: method CreateScanResult called but not implemented for test: %s", ctx.Value("test_name")))
+	panic(fmt.Sprintf("MockScanResultRepo: method CreateScanResult called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }
