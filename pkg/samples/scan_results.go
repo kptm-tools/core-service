@@ -189,7 +189,7 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 	accessType[1] = enums.AccessTypeNetwork
 	accessType[2] = enums.AccessTypeUnknown
 	accessType[3] = enums.AccessTypeAdjacentNetwork
-	accessType[4] = enums.AccesTypePhysical
+	accessType[4] = enums.AccessTypePhysical
 	complexityType := make([]enums.ComplexityType, 4)
 	complexityType[0] = enums.ComplexityTypeLow
 	complexityType[1] = enums.ComplexityTypeMedium
