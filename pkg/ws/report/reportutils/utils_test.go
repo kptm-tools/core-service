@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
-	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 	"github.com/stretchr/testify/assert"
@@ -14,12 +14,12 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 	testCases := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		vulns []*domain.Vulnerability
+		vulns []tools.Vulnerability
 		want  dto.InitialDataResponse
 	}{
 		{
 			name:  "Empty vulnerabilities",
-			vulns: []*domain.Vulnerability{},
+			vulns: []tools.Vulnerability{},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
 					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
@@ -41,10 +41,10 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		},
 		{
 			name: "Multiple Vulnerabilities of same type",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 7.5},
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 8.0},
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 7.5},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 8.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
 			},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
@@ -67,10 +67,10 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		},
 		{
 			name: "Multiple Vulnerabilities of different type",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 7.5},
-				{Type: enums.WeaknessSSRF.String(), BaseCVSSScore: 9.0},
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 7.5},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 9.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
 			},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
@@ -93,9 +93,9 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		},
 		{
 			name: "Vulnerabilities with zero CVSS",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 0.0},
-				{Type: enums.WeaknessSSRF.String(), BaseCVSSScore: 0.0},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 0.0},
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 0.0},
 			},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
@@ -129,24 +129,24 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 func Test_GetGlobalCVSSScore(t *testing.T) {
 	testCases := []struct {
 		name  string
-		vulns []*domain.Vulnerability
+		vulns []tools.Vulnerability
 		want  float64
 	}{
 		{
 			name:  "Empty Vulnerabilities",
-			vulns: []*domain.Vulnerability{},
+			vulns: []tools.Vulnerability{},
 			want:  0.0,
 		},
 		{
 			name: "Single vulnerability",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{BaseCVSSScore: 7.5},
 			},
 			want: 7.5,
 		},
 		{
 			name: "Multiple Vulnerabilities",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{BaseCVSSScore: 7.5},
 				{BaseCVSSScore: 1.5},
 				{BaseCVSSScore: 2.5},
@@ -155,7 +155,7 @@ func Test_GetGlobalCVSSScore(t *testing.T) {
 		},
 		{
 			name: "Vulnerability with cero CVSS",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{BaseCVSSScore: 0.0},
 				{BaseCVSSScore: 1.5},
 				{BaseCVSSScore: 2.5},
@@ -172,136 +172,101 @@ func Test_GetGlobalCVSSScore(t *testing.T) {
 	}
 }
 
-func TestGetUniqueCVSSValuesPerType(t *testing.T) {
-	testCases := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		vulns []*domain.Vulnerability
-		want  reportutils.UniqueCVSSValuesByType
-	}{
-		{
-			name:  "Empty Vulnerabilities",
-			vulns: []*domain.Vulnerability{},
-			want: reportutils.UniqueCVSSValuesByType{
-				enums.WeaknessSSRF: map[float64]bool{0.0: true},
-				enums.WeaknessSoftwareAndDataIntegrityFailures:        map[float64]bool{0.0: true},
-				enums.WeaknessCryptographicFailures:                   map[float64]bool{0.0: true},
-				enums.WeaknessIdentificationAndAuthenticationFailures: map[float64]bool{0.0: true},
-				enums.WeaknessBrokenAccessControl:                     map[float64]bool{0.0: true},
-				enums.WeaknessSecurityLoggingAndMonitoringFailures:    map[float64]bool{0.0: true},
-				enums.WeaknessInjection:                               map[float64]bool{0.0: true},
-				enums.WeaknessVulnerableAndOutdatedComponents:         map[float64]bool{0.0: true},
-				enums.WeaknessInsecureDesign:                          map[float64]bool{0.0: true},
-				enums.WeaknessSecurityMisconfiguration:                map[float64]bool{0.0: true},
-				enums.WeaknessOther:                                   map[float64]bool{0.0: true},
-				enums.WeaknessNoInfo:                                  map[float64]bool{0.0: true},
-			},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := reportutils.GetUniqueCVSSValuesPerType(tc.vulns)
-
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
 func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 	testCases := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		vulns         []*domain.Vulnerability
+		vulns         []tools.Vulnerability
 		status        map[enums.WeaknessType]float64
-		wantSolved    []*domain.Vulnerability
-		wantNotSolved []*domain.Vulnerability
+		wantSolved    []tools.Vulnerability
+		wantNotSolved []tools.Vulnerability
 	}{
 		{
 			name:          "Empty vulnerability slice",
-			vulns:         []*domain.Vulnerability{},
+			vulns:         []tools.Vulnerability{},
 			status:        map[enums.WeaknessType]float64{},
-			wantSolved:    []*domain.Vulnerability{},
-			wantNotSolved: []*domain.Vulnerability{},
+			wantSolved:    []tools.Vulnerability{},
+			wantNotSolved: []tools.Vulnerability{},
 		},
 		{
 			name: "Vulnerability slice with empty status",
-			vulns: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)"},
-				{Type: "Injection"},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF},
+				{Type: enums.WeaknessInjection},
 			},
 			status:     map[enums.WeaknessType]float64{},
-			wantSolved: []*domain.Vulnerability{},
-			wantNotSolved: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)"},
-				{Type: "Injection"},
+			wantSolved: []tools.Vulnerability{},
+			wantNotSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF},
+				{Type: enums.WeaknessInjection},
 			},
 		},
 		{
 			name: "Vulnerability slice with non-empty status",
-			vulns: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
 			status: map[enums.WeaknessType]float64{
 				enums.WeaknessSSRF:      6.5,
 				enums.WeaknessInjection: 4.0,
 			},
-			wantSolved: []*domain.Vulnerability{
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			wantSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
-			wantNotSolved: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
+			wantNotSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
 			},
 		},
 		{
 			name: "Vulnerability slice with status equal to the CVSS",
-			vulns: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
 			status: map[enums.WeaknessType]float64{
 				enums.WeaknessSSRF:      5.0,
 				enums.WeaknessInjection: 5.0,
 			},
-			wantSolved: []*domain.Vulnerability{},
-			wantNotSolved: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			wantSolved: []tools.Vulnerability{},
+			wantNotSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
 		},
 		{
 			name: "Status with 0.0 Desired CVSS",
-			vulns: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
 			status: map[enums.WeaknessType]float64{
 				enums.WeaknessSSRF:      0.0,
 				enums.WeaknessInjection: 0.0,
 			},
-			wantSolved: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			wantSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
-			wantNotSolved: []*domain.Vulnerability{},
+			wantNotSolved: []tools.Vulnerability{},
 		},
 		{
 			name: "Vulnerability with Type not included in map",
-			vulns: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
-				{Type: "Other", BaseCVSSScore: 5.0},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessOther, BaseCVSSScore: 5.0},
 			},
 			status: map[enums.WeaknessType]float64{
 				enums.WeaknessSSRF:      0.0,
 				enums.WeaknessInjection: 0.0,
 			},
-			wantSolved: []*domain.Vulnerability{
-				{Type: "Server-Side Request Forgery (SSRF)", BaseCVSSScore: 5.0},
-				{Type: "Injection", BaseCVSSScore: 5.0},
+			wantSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
 			},
-			wantNotSolved: []*domain.Vulnerability{
-				{Type: "Other", BaseCVSSScore: 5.0},
+			wantNotSolved: []tools.Vulnerability{
+				{Type: enums.WeaknessOther, BaseCVSSScore: 5.0},
 			},
 		},
 	}
@@ -319,29 +284,29 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 	testCases := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		vulns    []*domain.Vulnerability
+		vulns    []tools.Vulnerability
 		vulnType enums.WeaknessType
-		want     *domain.Vulnerability
+		want     *tools.Vulnerability
 	}{
 		{
 			name: "One vulnerability of type",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{
-					Type:          "Injection",
+					Type:          enums.WeaknessInjection,
 					BaseCVSSScore: 5.5,
 				},
 			},
 			vulnType: enums.WeaknessInjection,
-			want: &domain.Vulnerability{
-				Type:          "Injection",
+			want: &tools.Vulnerability{
+				Type:          enums.WeaknessInjection,
 				BaseCVSSScore: 5.5,
 			},
 		},
 		{
 			name: "One vulnerability but not of type",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{
-					Type:          "Injection",
+					Type:          enums.WeaknessInjection,
 					BaseCVSSScore: 5.5,
 				},
 			},
@@ -350,64 +315,64 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 		},
 		{
 			name: "Multiple vulnerabilities of different type",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{
-					Type:          "Injection",
+					Type:          enums.WeaknessInjection,
 					BaseCVSSScore: 5.5,
 				},
 				{
-					Type:          "Server-Side Request Forgery (SSRF)",
+					Type:          enums.WeaknessSSRF,
 					BaseCVSSScore: 5.6,
 				},
 			},
 			vulnType: enums.WeaknessInjection,
-			want: &domain.Vulnerability{
-				Type:          "Injection",
+			want: &tools.Vulnerability{
+				Type:          enums.WeaknessInjection,
 				BaseCVSSScore: 5.5,
 			},
 		},
 		{
 			name: "Multiple vulnerabilities of same type",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{
-					Type:          "Injection",
+					Type:          enums.WeaknessInjection,
 					BaseCVSSScore: 5.5,
 				},
 				{
-					Type:          "Injection",
+					Type:          enums.WeaknessInjection,
 					BaseCVSSScore: 5.6,
 				},
 			},
 			vulnType: enums.WeaknessInjection,
-			want: &domain.Vulnerability{
-				Type:          "Injection",
+			want: &tools.Vulnerability{
+				Type:          enums.WeaknessInjection,
 				BaseCVSSScore: 5.6,
 			},
 		},
 		{
 			name: "Multiple vulnerabilities of same type and CVSS",
-			vulns: []*domain.Vulnerability{
+			vulns: []tools.Vulnerability{
 				{
-					VulnerabilityID: "CVE-2024",
-					Type:            "Injection",
-					BaseCVSSScore:   5.5,
+					CveID:         "CVE-2024",
+					Type:          enums.WeaknessInjection,
+					BaseCVSSScore: 5.5,
 				},
 				{
-					VulnerabilityID: "CVE-2012",
-					Type:            "Injection",
-					BaseCVSSScore:   5.5,
+					CveID:         "CVE-2012",
+					Type:          enums.WeaknessInjection,
+					BaseCVSSScore: 5.5,
 				},
 			},
 			vulnType: enums.WeaknessInjection,
-			want: &domain.Vulnerability{
-				VulnerabilityID: "CVE-2024",
-				Type:            "Injection",
-				BaseCVSSScore:   5.5,
+			want: &tools.Vulnerability{
+				CveID:         "CVE-2024",
+				Type:          enums.WeaknessInjection,
+				BaseCVSSScore: 5.5,
 			},
 		},
 		{
 			name:     "Empty vulnerabilities",
-			vulns:    []*domain.Vulnerability{},
+			vulns:    []tools.Vulnerability{},
 			vulnType: enums.WeaknessInjection,
 			want:     nil,
 		},
@@ -425,45 +390,38 @@ func TestGetUniqueVulnTypes(t *testing.T) {
 	testCases := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		vulns []*domain.Vulnerability
+		vulns []tools.Vulnerability
 		want  []enums.WeaknessType
 	}{
 		{
 			name: "Slice with one vulnerability type",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String()},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection},
 			},
 			want: []enums.WeaknessType{enums.WeaknessInjection},
 		},
 		{
 			name:  "Empty vulnerability slice",
-			vulns: []*domain.Vulnerability{},
+			vulns: []tools.Vulnerability{},
 			want:  []enums.WeaknessType{},
 		},
 		{
 			name: "Slice with two vulnerabilities with the same type",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String()},
-				{Type: enums.WeaknessInjection.String()},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection},
+				{Type: enums.WeaknessInjection},
 			},
 			want: []enums.WeaknessType{enums.WeaknessInjection},
 		},
 		{
 			name: "Slice with two vulnerabilities with a different type",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String()},
-				{Type: enums.WeaknessSSRF.String()},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection},
+				{Type: enums.WeaknessSSRF},
 			},
 			want: []enums.WeaknessType{
 				enums.WeaknessInjection, enums.WeaknessSSRF,
 			},
-		},
-		{
-			name: "Slice with invalid weakness",
-			vulns: []*domain.Vulnerability{
-				{Type: "Invalid weakness"},
-			},
-			want: []enums.WeaknessType{},
 		},
 	}
 	for _, tc := range testCases {
@@ -479,17 +437,17 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 	testCases := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		vulns          []*domain.Vulnerability
-		notSolvedVulns []*domain.Vulnerability
+		vulns          []tools.Vulnerability
+		notSolvedVulns []tools.Vulnerability
 		want           dto.GraphData
 	}{
 		{
 			name: "One unsolved vuln",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
 			},
-			notSolvedVulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			notSolvedVulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
 			},
 			want: dto.GraphData{
 				Series: []dto.Series{
@@ -500,8 +458,8 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 		},
 		{
 			name:           "Empty vulns",
-			vulns:          []*domain.Vulnerability{},
-			notSolvedVulns: []*domain.Vulnerability{},
+			vulns:          []tools.Vulnerability{},
+			notSolvedVulns: []tools.Vulnerability{},
 			want: dto.GraphData{
 				Series: []dto.Series{
 					{Name: "Actual", Data: []dto.DataPoint{}, Average: 0.0},
@@ -511,10 +469,10 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 		},
 		{
 			name: "No unsolved vulns",
-			vulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			vulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
 			},
-			notSolvedVulns: []*domain.Vulnerability{},
+			notSolvedVulns: []tools.Vulnerability{},
 			want: dto.GraphData{
 				Series: []dto.Series{
 					{Name: "Actual", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
@@ -524,9 +482,9 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 		},
 		{
 			name:  "No vulns but one unsolved vuln",
-			vulns: []*domain.Vulnerability{},
-			notSolvedVulns: []*domain.Vulnerability{
-				{Type: enums.WeaknessInjection.String(), BaseCVSSScore: 6.6},
+			vulns: []tools.Vulnerability{},
+			notSolvedVulns: []tools.Vulnerability{
+				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
 			},
 			want: dto.GraphData{
 				Series: []dto.Series{
