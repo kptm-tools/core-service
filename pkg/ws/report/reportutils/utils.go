@@ -202,29 +202,6 @@ func GetGlobalTotalVulnerabilities(vulns []tools.Vulnerability) int {
 	return len(vulns)
 }
 
-func GetUniqueCVSSValuesPerType(vulns []*domain.Vulnerability) UniqueCVSSValuesByType {
-	uniqueWeaknessCVSSValuesMap := make(UniqueCVSSValuesByType)
-
-	// Initialize the map with all possible WeaknessType enums and empty float 64 slices
-	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
-		uniqueWeaknessCVSSValuesMap[i] = make(uniqueCVSSValues)
-		uniqueWeaknessCVSSValuesMap[i][0.0] = true
-	}
-
-	// Iterate through vulnerabilities
-	// For each type, check if the CVSS value has not yet been assigned in the slice
-	for _, vuln := range vulns {
-		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
-		if !ok {
-			slog.Warn("Found an invalid vulnerability type while counting vulnerability types", slog.String("vuln_type", vuln.Type))
-			continue
-		}
-		uniqueWeaknessCVSSValuesMap[wt][vuln.BaseCVSSScore] = true
-	}
-
-	return uniqueWeaknessCVSSValuesMap
-}
-
 // FilterVulnerabilitiesByStatus filters a slice of vulnerabilities based on a client's current status.
 //
 // It returns two slices:
@@ -286,10 +263,10 @@ func GetHighestCVSSVulnerabilityOfType(vulns []tools.Vulnerability, vulnType enu
 
 // GetUniqueVulnTypes returns a slice with unique Weakness Types found within a vulnerability slice.
 func GetUniqueVulnTypes(vulns []tools.Vulnerability) []enums.WeaknessType {
-	uniqueTypes := make([]enums.WeaknessType, 0)
+	uniqueTypes := []enums.WeaknessType{}
 	for _, vuln := range vulns {
 		wt := vuln.Type
-		if slices.Contains(uniqueTypes, wt) {
+		if !slices.Contains(uniqueTypes, wt) {
 			uniqueTypes = append(uniqueTypes, wt)
 		}
 	}
@@ -310,10 +287,14 @@ func BuildVulnerabilityGraph(vulns []tools.Vulnerability, notSolvedVulns []tools
 		expectedHighestCVSS := 0.0
 
 		highestActualVuln := GetHighestCVSSVulnerabilityOfType(vulns, wt)
-		actualHighestCVSS = highestActualVuln.BaseCVSSScore
+		if highestActualVuln != nil {
+			actualHighestCVSS = highestActualVuln.BaseCVSSScore
+		}
 
 		highestExpectedVuln := GetHighestCVSSVulnerabilityOfType(notSolvedVulns, wt)
-		expectedHighestCVSS = highestExpectedVuln.BaseCVSSScore
+		if highestExpectedVuln != nil {
+			expectedHighestCVSS = highestExpectedVuln.BaseCVSSScore
+		}
 
 		actualDataPoints = append(actualDataPoints, dto.DataPoint{
 			X: wt.String(),
