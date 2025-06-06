@@ -47,13 +47,13 @@ type AuthService struct {
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
 
-func NewAuthService(ctx context.Context, storage interfaces.IStorage) *AuthService {
+func NewAuthService() *AuthService {
 	return &AuthService{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 		cfg:  config.LoadConfig(),
-		otps: auth.NewRetentionMap(ctx, 60*time.Minute),
+		otps: auth.NewRetentionMap(context.Background(), 60*time.Minute),
 		mu:   sync.Mutex{},
 	}
 }

@@ -25,9 +25,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	c := config.LoadConfig()
 
 	// Configure logging
@@ -58,7 +55,7 @@ func main() {
 
 	// Services
 	healthService := services.NewHealthcheckService(c, coreStore)
-	authService := services.NewAuthService(ctx, coreStore)
+	authService := services.NewAuthService()
 	hostService := services.NewHostService(coreStore.Host)
 	dashboardService := services.NewDashboardService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host)
 	scanService := services.NewScanService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.ScanResult)
