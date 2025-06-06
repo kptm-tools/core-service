@@ -102,7 +102,7 @@ func Test_GetReportsByTenantID_Success(t *testing.T) {
 
 func Test_ScanScheduleDisableJob_Error(t *testing.T) {
 	mockScheduleRepo := &mock.MockScanScheduleRepo{
-		MockDisableJob: func(ctx context.Context, i int, b bool) error {
+		MockDisableJob: func(ctx context.Context, i int32, b bool) error {
 			return errors.New("failed to unregister job")
 		},
 	}
@@ -128,7 +128,7 @@ func Test_ScanScheduleDisableJob_Success(t *testing.T) {
 		},
 		&mock.MockScanRepo{},
 		&mock.MockScanScheduleRepo{
-			MockDisableJob: func(ctx context.Context, i int, b bool) error { return nil },
+			MockDisableJob: func(ctx context.Context, i int32, b bool) error { return nil },
 		},
 	)
 
@@ -145,7 +145,7 @@ func Test_UpdateScanScheduling_Error(t *testing.T) {
 		},
 		&mock.MockScanRepo{},
 		&mock.MockScanScheduleRepo{
-			MockUpdateScanScheduling: func(ctx context.Context, u uuid.UUID, i int) error {
+			MockUpdateScanScheduling: func(ctx context.Context, u uuid.UUID, i int32) error {
 				return errors.New("failed to update scan scheduling")
 			},
 		},
@@ -165,7 +165,7 @@ func Test_UpdateScanScheduling_Success(t *testing.T) {
 		},
 		&mock.MockScanRepo{},
 		&mock.MockScanScheduleRepo{
-			MockUpdateScanScheduling: func(ctx context.Context, u uuid.UUID, i int) error {
+			MockUpdateScanScheduling: func(ctx context.Context, u uuid.UUID, i int32) error {
 				return nil
 			},
 		},

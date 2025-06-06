@@ -82,9 +82,10 @@ func (r *ScanScheduleRepository) CreateScanSchedule(
 	return r.dbScanScheduleToDomain(&dbSchedule), nil
 }
 
-func (r *ScanScheduleRepository) GetScanScheduleByID(ctx context.Context, scheduleID int) (*domain.ScanSchedule, error) {
+func (r *ScanScheduleRepository) GetScanScheduleByID(ctx context.Context, scheduleID int32) (*domain.ScanSchedule, error) {
 	queries := r.getQueries(ctx)
-	dbSchedule, err := queries.GetScanSchedulebyID(ctx, int32(scheduleID))
+
+	dbSchedule, err := queries.GetScanSchedulebyID(ctx, scheduleID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, customerrors.ErrScheduleNotFound
@@ -122,9 +123,9 @@ func (r *ScanScheduleRepository) GetScanSchedulesByTenantID(ctx context.Context,
 	return summaries, nil
 }
 
-func (r *ScanScheduleRepository) DeleteScanScheduleByID(ctx context.Context, scheduleID int) (bool, error) {
+func (r *ScanScheduleRepository) DeleteScanScheduleByID(ctx context.Context, scheduleID int32) (bool, error) {
 	queries := r.getQueries(ctx)
-	err := queries.DeleteScanSchedule(ctx, int32(scheduleID))
+	err := queries.DeleteScanSchedule(ctx, scheduleID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, customerrors.ErrScanNotFound
@@ -134,20 +135,20 @@ func (r *ScanScheduleRepository) DeleteScanScheduleByID(ctx context.Context, sch
 	return true, nil
 }
 
-func (r *ScanScheduleRepository) EnableJob(ctx context.Context, cronExp string, hasPeriod bool, scheduleID int) error {
+func (r *ScanScheduleRepository) EnableJob(ctx context.Context, cronExp string, hasPeriod bool, scheduleID int32) error {
 	queries := r.getQueries(ctx)
 	params := repository.EnableScanScheduleJobParams{
 		CronExp:        cronExp,
 		PhasPeriod:     hasPeriod,
-		ScanScheduleID: int32(scheduleID),
+		ScanScheduleID: scheduleID,
 	}
 	return queries.EnableScanScheduleJob(ctx, params)
 }
 
-func (r *ScanScheduleRepository) DisableJob(ctx context.Context, scheduleID int, withDelete bool) error {
+func (r *ScanScheduleRepository) DisableJob(ctx context.Context, scheduleID int32, withDelete bool) error {
 	queries := r.getQueries(ctx)
 	params := repository.DisableScanScheduleJobParams{
-		Scanscheduleid: int32(scheduleID),
+		Scanscheduleid: scheduleID,
 		Withdelete:     withDelete,
 	}
 	return queries.DisableScanScheduleJob(ctx, params)
@@ -155,19 +156,19 @@ func (r *ScanScheduleRepository) DisableJob(ctx context.Context, scheduleID int,
 
 func (r *ScanScheduleRepository) PatchScanScheduleByID(
 	ctx context.Context,
-	scheduleID int,
+	scheduleID int32,
 	scanID uuid.UUID,
 	cronExpr string,
 	isRepeated bool,
 	periodName string,
-	periodQuantity int,
+	periodQuantity int32,
 	scheduleDate time.Time,
 ) error {
 	queries := r.getQueries(ctx)
 	params := repository.PatchScanScheduleByIDParams{
-		ID:             int32(scheduleID),
+		ID:             scheduleID,
 		PeriodName:     repository.NullPeriodEnum{PeriodEnum: repository.PeriodEnum(periodName), Valid: true},
-		PeriodQuantity: sql.NullInt32{Int32: int32(periodQuantity), Valid: true},
+		PeriodQuantity: sql.NullInt32{Int32: periodQuantity, Valid: true},
 		HasPeriod:      true,
 		ScheduledDate:  sql.NullTime{Time: scheduleDate, Valid: true},
 		Cron:           cronExpr,
@@ -180,11 +181,11 @@ func (r *ScanScheduleRepository) PatchScanScheduleByID(
 func (r *ScanScheduleRepository) UpdateScanScheduling(
 	ctx context.Context,
 	scanID uuid.UUID,
-	scanScheduleID int,
+	scanScheduleID int32,
 ) error {
 	queries := r.getQueries(ctx)
 	params := repository.UpdateScanSchedulingParams{
-		ID:     int32(scanScheduleID),
+		ID:     scanScheduleID,
 		ScanID: scanID,
 	}
 	return queries.UpdateScanScheduling(ctx, params)

@@ -55,7 +55,7 @@ func Test_DeleteScanScheduleByID_Error(t *testing.T) {
 		},
 		&mocks.MockScanRepo{},
 		&mocks.MockScanScheduleRepo{
-			MockDeleteScanScheduleByID: func(ctx context.Context, scanScheduleID int) (bool, error) {
+			MockDeleteScanScheduleByID: func(ctx context.Context, scanScheduleID int32) (bool, error) {
 				return false, fmt.Errorf("failed to delete scan schedule")
 			},
 		},
@@ -72,7 +72,7 @@ func Test_DeleteScanScheduleByID_Success(t *testing.T) {
 		},
 		&mocks.MockScanRepo{},
 		&mocks.MockScanScheduleRepo{
-			MockDeleteScanScheduleByID: func(ctx context.Context, scanScheduleID int) (bool, error) {
+			MockDeleteScanScheduleByID: func(ctx context.Context, scanScheduleID int32) (bool, error) {
 				return true, nil
 			},
 		},
@@ -156,7 +156,7 @@ func Test_PatchScanSchedule_Error_Disable(t *testing.T) {
 		},
 		&mocks.MockScanRepo{},
 		&mocks.MockScanScheduleRepo{
-			MockDisableJob: func(ctx context.Context, i int, b bool) error {
+			MockDisableJob: func(ctx context.Context, i int32, b bool) error {
 				return errors.New("failed to unregister job")
 			},
 		},
@@ -181,7 +181,7 @@ func Test_PatchScanSchedule_Error_CreateScan(t *testing.T) {
 			MockCreateScanSchedule: func(ctx context.Context, ss domain.ScanSchedule) (*domain.ScanSchedule, error) {
 				return nil, nil
 			},
-			MockDisableJob: func(ctx context.Context, i int, b bool) error {
+			MockDisableJob: func(ctx context.Context, i int32, b bool) error {
 				return nil
 			},
 		},
@@ -207,10 +207,10 @@ func Test_PatchScanSchedule_Error_EnableJob(t *testing.T) {
 				return nil, nil
 			},
 
-			MockEnableJob: func(ctx context.Context, s string, b bool, i int) error {
+			MockEnableJob: func(ctx context.Context, s string, b bool, i int32) error {
 				return errors.New("failed to enable job")
 			},
-			MockDisableJob: func(ctx context.Context, i int, b bool) error {
+			MockDisableJob: func(ctx context.Context, i int32, b bool) error {
 				return nil
 			},
 		},
@@ -233,13 +233,13 @@ func Test_PatchScanSchedule_Error_Patch(t *testing.T) {
 			},
 		},
 		&mocks.MockScanScheduleRepo{
-			MockPatchScanScheduleByID: func(ctx context.Context, i1 int, u uuid.UUID, s1 string, b bool, s2 string, i2 int, t time.Time) error {
+			MockPatchScanScheduleByID: func(ctx context.Context, i1 int32, u uuid.UUID, s1 string, b bool, s2 string, i2 int32, t time.Time) error {
 				return errors.New("failed to patch scan schedule")
 			},
-			MockDisableJob: func(ctx context.Context, i int, b bool) error {
+			MockDisableJob: func(ctx context.Context, i int32, b bool) error {
 				return nil
 			},
-			MockEnableJob: func(ctx context.Context, s string, b bool, i int) error {
+			MockEnableJob: func(ctx context.Context, s string, b bool, i int32) error {
 				return nil
 			},
 		},
@@ -262,13 +262,13 @@ func Test_PatchScanSchedule_Success(t *testing.T) {
 			},
 		},
 		&mocks.MockScanScheduleRepo{
-			MockPatchScanScheduleByID: func(ctx context.Context, i1 int, u uuid.UUID, s1 string, b bool, s2 string, i2 int, t time.Time) error {
+			MockPatchScanScheduleByID: func(ctx context.Context, i1 int32, u uuid.UUID, s1 string, b bool, s2 string, i2 int32, t time.Time) error {
 				return nil
 			},
-			MockDisableJob: func(ctx context.Context, i int, b bool) error {
+			MockDisableJob: func(ctx context.Context, i int32, b bool) error {
 				return nil
 			},
-			MockEnableJob: func(ctx context.Context, s string, b bool, i int) error {
+			MockEnableJob: func(ctx context.Context, s string, b bool, i int32) error {
 				return nil
 			},
 		},

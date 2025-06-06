@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 
+	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
@@ -71,7 +72,7 @@ func (s *ScanScheduleService) CreateScanSchedule(
 	return createdSchedule, nil
 }
 
-func (s *ScanScheduleService) DeleteScanScheduleByID(ctx context.Context, scanScheduleID int) (bool, error) {
+func (s *ScanScheduleService) DeleteScanScheduleByID(ctx context.Context, scanScheduleID int32) (bool, error) {
 	isDeleted, err := s.scheduleRepo.DeleteScanScheduleByID(ctx, scanScheduleID)
 	if err != nil {
 		return false, fmt.Errorf("failed to delete scan schedule by ID: %w", err)
@@ -81,7 +82,7 @@ func (s *ScanScheduleService) DeleteScanScheduleByID(ctx context.Context, scanSc
 
 func (s *ScanScheduleService) PatchScanSchedule(
 	ctx context.Context,
-	scanScheduleID int,
+	scanScheduleID int32,
 	frequency *domain.RepeatSchedule,
 	scheduleAt time.Time,
 	tenantID, operatorID, hostID uuid.UUID,
@@ -96,18 +97,21 @@ func (s *ScanScheduleService) PatchScanSchedule(
 	commonScanData.OperatorID = operatorID
 	commonScanData.HostID = hostID
 	commonScanData.Status = enums.StatusScheduled.String()
-	dataScan, errCreationScan := s.scanRepo.CreateScan(ctx, *commonScanData)
-	if errCreationScan != nil {
-		return fmt.Errorf("failed to create new scan for update scan scheduling: %w", errCreationScan)
+	dataScan, err := s.scanRepo.CreateScan(ctx, *commonScanData)
+	if err != nil {
+		return fmt.Errorf("failed to create new scan for update scan scheduling: %w", err)
 	}
 	var isRepeated bool
 	var cronExpr string
 	var periodName string
-	var periodQuantity int
+	var periodQuantity int32
 	if frequency != nil {
 		isRepeated = true
 		periodName = string(frequency.UnitOfFrequency)
-		periodQuantity = frequency.Quantity
+		periodQuantity, err = convert.SafeIntToInt32(frequency.Quantity)
+		if err != nil {
+			return err
+		}
 	}
 	if !isRepeated {
 		cronExpr = fmt.Sprintf("%d %d %d %d *", scheduleAt.Minute(), scheduleAt.Hour(), scheduleAt.Day(), scheduleAt.Month())
@@ -133,7 +137,7 @@ func (s *ScanScheduleService) GetScanSchedulesByTenantID(
 	return s.scheduleRepo.GetScanSchedulesByTenantID(ctx, tenantID)
 }
 
-func (s *ScanScheduleService) GetCurrentHostID(ctx context.Context, scanScheduleID int) (uuid.UUID, error) {
+func (s *ScanScheduleService) GetCurrentHostID(ctx context.Context, scanScheduleID int32) (uuid.UUID, error) {
 	schedule, err := s.scheduleRepo.GetScanScheduleByID(ctx, scanScheduleID)
 	if err != nil {
 		return uuid.Nil, err
@@ -144,7 +148,7 @@ func (s *ScanScheduleService) GetCurrentHostID(ctx context.Context, scanSchedule
 func (s *ScanScheduleService) UpdateScanScheduleScanID(
 	ctx context.Context,
 	scanID uuid.UUID,
-	scanScheduleID int,
+	scanScheduleID int32,
 ) error {
 	if err := s.scheduleRepo.UpdateScanScheduling(ctx, scanID, scanScheduleID); err != nil {
 		return fmt.Errorf("failed to update scan scheduling: %w", err)
@@ -152,6 +156,6 @@ func (s *ScanScheduleService) UpdateScanScheduleScanID(
 	return nil
 }
 
-func (s *ScanScheduleService) ScanScheduleDisableJob(ctx context.Context, scanScheduleID int) error {
+func (s *ScanScheduleService) ScanScheduleDisableJob(ctx context.Context, scanScheduleID int32) error {
 	return s.scheduleRepo.DisableJob(ctx, scanScheduleID, false)
 }

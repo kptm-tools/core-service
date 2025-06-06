@@ -29,7 +29,7 @@ func NewScanScheduleHandlers(scanScheduleService interfaces.IScanScheduleService
 
 func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	id, err := GetID(r)
+	id, err := GetIDInt32(r)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
@@ -50,7 +50,7 @@ func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http
 
 func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	id, err := GetID(r)
+	id, err := GetIDInt32(r)
 	tenantID := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
 	userID := ctx.Value(middleware.ContextUserID).(uuid.UUID)
 	if err != nil {
@@ -106,14 +106,11 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 
 func (h *ScanScheduleHandlers) GetScanSchedules(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	tenantUUID, errTenantID := uuid.Parse(tenantID)
-	if errTenantID != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-			Error: "ID is of tenant is not an UUID",
-		})
+	tenantID, ok := r.Context().Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
-	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedulesByTenantID(ctx, tenantUUID)
+	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedulesByTenantID(ctx, tenantID)
 	if errGetData != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "tenantID does not exist",

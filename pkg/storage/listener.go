@@ -12,6 +12,7 @@ import (
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/lib/pq"
 )
@@ -174,8 +175,13 @@ func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payl
 	}
 	pl.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
+	scheduleID, err := convert.SafeIntToInt32(scanCron.ScanScheduleID)
+	if err != nil {
+		return err
+	}
+
 	if !scanCron.HasPeriod {
-		errDisable := pl.scheduleService.ScanScheduleDisableJob(ctx, scanCron.ScanScheduleID)
+		errDisable := pl.scheduleService.ScanScheduleDisableJob(ctx, scheduleID)
 		if errDisable != nil {
 			slog.Error("Failed to disable job of scan scheduling", slog.Any("error", errDisable))
 		}
@@ -193,7 +199,7 @@ func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payl
 			return errCreationScan
 		}
 		// 2. Update scan scheduling with new scanID
-		errUpdateScanSchedule := pl.scheduleService.UpdateScanScheduleScanID(ctx, scan.ID, scanCron.ScanScheduleID)
+		errUpdateScanSchedule := pl.scheduleService.UpdateScanScheduleScanID(ctx, scan.ID, scheduleID)
 		if errUpdateScanSchedule != nil {
 			slog.Error("Failed to update scan_scheduling", slog.Any("error", err))
 		}
