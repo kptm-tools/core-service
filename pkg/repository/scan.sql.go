@@ -322,7 +322,7 @@ func (q *Queries) GetScanDetailsForSummary(ctx context.Context, id uuid.UUID) (G
 const getScanInsights = `-- name: GetScanInsights :one
     WITH severity_per_type AS (
 SELECT
-	cd.cwe AS vuln_type,
+	cr.title AS vuln_type,
 	MAX(
 		GREATEST(
 			cd.cvss_v31_base_score,
@@ -333,12 +333,15 @@ SELECT
 FROM
 	vulnerabilities sv
 LEFT JOIN
-         cve_details cd ON
+  cve_details cd ON
 	sv.cve_id = cd.cve_id
+LEFT JOIN
+  cwe_details cr ON
+  sv.cwe = cr.cwe
 WHERE
 	sv.scan_id = $1
 GROUP BY
-	cd.cwe
+	cr.title
   )
     SELECT
 	s.id,

@@ -52,7 +52,6 @@ func (r *CVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerabilit
 
 	params := repository.CreateCVEDetailParams{
 		CveID: vuln.CveID,
-		Cwe:   vuln.Type.String(),
 
 		PublishedDate:    sql.NullTime{},
 		LastModifiedDate: sql.NullTime{},

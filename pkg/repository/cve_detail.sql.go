@@ -16,7 +16,6 @@ import (
 const createCVEDetail = `-- name: CreateCVEDetail :one
 INSERT INTO cve_details (
     cve_id,
-    cwe,
     published_date,
     last_modified_date,
     cvss_v2_vector,
@@ -74,10 +73,9 @@ INSERT INTO cve_details (
     $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
     $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
     $41, $42, $43, $44, $45, $46, $47, $48, $49, $50,
-    $51, $52, $53
+    $51, $52
   ) 
 ON CONFLICT (cve_id) DO UPDATE SET
-    cwe = EXCLUDED.cwe,
     published_date = EXCLUDED.published_date,
     last_modified_date = EXCLUDED.last_modified_date,
     cvss_v2_vector = EXCLUDED.cvss_v2_vector,
@@ -130,12 +128,11 @@ ON CONFLICT (cve_id) DO UPDATE SET
     nvd_references = EXCLUDED.nvd_references,
     vendor_comments = EXCLUDED.vendor_comments,
     updated_at = NOW()
-RETURNING id, cve_id, cwe, published_date, last_modified_date, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, evaluator_comment, evaluator_impact, evaluator_solution, cisa_exploit_add, nvd_description, weaknesses, nvd_references, vendor_comments, created_at, updated_at
+RETURNING id, cve_id, published_date, last_modified_date, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, evaluator_comment, evaluator_impact, evaluator_solution, cisa_exploit_add, nvd_description, weaknesses, nvd_references, vendor_comments, created_at, updated_at
 `
 
 type CreateCVEDetailParams struct {
 	CveID                        string                `json:"cve_id"`
-	Cwe                          string                `json:"cwe"`
 	PublishedDate                sql.NullTime          `json:"published_date"`
 	LastModifiedDate             sql.NullTime          `json:"last_modified_date"`
 	CvssV2Vector                 sql.NullString        `json:"cvss_v2_vector"`
@@ -192,7 +189,6 @@ type CreateCVEDetailParams struct {
 func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams) (CveDetail, error) {
 	row := q.db.QueryRowContext(ctx, createCVEDetail,
 		arg.CveID,
-		arg.Cwe,
 		arg.PublishedDate,
 		arg.LastModifiedDate,
 		arg.CvssV2Vector,
@@ -249,7 +245,6 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 	err := row.Scan(
 		&i.ID,
 		&i.CveID,
-		&i.Cwe,
 		&i.PublishedDate,
 		&i.LastModifiedDate,
 		&i.CvssV2Vector,

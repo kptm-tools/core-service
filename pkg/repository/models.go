@@ -244,7 +244,6 @@ type Credential struct {
 type CveDetail struct {
 	ID                           uuid.UUID             `json:"id"`
 	CveID                        string                `json:"cve_id"`
-	Cwe                          string                `json:"cwe"`
 	PublishedDate                sql.NullTime          `json:"published_date"`
 	LastModifiedDate             sql.NullTime          `json:"last_modified_date"`
 	CvssV2Vector                 sql.NullString        `json:"cvss_v2_vector"`
@@ -299,6 +298,14 @@ type CveDetail struct {
 	VendorComments               pqtype.NullRawMessage `json:"vendor_comments"`
 	CreatedAt                    sql.NullTime          `json:"created_at"`
 	UpdatedAt                    sql.NullTime          `json:"updated_at"`
+}
+
+type CweDetail struct {
+	CweID           string         `json:"cwe_id"`
+	Title           sql.NullString `json:"title"`
+	MitigationPhase sql.NullString `json:"mitigation_phase"`
+	Description     sql.NullString `json:"description"`
+	LastUpdated     sql.NullTime   `json:"last_updated"`
 }
 
 type Host struct {
@@ -413,4 +420,5 @@ type Vulnerability struct {
 	AnalystComment sql.NullString        `json:"analyst_comment"`
 	CreatedAt      sql.NullTime          `json:"created_at"`
 	UpdatedAt      sql.NullTime          `json:"updated_at"`
+	CweID          sql.NullString        `json:"cwe_id"`
 }

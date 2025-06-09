@@ -6,6 +6,6 @@ ALTER TABLE vulnerabilities
 DROP CONSTRAINT IF EXISTS fk_vulnerabilities_cwe_details;
 
 ALTER TABLE vulnerabilities
-DROP COLUMN IF EXISTS cwe;
+DROP COLUMN IF EXISTS cwe_id;
 
 DROP TABLE IF EXISTS cwe_details;

@@ -8,11 +8,11 @@ CREATE TABLE IF NOT EXISTS cwe_details (
 );
 
 ALTER TABLE vulnerabilities
-ADD COLUMN cwe VARCHAR(255);
+ADD COLUMN cwe_id VARCHAR(255);
 
 ALTER TABLE vulnerabilities
 ADD CONSTRAINT fk_vulnerabilities_cwe_details
-FOREIGN KEY (cwe) REFERENCES cwe_details (cwe_id)
+FOREIGN KEY (cwe_id) REFERENCES cwe_details (cwe_id)
 ON DELETE SET NULL;
 
 ALTER TABLE cve_details
