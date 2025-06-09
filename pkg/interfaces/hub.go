@@ -1,8 +1,9 @@
 package interfaces
 
 import (
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"net/http"
+
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 )
 
 type IHub interface {
@@ -16,5 +17,5 @@ type IHubReport interface {
 	IHub
 	AddToRoom(scanID string)
 	RemoveFromRoom(scanID string)
-	GetRoomVulnerabilities(scanID string) []*domain.Vulnerability
+	GetRoomVulnerabilities(scanID string) []tools.Vulnerability
 }

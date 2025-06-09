@@ -1,6 +1,7 @@
 package consumers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 
@@ -21,6 +22,7 @@ var _ interfaces.EventConsumer = (*ScanFailedHandler)(nil)
 
 func (h *ScanFailedHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
+		ctx := context.Background()
 		slog.Info("Received ScanFailedEvent")
 
 		// 1. Parse payload
@@ -36,7 +38,7 @@ func (h *ScanFailedHandler) HandleMessage(msg *nats.Msg) {
 			slog.String("reason", evt.Reason))
 
 		// 3. Update the scan's status on DB
-		if err := h.scanService.MarkScanAsFailed(evt.ScanID); err != nil {
+		if err := h.scanService.MarkScanAsFailed(ctx, evt.ScanID); err != nil {
 			slog.Error("Failed to update scan status",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.Any("error", err))
@@ -44,6 +46,5 @@ func (h *ScanFailedHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		slog.Debug("ScanFailedEvent handled successfully")
-
 	}(msg)
 }

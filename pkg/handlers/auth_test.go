@@ -11,7 +11,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
-	"github.com/kptm-tools/core-service/pkg/mocks"
+	mock_services "github.com/kptm-tools/core-service/pkg/mocks/services"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -277,7 +277,6 @@ func TestAuthHandlers_GetUserPermissions(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for receiver constructor.
-		mockStore   interfaces.IStorage
 		authService interfaces.IAuthService
 		// Named input parameters for target function.
 		r          *http.Request
@@ -285,8 +284,7 @@ func TestAuthHandlers_GetUserPermissions(t *testing.T) {
 	}{
 		{
 			name:        "Request with valid roles on token",
-			mockStore:   &mocks.MockStorage{},
-			authService: &mocks.MockAuthService{},
+			authService: &mock_services.MockAuthService{},
 			r: httptest.NewRequest("GET", "/api/user/permissions", nil).WithContext(
 				context.WithValue(
 					context.Background(),
@@ -298,8 +296,7 @@ func TestAuthHandlers_GetUserPermissions(t *testing.T) {
 		},
 		{
 			name:        "Request with uncastable roles on context token returns unauthorized",
-			mockStore:   &mocks.MockStorage{},
-			authService: &mocks.MockAuthService{},
+			authService: &mock_services.MockAuthService{},
 			r: httptest.NewRequest("GET", "/api/user/permissions", nil).WithContext(
 				context.WithValue(
 					context.Background(),
@@ -311,8 +308,7 @@ func TestAuthHandlers_GetUserPermissions(t *testing.T) {
 		},
 		{
 			name:        "Request with uncastable non-string roles on context token returns unauthorized",
-			mockStore:   &mocks.MockStorage{},
-			authService: &mocks.MockAuthService{},
+			authService: &mock_services.MockAuthService{},
 			r: httptest.NewRequest("GET", "/api/user/permissions", nil).WithContext(
 				context.WithValue(
 					context.Background(),

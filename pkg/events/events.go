@@ -7,14 +7,18 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
-func SetupEventBus(eventBus cmmn.EventBus, scanService interfaces.IScanService) error {
+func SetupEventBus(
+	eventBus cmmn.EventBus,
+	scanService interfaces.IScanService,
+	vulnService interfaces.IVulnerabilityService,
+) error {
 	// Initialize individual consumers
 
 	whoIsEventHandler := consumers.NewWhoIsHandler(scanService)
 	dnsLookupHandler := consumers.NewDNSLookupHandler(scanService)
 	harvesterHandler := consumers.NewHarvesterHandler(scanService)
 
-	nmapHandler := consumers.NewNmapHandler(scanService)
+	nmapHandler := consumers.NewNmapHandler(scanService, vulnService)
 
 	scanFailedHandler := consumers.NewScanFailedHandler(scanService)
 

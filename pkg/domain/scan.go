@@ -25,11 +25,9 @@ type ResultHost struct {
 
 type Scan struct {
 	ID              uuid.UUID      `json:"id,omitempty" db:"id"`
-	TenantID        string         `json:"tenant_id,omitempty"`
-	OperatorID      string         `json:"operator_id,omitempty"`
-	HostID          int            `json:"host_ids,omitempty"`
-	HostsStatus     []StatusHost   `json:"hosts_status,omitempty"`
-	HostsResults    []ResultHost   `json:"hosts_results,omitempty"`
+	TenantID        uuid.UUID      `json:"tenant_id,omitempty"`
+	OperatorID      uuid.UUID      `json:"operator_id,omitempty"`
+	HostID          uuid.UUID      `json:"host_ids,omitempty"`
 	Target          results.Target `json:"targets,omitempty"`
 	CreatedAt       time.Time      `json:"created_at,omitempty"`
 	UpdatedAt       time.Time      `json:"updated_at,omitempty"`
@@ -45,7 +43,7 @@ type ScanSummary struct {
 	Host            string               `json:"host,omitempty"`
 	Vulnerabilities int                  `json:"vulnerabilities"`
 	Severities      tools.SeverityCounts `json:"severities,omitempty"`
-	Duration        float64              `json:"duration,omitempty"`
+	Duration        int32                `json:"duration,omitempty"`
 	Status          string               `json:"status,omitempty"`
 }
 
@@ -64,6 +62,22 @@ type Tool struct {
 	Type        int       `json:"type,omitempty"`
 }
 
+// ScanInsightsBaseData serves as an intermediary between the domain and repository layer.
+type ScanInsightsBaseData struct {
+	ScanID                  uuid.UUID
+	HostAlias               string
+	ScanDate                time.Time
+	TotalVulnerabilities    int
+	CriticalVulnerabilities int
+	HighVulnerabilities     int
+	MediumVulnerabilities   int
+	LowVulnerabilities      int
+	NoneVulnerabilities     int
+	UnknownVulnerabilities  int
+	SeverityPerTypeJSON     []byte
+}
+
+// ScanInsights is the comprehensive struct containing all calculated insights for a scan.
 type ScanInsights struct {
 	ProtectionScore          float64              `json:"protection_score"`
 	SeverityCounts           tools.SeverityCounts `json:"severity_counts"`
@@ -74,6 +88,7 @@ type ScanInsights struct {
 	Metadata                 ScanInsightsMetadata `json:"metadata"`
 }
 
+// ScanInsightsMetadata holds basic identifying information for the scan insights.
 type ScanInsightsMetadata struct {
 	ScanID    uuid.UUID `json:"scan_id"`
 	HostAlias string    `json:"host_alias"`
@@ -106,11 +121,16 @@ type ServiceTimePeriod struct {
 	VulnerabilityCount *int   `json:"vulnerability_count"`
 }
 
-func NewScan(startedAt time.Time) *Scan {
+func NewScan(hostID, tenantID, operatorID uuid.UUID, startedAt *time.Time) *Scan {
+	if startedAt == nil {
+		now := time.Now()
+		startedAt = &now
+	}
+
 	return &Scan{
 		ID:        uuid.New(),
 		Status:    enums.StatusPending.String(),
-		StartedAt: startedAt,
+		StartedAt: startedAt.UTC(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

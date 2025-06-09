@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -9,129 +10,95 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
+	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/repository"
 )
 
-func (s *PostgreSQLStore) CreateService(
-	tx *sql.Tx,
-	hostID int,
+type ServiceRepo struct {
+	defaultQueries *repository.Queries
+}
+
+var _ interfaces.ServiceRepository = (*ServiceRepo)(nil)
+
+func NewServiceRepository(queries *repository.Queries) *ServiceRepo {
+	return &ServiceRepo{
+		defaultQueries: queries,
+	}
+}
+
+// getQueries retrieves the correct *repository.Queries instance from the context.
+// If a transaction is active, it gets the transactional queries. Otherwise, it uses
+// the defaultQueries.
+func (r *ServiceRepo) getQueries(ctx context.Context) *repository.Queries {
+	return GetQueriesFromContext(ctx, r.defaultQueries)
+}
+
+func (r *ServiceRepo) CreateOrUpdateService(
+	ctx context.Context,
+	hostID uuid.UUID,
 	scanID uuid.UUID,
 	portData tools.PortData,
-) (int, error) {
-	query := `
-    INSERT INTO services (
-      host_id, scan_id, port, protocol, sv_name, sv_version, confidence, cpe, product, port_state
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-    ON CONFLICT (host_id, port, protocol) DO NOTHING
-    RETURNING id;
-  `
+) (*domain.Service, error) {
+	queries := r.getQueries(ctx)
 
-	var serviceID int
-	var err error
-	var querier interface {
-		QueryRow(query string, args ...any) *sql.Row
+	params := repository.CreateOrUpdateServiceParams{
+		HostID:     hostID,
+		ScanID:     scanID,
+		Port:       int32(portData.ID),
+		Protocol:   sql.NullString{String: portData.Protocol, Valid: portData.Protocol != ""},
+		SvName:     sql.NullString{String: portData.Service.Name, Valid: portData.Service.Name != ""},
+		SvVersion:  sql.NullString{String: portData.Service.Version, Valid: portData.Service.Version != ""},
+		Confidence: sql.NullInt32{Int32: int32(portData.Service.Confidence), Valid: portData.Service.Confidence != 0},
+		Cpe:        sql.NullString{String: portData.Service.CPE, Valid: portData.Service.CPE != ""},
+		Product:    sql.NullString{String: portData.Product, Valid: portData.Product != ""},
+		PortState:  repository.PortStateEnum(portData.State),
 	}
-
-	if tx != nil {
-		querier = tx
-	} else {
-		querier = s.db
-	}
-
-	err = querier.QueryRow(
-		query,
-		hostID,
-		scanID,
-		portData.ID,
-		portData.Protocol,
-		portData.Service.Name,
-		portData.Service.Version,
-		portData.Service.Confidence,
-		portData.Service.CPE,
-		portData.Product,
-		portData.State,
-	).Scan(&serviceID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// ON CONFLICT DO NOTHING happened, service already exists
-			// Fetch and return the existing service ID
-			slog.Debug("Service already exists for vuln, referencing existing service",
-				slog.String("scan_id", scanID.String()),
-				slog.Int("host_id", hostID),
-				slog.Int("port_id", int(portData.ID)),
-				slog.String("service_name", portData.Service.Name),
-			)
-			existingServiceID, err := s.getServiceID(tx, hostID, portData.ID, portData.Protocol)
-			if err != nil {
-				return 0, fmt.Errorf("failed to get existing service ID: %w", err)
-			}
-			return existingServiceID, nil
-		}
-		return 0, fmt.Errorf("failed to insert service: %w", err)
-	}
-	return serviceID, nil
-}
-
-func (s *PostgreSQLStore) getServiceID(tx *sql.Tx, hostID int, port uint16, protocol string) (int, error) {
-	query := `
-    SELECT id
-    FROM services
-    WHERE host_id = $1 AND port = $2 AND protocol = $3
-  `
-
-	var serviceID int
-	var err error
-	var querier interface {
-		QueryRow(query string, args ...any) *sql.Row
-	}
-
-	if tx != nil {
-		querier = tx
-	} else {
-		querier = s.db
-	}
-
-	err = querier.QueryRow(query, hostID, port, protocol).Scan(&serviceID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, fmt.Errorf("service not found for host_id: %d, port: %d, protocol: %s: %w", hostID, port, protocol, customerrors.ErrServiceNotFound)
-		}
-		return 0, fmt.Errorf("failed to get service ID: %w", err)
-	}
-	return serviceID, nil
-}
-
-func (s *PostgreSQLStore) GetServiceByID(serviceID int) (*tools.PortData, error) {
-	query := `
-    SELECT port, protocol, sv_name, sv_version, confidence, cpe, product, port_state
-    FROM services
-    WHERE id = $1
-  `
-
-	var portData tools.PortData
-	var service tools.Service
-
-	err := s.db.QueryRow(
-		query,
-		serviceID,
-	).Scan(
-		&portData.ID,
-		&portData.Protocol,
-		&service.Name,
-		&service.Version,
-		&service.Confidence,
-		&service.CPE,
-		&portData.Product,
-		&portData.State,
+	slog.Debug(
+		"Service processed (created or updated)",
+		slog.String("scan_id", scanID.String()),
+		slog.String("host_id", hostID.String()),
+		slog.String("service_cpe", portData.Service.CPE),
+		slog.Int("service_port", int(portData.ID)),
 	)
+	dbService, err := queries.CreateOrUpdateService(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query service: %w", err)
+	}
+
+	domService := toDomainService(dbService)
+
+	return &domService, nil
+}
+
+func (r *ServiceRepo) GetServiceByID(ctx context.Context, svcID int32) (*domain.Service, error) {
+	queries := r.getQueries(ctx)
+	dbService, err := queries.GetServiceByID(ctx, svcID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, customerrors.ErrServiceNotFound
 		}
+
 		return nil, fmt.Errorf("failed to query service: %w", err)
 	}
+	domService := toDomainService(dbService)
+	return &domService, nil
+}
 
-	portData.Service = service
-
-	return &portData, nil
+func toDomainService(dbService repository.Service) domain.Service {
+	return domain.Service{
+		ID:         dbService.ID,
+		HostID:     dbService.HostID,
+		ScanID:     dbService.ScanID,
+		Port:       dbService.Port,
+		Protocol:   dbService.Protocol.String, // .String for sql.NullString
+		SvName:     dbService.SvName.String,
+		SvVersion:  dbService.SvVersion.String,
+		Confidence: dbService.Confidence.Int32, // .Int32 for sql.NullInt32
+		CPE:        dbService.Cpe.String,
+		Product:    dbService.Product.String,
+		PortState:  string(dbService.PortState), // Convert PortStateEnum to string
+		CreatedAt:  dbService.CreatedAt.Time,    // .Time for sql.NullTime
+		UpdatedAt:  dbService.UpdatedAt.Time,
+	}
 }

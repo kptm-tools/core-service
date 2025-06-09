@@ -20,7 +20,7 @@ type APIServer struct {
 	healthHandlers       interfaces.IHealthcheckHandlers
 	hostHandlers         interfaces.IHostHandlers
 	authHandlers         interfaces.IAuthHandlers
-	tenantHandlers       interfaces.ITenantHandlers
+	tenantHandlers       interfaces.IDashboardHandlers
 	scanHandlers         interfaces.IScanHandlers
 	vulnHandlers         interfaces.IVulnerabilityHandlers
 	scanScheduleHandlers interfaces.IScanScheduleHandlers
@@ -38,7 +38,7 @@ func NewAPIServer(
 	listenAddr string,
 	heHandlers interfaces.IHealthcheckHandlers,
 	hoHandlers interfaces.IHostHandlers,
-	teHandlers interfaces.ITenantHandlers,
+	teHandlers interfaces.IDashboardHandlers,
 	aHandlers interfaces.IAuthHandlers,
 	sHandlers interfaces.IScanHandlers,
 	vHandlers interfaces.IVulnerabilityHandlers,
@@ -77,7 +77,6 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("POST /api/change-password", makeHTTPHandlerFunc(s.authHandlers.ChangePassword))
 	router.HandleFunc("POST /api/users", makeHTTPHandlerFunc(s.authHandlers.RegisterUser))
 	router.HandleFunc("GET /api/users/verify", makeHTTPHandlerFunc(s.authHandlers.VerifyEmail))
-	router.HandleFunc("POST /api/tenants", makeHTTPHandlerFunc(s.authHandlers.RegisterTenant))
 	router.HandleFunc("GET /api/users/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUser), domain.ActionUserGet))
 	router.HandleFunc("GET /api/users/permissions", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.authHandlers.GetUserPermissions), domain.ActionUserGetPermissions))
 
@@ -88,7 +87,6 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("GET /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.GetHostByID), domain.ActionHostGetByID))
 	router.HandleFunc("DELETE /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.DeleteHostByID), domain.ActionHostDeleteByID))
 	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), domain.ActionHostPatchByID))
-	router.HandleFunc("GET /tenants", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetTenants), domain.ActionTenantGetAll))
 
 	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScan), domain.ActionScanCreate))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), domain.ActionScanCancelByID))

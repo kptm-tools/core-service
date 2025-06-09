@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/mocks"
+	mock_services "github.com/kptm-tools/core-service/pkg/mocks/services"
+	mockws "github.com/kptm-tools/core-service/pkg/mocks/ws"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,21 +57,21 @@ func TestInitialRequestHandler(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			hub := &mocks.MockReportHub{
-				MockGetRoomVulnerabilities: func(scanID string) []*domain.Vulnerability {
+			hub := &mockws.MockReportHub{
+				MockGetRoomVulnerabilities: func(scanID string) []tools.Vulnerability {
 					if tc.expectError {
 						return nil
 					}
-					return []*domain.Vulnerability{}
+					return []tools.Vulnerability{}
 				},
 			}
-			client := &mocks.MockReportClient{
+			client := &mockws.MockReportClient{
 				MockGetHubReport: func() interfaces.IHubReport {
 					return hub
 				},
 				Outgoing: make(chan []byte, 256),
 			}
-			mockScanService := &mocks.MockScanService{}
+			mockScanService := &mock_services.MockScanService{}
 			handler := &InitialRequestHandler{
 				mockScanService,
 			}

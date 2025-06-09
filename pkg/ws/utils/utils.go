@@ -17,14 +17,19 @@ func GetScanID(req *http.Request) (uuid.UUID, error) {
 	return u, nil
 }
 
-func GetTenantIDFromQuery(req *http.Request) (string, error) {
-	tenantID := req.URL.Query().Get("tenantId")
+func GetTenantIDFromQuery(req *http.Request) (uuid.UUID, error) {
+	reqTenantID := req.URL.Query().Get("tenantId")
 
-	if tenantID == "" {
-		return "", fmt.Errorf("tenantId missing in query params")
+	if reqTenantID == "" {
+		return uuid.Nil, fmt.Errorf("tenantId missing in query params")
 	}
 
-	return tenantID, nil
+	u, err := uuid.Parse(reqTenantID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse uuid: %w", err)
+	}
+
+	return u, nil
 }
 
 func GetOTPFromQuery(req *http.Request) (string, error) {

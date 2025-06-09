@@ -8,7 +8,6 @@ import (
 )
 
 var ErrScanNotFound = errors.New("scan not found")
-var ErrScanHostFKNotFound = errors.New("insert or update on table scans violates foreign key constraint scans_host_id_fkey")
 
 type ScanAlreadyFinishedError struct {
 	ScanID uuid.UUID

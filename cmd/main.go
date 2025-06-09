@@ -25,9 +25,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	c := config.LoadConfig()
 
 	// Configure logging
@@ -58,12 +55,12 @@ func main() {
 
 	// Services
 	healthService := services.NewHealthcheckService(c, coreStore)
-	authService := services.NewAuthService(ctx, coreStore)
-	hostService := services.NewHostService(coreStore)
-	tenantService := services.NewTenantService(coreStore)
-	scanService := services.NewScanService(coreStore)
-	vulnService := services.NewVulnerabilityService(coreStore)
-	scanScheduleService := services.NewScanScheduleService(coreStore)
+	authService := services.NewAuthService()
+	hostService := services.NewHostService(coreStore.Host)
+	dashboardService := services.NewDashboardService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host)
+	scanService := services.NewScanService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.ScanResult)
+	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve)
+	scanScheduleService := services.NewScanScheduleService(coreStore, coreStore.Scan, coreStore.ScanSchedule)
 	emailService := services.NewEmailService(
 		c.SMTP.Host,
 		c.SMTP.Port,
@@ -75,7 +72,7 @@ func main() {
 	healthHandler := handlers.NewHealthcheckHandlers(healthService)
 	authHandlers := handlers.NewAuthHandlers(authService)
 	hostHandlers := handlers.NewHostHandlers(hostService)
-	tenantHandlers := handlers.NewTenantHandlers(tenantService)
+	dashboardHandlers := handlers.NewDashboardHandlers(dashboardService)
 	scanHandlers := handlers.NewScanHandlers(
 		scanService,
 		scanScheduleService,
@@ -100,11 +97,11 @@ func main() {
 	reportHub := report.NewReportHub(wsConfig, scanService, authService)
 
 	// Event Subscriptions
-	if err := events.SetupEventBus(eventBus, scanService); err != nil {
+	if err := events.SetupEventBus(eventBus, scanService, vulnService); err != nil {
 		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 
-	storageListener, err := storage.NewPostgresListener(c, scanService, emailService, eventBus)
+	storageListener, err := storage.NewPostgresListener(c, scanService, scanScheduleService, emailService, eventBus)
 	if err != nil {
 		logger.Error("Error creating db listener", slog.Any("error", err))
 		os.Exit(1)
@@ -116,7 +113,7 @@ func main() {
 		":8000",
 		healthHandler,
 		hostHandlers,
-		tenantHandlers,
+		dashboardHandlers,
 		authHandlers,
 		scanHandlers,
 		vulnHandlers,

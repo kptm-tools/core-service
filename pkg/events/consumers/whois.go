@@ -1,6 +1,7 @@
 package consumers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 
@@ -23,6 +24,7 @@ var _ interfaces.EventConsumer = (*WhoIsHandler)(nil)
 
 func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
+		ctx := context.Background()
 		slog.Info("Received WhoIsEvent")
 
 		// 1. Parse payload
@@ -41,7 +43,7 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2.1 Check if the current scan status is still healthy
-		actualScan, errScan := h.scanService.GetScanByID(evt.ScanID)
+		actualScan, errScan := h.scanService.GetScanByID(ctx, evt.ScanID)
 		if errScan != nil {
 			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
 			return
@@ -56,12 +58,12 @@ func (h *WhoIsHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2.2 Check for errors in the result
-		handleToolResultError(evt.ScanID, evt.ToolResult, h.scanService)
+		handleToolResultError(ctx, evt.ScanID, evt.ToolResult, h.scanService)
 
 		// 3. Save ToolResult to DB
 
 		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
-		if err := h.scanService.InsertScanResult(scanResult); err != nil {
+		if err := h.scanService.InsertScanResult(ctx, *scanResult); err != nil {
 			slog.Error("Error inserting ScanResult to DB",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),

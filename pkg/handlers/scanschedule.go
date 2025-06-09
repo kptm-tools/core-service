@@ -28,12 +28,13 @@ func NewScanScheduleHandlers(scanScheduleService interfaces.IScanScheduleService
 }
 
 func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
-	id, err := GetID(r)
+	ctx := r.Context()
+	id, err := GetIDInt32(r)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(id)
+	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(ctx, id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
@@ -48,9 +49,10 @@ func (h *ScanScheduleHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http
 }
 
 func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.Request) error {
-	id, err := GetID(r)
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	userID := r.Context().Value(middleware.ContextUserID).(string)
+	ctx := r.Context()
+	id, err := GetIDInt32(r)
+	tenantID := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	userID := ctx.Value(middleware.ContextUserID).(uuid.UUID)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
@@ -87,13 +89,13 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 			Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 		})
 	}
-	hostID, errGetHostID := h.scanScheduleService.GetCurrentHostID(id)
+	hostID, errGetHostID := h.scanScheduleService.GetCurrentHostID(ctx, id)
 	if errGetHostID != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
 			Error: "There is no host configured configured for this scan schedule",
 		})
 	}
-	errUpdate := h.scanScheduleService.PatchScanSchedule(id, updateScanScheduleRequest.Frequency, parsedToDate, tenantID, userID, hostID)
+	errUpdate := h.scanScheduleService.PatchScanSchedule(ctx, id, updateScanScheduleRequest.Frequency, parsedToDate, tenantID, userID, hostID)
 	if errUpdate != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "Update can not be terminated because of " + errUpdate.Error(),
@@ -103,14 +105,12 @@ func (h *ScanScheduleHandlers) PatchScanSchedule(w http.ResponseWriter, r *http.
 }
 
 func (h *ScanScheduleHandlers) GetScanSchedules(w http.ResponseWriter, r *http.Request) error {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
-	tenantUUID, errTenantID := uuid.Parse(tenantID)
-	if errTenantID != nil {
-		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
-			Error: "ID is of tenant is not an UUID",
-		})
+	ctx := r.Context()
+	tenantID, ok := r.Context().Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
-	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedules(tenantUUID)
+	scanSchedules, errGetData := h.scanScheduleService.GetScanSchedulesByTenantID(ctx, tenantID)
 	if errGetData != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "tenantID does not exist",

@@ -1,110 +1,161 @@
 package services
 
 import (
+	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/kptm-tools/common/common/pkg/enums"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
+
+	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
 type ScanScheduleService struct {
-	storage interfaces.IStorage
+	txManager    interfaces.TxManager
+	scanRepo     interfaces.ScanRepository
+	scheduleRepo interfaces.ScanScheduleRepository
 }
 
 var _ interfaces.IScanScheduleService = (*ScanScheduleService)(nil)
 
-func NewScanScheduleService(storage interfaces.IStorage) *ScanScheduleService {
+func NewScanScheduleService(
+	transactionManager interfaces.TxManager,
+	scanRepository interfaces.ScanRepository,
+	scanScheduleRepository interfaces.ScanScheduleRepository,
+) *ScanScheduleService {
 	return &ScanScheduleService{
-		storage: storage,
+		txManager:    transactionManager,
+		scanRepo:     scanRepository,
+		scheduleRepo: scanScheduleRepository,
 	}
 }
 
-func (s ScanScheduleService) DeleteScanScheduleByID(scanScheduleID int) (bool, error) {
-	isDeleted, err := s.storage.DeleteScanScheduleByID(scanScheduleID)
-
-	if err != nil {
-		return false, err
-	}
-
-	return isDeleted, nil
-}
-
-func (s ScanScheduleService) InsertScanScheduling(scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) error {
-	var isRepeated bool
+func (s *ScanScheduleService) CreateScanSchedule(
+	ctx context.Context,
+	scanID uuid.UUID,
+	scheduleAt time.Time,
+	frequency *domain.RepeatSchedule,
+) (*domain.ScanSchedule, error) {
+	var hasPeriod bool
 	var cronExpr string
-	var periodName string
-	var periodQuantity int
+	var periodName domain.PeriodEnum
+	var periodQuantity int32
 	if frequency != nil {
-		isRepeated = true
-		periodName = string(frequency.UnitOfFrequency)
-		periodQuantity = frequency.Quantity
+		hasPeriod = true
+		periodName = frequency.UnitOfFrequency
+		periodQuantity = int32(frequency.Quantity)
 	}
-	if !isRepeated {
+	if !hasPeriod {
 		cronExpr = fmt.Sprintf("%d %d %d %d *", scheduleAt.Minute(), scheduleAt.Hour(), scheduleAt.Day(), scheduleAt.Month())
 	} else {
 		cronExpr = fmt.Sprintf("%d %d * * *", scheduleAt.Minute(), scheduleAt.Hour())
 	}
 
-	err := s.storage.CreateScanScheduling(scanID, cronExpr, isRepeated, periodName, periodQuantity, scheduleAt)
-	if err != nil {
-		return err
+	scheduleToCreate := domain.ScanSchedule{
+		ScanID:         scanID,
+		CronExpression: cronExpr,
+		HasPeriod:      hasPeriod,
+		Enabled:        true,
+		ScheduledDate:  &scheduleAt,
+		// PeriodName and PeriodQuantity are pointers, nil if not IsRepeated
+		PeriodName:     &periodName,
+		PeriodQuantity: &periodQuantity,
 	}
-	return nil
+
+	createdSchedule, err := s.scheduleRepo.CreateScanSchedule(ctx, scheduleToCreate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scan schedle in database: %w", err)
+	}
+	return createdSchedule, nil
 }
 
-func (s ScanScheduleService) PatchScanSchedule(scanScheduleID int, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID string, operatorID string, hostID int) error {
-	errDisableCurrentJob := s.storage.ScanScheduleDisableJob(scanScheduleID, true)
+func (s *ScanScheduleService) DeleteScanScheduleByID(ctx context.Context, scanScheduleID int32) (bool, error) {
+	isDeleted, err := s.scheduleRepo.DeleteScanScheduleByID(ctx, scanScheduleID)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete scan schedule by ID: %w", err)
+	}
+	return isDeleted, nil
+}
+
+func (s *ScanScheduleService) PatchScanSchedule(
+	ctx context.Context,
+	scanScheduleID int32,
+	frequency *domain.RepeatSchedule,
+	scheduleAt time.Time,
+	tenantID, operatorID, hostID uuid.UUID,
+) error {
+	errDisableCurrentJob := s.scheduleRepo.DisableJob(ctx, scanScheduleID, true)
 	if errDisableCurrentJob != nil {
 		return errDisableCurrentJob
 	}
 
-	commonScanData := domain.NewScan(scheduleAt)
+	commonScanData := domain.NewScan(hostID, tenantID, operatorID, &scheduleAt)
 	commonScanData.TenantID = tenantID
 	commonScanData.OperatorID = operatorID
 	commonScanData.HostID = hostID
 	commonScanData.Status = enums.StatusScheduled.String()
-	dataScan, errCreationScan := s.storage.CreateScan(commonScanData)
-	if errCreationScan != nil {
-		return fmt.Errorf("failed to create new scan for update scan scheduling: %w", errCreationScan)
+	dataScan, err := s.scanRepo.CreateScan(ctx, *commonScanData)
+	if err != nil {
+		return fmt.Errorf("failed to create new scan for update scan scheduling: %w", err)
 	}
 	var isRepeated bool
 	var cronExpr string
 	var periodName string
-	var periodQuantity int
+	var periodQuantity int32
 	if frequency != nil {
 		isRepeated = true
 		periodName = string(frequency.UnitOfFrequency)
-		periodQuantity = frequency.Quantity
+		periodQuantity, err = convert.SafeIntToInt32(frequency.Quantity)
+		if err != nil {
+			return err
+		}
 	}
 	if !isRepeated {
 		cronExpr = fmt.Sprintf("%d %d %d %d *", scheduleAt.Minute(), scheduleAt.Hour(), scheduleAt.Day(), scheduleAt.Month())
 	} else {
 		cronExpr = fmt.Sprintf("%d %d * * *", scheduleAt.Minute(), scheduleAt.Hour())
 	}
-	errEnableJob := s.storage.ScanScheduleEnableJob(cronExpr, isRepeated, scanScheduleID)
+	errEnableJob := s.scheduleRepo.EnableJob(ctx, cronExpr, isRepeated, scanScheduleID)
 	if errEnableJob != nil {
 		return errEnableJob
 	}
-	errPatchScanSchedule := s.storage.PatchScanScheduleByID(scanScheduleID, dataScan.ID, cronExpr, isRepeated, periodName, periodQuantity, scheduleAt)
+	errPatchScanSchedule := s.scheduleRepo.PatchScanScheduleByID(ctx, scanScheduleID, dataScan.ID, cronExpr, isRepeated, periodName, periodQuantity, scheduleAt)
 	if errPatchScanSchedule != nil {
 		return errPatchScanSchedule
 	}
 
 	return nil
-
 }
 
-func (s ScanScheduleService) GetScanSchedules(tenantID uuid.UUID) ([]*domain.ScanScheduleSummary, error) {
-	return s.storage.GetScanSchedules(tenantID)
+func (s *ScanScheduleService) GetScanSchedulesByTenantID(
+	ctx context.Context,
+	tenantID uuid.UUID,
+) ([]domain.ScanScheduleSummary, error) {
+	return s.scheduleRepo.GetScanSchedulesByTenantID(ctx, tenantID)
 }
 
-func (s ScanScheduleService) GetCurrentHostID(scanScheduleID int) (int, error) {
-	hostID, errGetHostID := s.storage.GetCurrentHostIDFromScanSchedule(scanScheduleID)
-	if errGetHostID != nil {
-		return hostID, fmt.Errorf("failed to get current host ID: %w", errGetHostID)
+func (s *ScanScheduleService) GetCurrentHostID(ctx context.Context, scanScheduleID int32) (uuid.UUID, error) {
+	schedule, err := s.scheduleRepo.GetScanScheduleByID(ctx, scanScheduleID)
+	if err != nil {
+		return uuid.Nil, err
 	}
-	return hostID, nil
+	return schedule.HostID, nil
+}
+
+func (s *ScanScheduleService) UpdateScanScheduleScanID(
+	ctx context.Context,
+	scanID uuid.UUID,
+	scanScheduleID int32,
+) error {
+	if err := s.scheduleRepo.UpdateScanScheduling(ctx, scanID, scanScheduleID); err != nil {
+		return fmt.Errorf("failed to update scan scheduling: %w", err)
+	}
+	return nil
+}
+
+func (s *ScanScheduleService) ScanScheduleDisableJob(ctx context.Context, scanScheduleID int32) error {
+	return s.scheduleRepo.DisableJob(ctx, scanScheduleID, false)
 }

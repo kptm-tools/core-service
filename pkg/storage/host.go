@@ -1,440 +1,222 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 
+	"github.com/google/uuid"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/lib/pq"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/repository"
+	"github.com/sqlc-dev/pqtype"
 )
 
-func (s *PostgreSQLStore) ClearHostsTable() error {
-	query := `TRUNCATE TABLE hosts RESTART IDENTITY CASCADE`
-
-	_, err := s.db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to clear hosts table: %w", err)
-	}
-
-	return nil
+type HostRepo struct {
+	defaultQueries *repository.Queries
 }
 
-func (s *PostgreSQLStore) CreateHost(t *domain.Host) (*domain.Host, error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("failed to start transaction %w", err)
+var _ interfaces.HostRepository = (*HostRepo)(nil)
+
+func NewHostRepository(queries *repository.Queries) *HostRepo {
+	return &HostRepo{
+		defaultQueries: queries,
 	}
-	defer tx.Rollback()
-
-	query := `
-    INSERT INTO hosts (tenant_id, operator_id, domain, ip, alias, rapporteurs,  created_at, updated_at)
-    values ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id, tenant_id, operator_id, domain, ip, alias, rapporteurs, created_at, updated_at`
-
-	rapporteursJSONB, err := json.Marshal(t.Rapporteurs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal rapporteurs: %w", err)
-	}
-
-	row := tx.QueryRow(query, t.TenantID, t.OperatorID, t.Domain, t.IP, t.Name, rapporteursJSONB, t.CreatedAt, t.UpdatedAt)
-	newHost := &domain.Host{}
-
-	if err := scanIntoHostRow(row, newHost); err != nil {
-		return nil, fmt.Errorf("failed to insert host: %w", err)
-	}
-
-	if err := s.InsertCredentials(tx, newHost.ID, t.Credentials); err != nil {
-		return nil, fmt.Errorf("failed to insert credentials: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// Retreive and assign credentials
-	newHost.Credentials, err = s.GetCredentials(newHost.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
-	}
-	return newHost, nil
 }
 
-func (s *PostgreSQLStore) GetHostsByTenantID(tenantID string, hostsIDFilter []int) ([]*domain.Host, error) {
-	var rows *sql.Rows
-	var err error
-	query := `
-    SELECT *
-    FROM hosts
-    WHERE tenant_id=$1
-  `
+// getQueries retrieves the correct *repository.Queries instance from the context.
+// If a transaction is active, it gets the transactional queries. Otherwise, it uses
+// the defaultQueries.
+func (r *HostRepo) getQueries(ctx context.Context) *repository.Queries {
+	return GetQueriesFromContext(ctx, r.defaultQueries)
+}
 
-	if len(hostsIDFilter) > 0 {
-		// Add a filter condition if hostsFilter is provided
-		query += " AND id = ANY($2)"
-		rows, err = s.db.Query(query, tenantID, pq.Array(hostsIDFilter))
-	} else {
-		rows, err = s.db.Query(query, tenantID)
-	}
-
+func (r *HostRepo) CreateHost(ctx context.Context, host *domain.Host) (*domain.Host, error) {
+	queries := r.getQueries(ctx)
+	rapporteursBytes, err := json.Marshal(host.Rapporteurs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch hosts: %w", err)
+		return nil, fmt.Errorf("failed to marshal rapporteurs slice into bytes: %w", err)
 	}
-	defer rows.Close()
 
-	hosts := []*domain.Host{}
-	for rows.Next() {
-		host := &domain.Host{}
-		if err := scanIntoHost(rows, host); err != nil {
-			return nil, fmt.Errorf("failed to scan host: %w", err)
-		}
-		host.Credentials, err = s.GetCredentials(host.ID)
+	// 1. Insert into host
+	dbHost, err := queries.CreateHost(ctx, repository.CreateHostParams{
+		TenantID:    host.TenantID,
+		OperatorID:  host.OperatorID,
+		Domain:      sql.NullString{String: host.Domain, Valid: host.Domain != ""},
+		Ip:          sql.NullString{String: host.IP, Valid: host.IP != ""},
+		Alias:       host.Name,
+		Rapporteurs: pqtype.NullRawMessage{RawMessage: rapporteursBytes, Valid: len(rapporteursBytes) != 0},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host: %w", err)
+	}
+
+	// 2. Insert credentials
+	dbCredentials := make([]repository.Credential, len(host.Credentials))
+	for i, credential := range host.Credentials {
+		dbCred, err := queries.CreateCredential(ctx, repository.CreateCredentialParams{
+			HostID:   dbHost.ID,
+			Username: credential.Username,
+			Password: credential.Password,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch credentials: %w", err)
+			return nil, fmt.Errorf("failed to insert credential: %w", err)
 		}
-		hosts = append(hosts, host)
+		dbCredentials[i] = dbCred
 	}
 
-	return hosts, nil
+	return toDomainHost(dbHost, dbCredentials), nil
 }
 
-func (s *PostgreSQLStore) GetHostByID(hostID int) (*domain.Host, error) {
-	query := `
-  SELECT 
-    id,
-    tenant_id,
-    operator_id,
-    "domain",
-    ip,
-    alias,
-    rapporteurs,
-    created_at,
-    updated_at
-  FROM hosts
-  WHERE id=$1;
-  `
-	var host domain.Host
-	var rapporteursBytes []byte
-	err := s.db.QueryRow(query, hostID).Scan(
-		&host.ID,
-		&host.TenantID,
-		&host.OperatorID,
-		&host.Domain,
-		&host.IP,
-		&host.Name,
-		&rapporteursBytes,
-		&host.CreatedAt,
-		&host.UpdatedAt,
+func (r *HostRepo) GetHostByID(ctx context.Context, hostID uuid.UUID) (*domain.Host, error) {
+	queries := r.getQueries(ctx)
+	dbHost, err := queries.GetHostByID(ctx, hostID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrHostNotFound
+		}
+		return nil, err
+	}
+	domHost := toDomainHost(dbHost, []repository.Credential{})
+	return domHost, nil
+}
+
+func (r *HostRepo) GetHostsByTenantID(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	hostsIDFilter []uuid.UUID,
+) ([]*domain.Host, error) {
+	queries := r.getQueries(ctx)
+
+	var (
+		dbHosts []repository.Host
+		err     error
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan into host: %w", err)
+	if len(hostsIDFilter) == 0 {
+		dbHosts, err = queries.GetHostsByTenantID(ctx, tenantID)
+	} else {
+		params := repository.GetHostsByTenantIDAndHostsFilterParams{
+			TenantID:      tenantID,
+			HostsIDFilter: hostsIDFilter,
+		}
+		dbHosts, err = queries.GetHostsByTenantIDAndHostsFilter(ctx, params)
 	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch db hosts by tenantID: %w", err)
+	}
+	slog.Debug("Got tenant hosts", slog.Any("hosts", dbHosts))
 
-	credentials, err := s.GetCredentials(hostID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch credentials: %w", err)
+	domHosts := make([]*domain.Host, len(dbHosts))
+	for i, dbHost := range dbHosts {
+		domHosts[i] = toDomainHost(dbHost, []repository.Credential{})
 	}
-	host.Credentials = credentials
-	if err := json.Unmarshal(rapporteursBytes, &host.Rapporteurs); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal rapporteurs: %w", err)
-	}
-	return &host, nil
+	return domHosts, nil
 }
 
-func (s *PostgreSQLStore) PatchHostByID(h *domain.Host) (*domain.Host, error) {
-	tx, err := s.db.Begin()
+func (r *HostRepo) PatchHostByID(ctx context.Context, h domain.Host) (*domain.Host, error) {
+	queries := r.getQueries(ctx)
+	// 1. Patch the host
+	rapporteursBytes, err := json.Marshal(h.Rapporteurs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("faield to marshal host rapporteurs: %w", err)
 	}
-	defer tx.Rollback()
+	dbHost, err := queries.PatchHostByID(ctx, repository.PatchHostByIDParams{
+		ID:          h.ID,
+		Domain:      sql.NullString{String: h.Domain, Valid: h.Domain != ""},
+		Ip:          sql.NullString{String: h.IP, Valid: h.IP != ""},
+		Alias:       h.Name,
+		Rapporteurs: rapporteursBytes,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to patch host by id %s: %w", h.ID.String(), err)
+	}
 
-	var row *sql.Row
-	if h.Rapporteurs == nil {
-		query := `
-		UPDATE hosts
-		SET  domain=$2, ip=$3, alias=$4
-			WHERE id=$1
-		RETURNING *
-	  `
-		row = tx.QueryRow(query, h.ID, h.Domain, h.IP, h.Name)
-	} else {
-		query := `
-			UPDATE hosts
-			SET  rapporteurs=$2, domain=$3, ip=$4, alias=$5
-				WHERE id=$1
-			RETURNING *
-		  `
-		rapporteursJSONB, err := json.Marshal(h.Rapporteurs)
+	// 2. Patch the credentials
+	// 2.1 Delete previous credentials
+	_, err = queries.DeleteCredentialsByHostID(ctx, dbHost.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete credentials for host: %w", err)
+	}
+	// 2.2 Create a new record for each new credential
+	domainCredentials := make([]domain.Credential, len(h.Credentials))
+	for i, cred := range h.Credentials {
+		createdCred, err := queries.CreateCredential(ctx, repository.CreateCredentialParams{
+			HostID:   dbHost.ID,
+			Username: cred.Username,
+			Password: cred.Password,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal rapporteurs: %w", err)
+			return nil, fmt.Errorf("failed to create credential reord for host %s: %w", h.ID.String(), err)
 		}
-
-		row = tx.QueryRow(query, h.ID, rapporteursJSONB, h.Domain, h.IP, h.Name)
+		domainCred := domain.Credential{HostID: h.ID.String(), Username: createdCred.Username, Password: createdCred.Password}
+		domainCredentials[i] = domainCred
 	}
-
-	host := &domain.Host{}
-	if err := scanIntoHostRow(row, host); err != nil {
-		return nil, fmt.Errorf("error fetching host: %w", err)
-	}
-
-	if err = s.UpdateCredentials(tx, host.ID, h.Credentials); err != nil {
-		return nil, fmt.Errorf("failed to update credentials: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	// Fetch and assign updated credentials
-	credentials, err := s.GetCredentials(host.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch updated credentials: %w", err)
+	domHost := domain.Host{
+		ID:          dbHost.ID,
+		TenantID:    dbHost.TenantID,
+		OperatorID:  dbHost.OperatorID,
+		Name:        dbHost.Alias,
+		Domain:      dbHost.Domain.String,
+		IP:          dbHost.Ip.String,
+		Credentials: domainCredentials,
+		Rapporteurs: h.Rapporteurs,
+		CreatedAt:   h.CreatedAt,
+		UpdatedAt:   h.UpdatedAt,
 	}
-	host.Credentials = credentials
-
-	return host, nil
+	return &domHost, nil
 }
 
-func (s *PostgreSQLStore) InsertCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
-	query := "INSERT INTO credentials (host_id, username, password) VALUES ($1, $2, pgp_sym_encrypt($3, 'MAMA', 'compress-algo=1, cipher-algo=aes256'))"
-	for _, cred := range credentials {
-		if _, err := tx.Exec(query, hostID, cred.Username, cred.Password); err != nil {
-			return fmt.Errorf("failed to insert credential: %w", err)
+func (r *HostRepo) DeleteHostByID(ctx context.Context, hostID uuid.UUID) (bool, error) {
+	queries := r.getQueries(ctx)
+	rowsAffected, err := queries.DeleteHostByID(ctx, hostID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, customerrors.ErrHostNotFound
+		}
+		return false, fmt.Errorf("failed to delete host by id %s: %w", hostID.String(), err)
+	}
+	return rowsAffected >= 1, nil
+}
+
+func (r *HostRepo) AliasExists(ctx context.Context, alias string) (bool, error) {
+	queries := r.getQueries(ctx)
+	return queries.AliasExists(ctx, alias)
+}
+
+func toDomainHost(dbHost repository.Host, dbCredentials []repository.Credential) *domain.Host {
+	host := domain.Host{
+		ID:         dbHost.ID,
+		TenantID:   dbHost.TenantID,
+		OperatorID: dbHost.OperatorID,
+		Name:       dbHost.Alias,
+		Domain:     dbHost.Domain.String,
+		IP:         dbHost.Ip.String,
+		CreatedAt:  dbHost.CreatedAt.Time,
+		UpdatedAt:  dbHost.UpdatedAt.Time,
+	}
+
+	domainCredentials := make([]domain.Credential, len(dbCredentials))
+	for i, dbCred := range dbCredentials {
+		domainCredentials[i] = domain.Credential{
+			HostID:   dbHost.ID.String(),
+			Username: dbCred.Username,
+			Password: dbCred.Password,
 		}
 	}
+	host.Credentials = domainCredentials
 
-	return nil
-}
-
-func (s *PostgreSQLStore) GetCredentials(hostID int) ([]domain.Credential, error) {
-	query := `
-    SELECT id, host_id, username,password
-    FROM credentials
-    WHERE host_id=$1
-  `
-
-	rows, err := s.db.Query(query, hostID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching Credentials: %w", err)
-	}
-	defer rows.Close()
-
-	var credentials []domain.Credential
-	for rows.Next() {
-		credential, err := scanIntoCredential(rows)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan credential: %w", err)
+	if dbHost.Rapporteurs.Valid {
+		if err := json.Unmarshal(dbHost.Rapporteurs.RawMessage, &host.Rapporteurs); err != nil {
+			slog.Error("failed to unmarshal dbHost rapporteurs", slog.Any("error", err))
+			return nil
 		}
-		credentials = append(credentials, *credential)
+	} else {
+		host.Rapporteurs = []domain.Rapporteur{}
 	}
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("error iterating sql rows: %w", err)
-	}
-	return credentials, nil
-}
-
-func (s *PostgreSQLStore) UpdateCredentials(tx *sql.Tx, hostID int, credentials []domain.Credential) error {
-	if credentials == nil {
-		slog.Warn("no credentials to update")
-		return nil
-	}
-	// Step 1: Delete all credentials associated with the hostID
-	deleteQuery := `DELETE FROM credentials WHERE host_id = $1`
-	if _, err := tx.Exec(deleteQuery, hostID); err != nil {
-		return fmt.Errorf("failed to delete existing credentials for hostID %d: %w", hostID, err)
-	}
-
-	insertQuery := `INSERT INTO credentials (host_id, username, password)
-                  VALUES ($1, $2, pgp_sym_encrypt($3, 'MAMA', 'compress-algo=1, cipher-algo=aes256'))`
-
-	for _, cred := range credentials {
-		_, err := tx.Exec(insertQuery, hostID, cred.Username, cred.Password)
-		if err != nil {
-			return fmt.Errorf("failed to insert new credential for hostID %d: %w", hostID, err)
-		}
-	}
-	return nil
-}
-
-func (s *PostgreSQLStore) DeleteHostByID(ID int) (bool, error) {
-	query := `
-    DELETE 
-    FROM hosts
-    WHERE id=$1
-  `
-	res, err := s.db.Exec(query, ID)
-
-	switch err {
-	case nil:
-		count, _ := res.RowsAffected()
-		return count == 1, nil
-	default:
-		return false, err
-	}
-}
-
-func scanIntoHost(rows *sql.Rows, host *domain.Host) error {
-	var rapporteurs []byte
-	if err := rows.Scan(&host.ID, &host.TenantID, &host.OperatorID, &host.Domain, &host.IP, &host.Name, &rapporteurs, &host.CreatedAt, &host.UpdatedAt); err != nil {
-		return fmt.Errorf("error scanning rows: %w", err)
-	}
-	// Unmarshal the rapporteurs bytes
-	if err := json.Unmarshal(rapporteurs, &host.Rapporteurs); err != nil {
-		return fmt.Errorf("error unmarshalling rapporteurs: %w", err)
-	}
-
-	return nil
-}
-
-func scanIntoHostRow(row *sql.Row, host *domain.Host) error {
-	var rapporteurs []byte
-	if err := row.Scan(&host.ID, &host.TenantID, &host.OperatorID, &host.Domain, &host.IP, &host.Name, &rapporteurs, &host.CreatedAt, &host.UpdatedAt); err != nil {
-		return fmt.Errorf("failed to scan host: %w", err)
-	}
-	if err := json.Unmarshal(rapporteurs, &host.Rapporteurs); err != nil {
-		return fmt.Errorf("failed to unmarshal rapporteurs: %w", err)
-	}
-
-	return nil
-}
-
-func scanIntoCredential(rows *sql.Rows) (*domain.Credential, error) {
-	credential := new(domain.Credential)
-	err := rows.Scan(
-		&credential.ID,
-		&credential.HostID,
-		&credential.Username,
-		&credential.Password,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error scanning Credential: %w", err)
-	}
-
-	return credential, nil
-}
-
-func replaceSQL(old, searchPattern string) string {
-	tmpCount := strings.Count(old, searchPattern)
-	for m := 1; m <= tmpCount; m++ {
-		old = strings.Replace(old, searchPattern, "$"+strconv.Itoa(m), 1)
-	}
-	return old
-}
-
-func (s *PostgreSQLStore) ExistAlias(alias string) (bool, error) {
-	var exists bool
-	query := `SELECT 
-    EXISTS(SELECT 1 FROM hosts WHERE alias = $1)
-  `
-	err := s.db.QueryRow(query, alias).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("failed to verify existence: %w", err)
-	}
-	return exists, nil
-}
-
-func (s *PostgreSQLStore) GetHostVulnerabilityTrends(
-	hostID int,
-	timePeriodFilter domain.TimePeriodFilter,
-	severityFilters []string,
-) ([]domain.ServiceTimePeriod, error) {
-	// This query is kind of complicated, but what it does is fill out time_periods and labels,
-	// even when there is no data for said time_period. E.g: we only have data
-	// for February, but we want to have the counts for other months to be 0 too.
-	// It also has a CTE called ScanPeriods, which identifies if there was a scan at all
-	// during that period. This allows us to differentiate if we got a 0 count because there
-	// are no vulnerabilities, or because there is no scan.
-	baseTrendQuery := `
-		WITH TimePeriods AS (
-			SELECT
-				CASE
-					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'FMMonth')
-					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(date_series, 'Q')
-					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-					ELSE 'Unknown Period'
-				END AS time_period_label,
-				CASE
-					WHEN $2 = 'Month' THEN TO_CHAR(date_series, 'YYYY-MM')
-					WHEN $2 = 'Quarter' THEN TO_CHAR(date_series, 'YYYY-Q')
-					WHEN $2 = 'Semester' THEN CASE WHEN TO_CHAR(date_series, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-					ELSE '1'
-				END AS ordering_period,
-				date_series
-			FROM generate_series(
-				DATE_TRUNC('year', CURRENT_DATE),
-				DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day',
-				CASE
-					WHEN $2 = 'Month' THEN INTERVAL '1 month'
-					WHEN $2 = 'Quarter' THEN INTERVAL '3 month'
-					WHEN $2 = 'Semester' THEN INTERVAL '6 month'
-					ELSE INTERVAL '1 month'
-				END
-			) AS date_series
-		),
-		ScanPeriods AS (
-			SELECT
-        DISTINCT ON (time_period_label)
-				CASE
-					WHEN $2 = 'Month' THEN TO_CHAR(s.started_at, 'FMMonth')
-					WHEN $2 = 'Quarter' THEN 'Q' || TO_CHAR(s.started_at, 'Q')
-					WHEN $2 = 'Semester' THEN 'Semester ' || CASE WHEN TO_CHAR(s.started_at, 'MM')::integer <= 6 THEN '1' ELSE '2' END
-					ELSE 'Unknown Period'
-				END AS time_period_label,
-				s.id AS scan_id,
-				s.started_at AS scan_started_at
-			FROM scans s
-			WHERE s.host_id = $1
-				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-      ORDER BY time_period_label, s.started_at DESC
-		),
-		VulnerabilityCounts AS (
-			SELECT
-				sp.time_period_label,
-				COUNT(sv.id) AS vulnerability_count
-			FROM ScanPeriods sp
-			LEFT JOIN scan_vulnerabilities sv ON sv.scan_id = sp.scan_id
-			INNER JOIN scans s ON sp.scan_id = s.id
-			WHERE s.host_id = $1
-				AND EXTRACT(YEAR FROM s.started_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-				-- Severity Filter Dynamic Condition goes here
-				%s
-			GROUP BY sp.time_period_label
-		)
-		SELECT
-			tp.time_period_label AS time_period,
-			vc.vulnerability_count AS vulnerability_count -- Now vc.vulnerability_count will be NULL if no scan
-		FROM TimePeriods tp
-		LEFT JOIN ScanPeriods sp ON tp.time_period_label = sp.time_period_label -- Join with ScanPeriods to ensure time period has a scan
-		LEFT JOIN VulnerabilityCounts vc ON tp.time_period_label = vc.time_period_label
-		ORDER BY tp.ordering_period;
-	`
-
-	trendQueryParams := []any{hostID, timePeriodFilter.String()}
-	trendSeverityWhereClause, trendQueryParams := s.buildSeverityWhereClause(severityFilters, trendQueryParams)
-	forattedTrendQuery := fmt.Sprintf(baseTrendQuery, trendSeverityWhereClause)
-	slog.Debug("Executing Host Trend Query",
-		slog.Any("query_params", trendQueryParams))
-
-	trendsRows, err := s.db.Query(forattedTrendQuery, trendQueryParams...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query vulnerability trends for host %d: %w", hostID, err)
-	}
-	defer trendsRows.Close()
-
-	var timePeriods []domain.ServiceTimePeriod
-	for trendsRows.Next() {
-		var timePeriodData domain.ServiceTimePeriod
-		if err := trendsRows.Scan(&timePeriodData.TimePeriod, &timePeriodData.VulnerabilityCount); err != nil {
-			return nil, fmt.Errorf("failed to scan into time period: %w", err)
-		}
-		timePeriods = append(timePeriods, timePeriodData)
-	}
-	if trendsRows.Err() != nil {
-		return nil, fmt.Errorf("failed to iterate trend rows: %w", err)
-	}
-	return timePeriods, nil
+	return &host
 }

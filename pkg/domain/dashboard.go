@@ -98,3 +98,8 @@ type HostAliasVulnerabilityPair struct {
 	Alias              string `json:"alias"`
 	VulnerabilityCount int    `json:"vulnerability_count"`
 }
+
+type VulnerabilityAggregatesResult struct {
+	TotalVulnerabilities int
+	SeverityCounts       tools.SeverityCounts
+}

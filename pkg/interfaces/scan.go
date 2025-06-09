@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -13,26 +14,23 @@ import (
 )
 
 type IScanService interface {
-	CreateScan(hostID int, tenantID, operatorID string, startedAt *time.Time) (*domain.Scan, error)
-	GetCurrentScans(string) ([]*domain.ScanSummary, error)
-	InsertScanResult(*domain.ScanResult) error
-	InsertVulnerabilityResult(*domain.ScanResult) error
-	UpdateScanStatus(scanID uuid.UUID, status enums.ScanStatus) error
-	MarkScanAsFailed(scanID uuid.UUID) error
-	MarkScanAsCancelled(scanID uuid.UUID) error
-	GetScanInsightsByID(scanID uuid.UUID) (*domain.ScanInsights, error)
-	CalculateProtectionScore(scanID uuid.UUID) (float64, error)
-	GetScanByID(scanID uuid.UUID) (*domain.Scan, error)
-	HandleScanCompletion(scanID uuid.UUID) error
-	GetScanVulnerabilitySummaryByID(scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
-	GetAllReportsForTenant(tenantID string) ([]*domain.ReportItem, error)
-	GetScoreCardTrendsForTenant(tenantID string, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
-	GetScanVulnerabilities(scanID uuid.UUID) ([]*domain.Vulnerability, error)
-	GetSeverityCounts(scanID uuid.UUID) (*tools.SeverityCounts, error)
-	CreateTarget(hostID int) (*results.Target, error)
-	UpdateScanScheduleScanID(scanID uuid.UUID, scanScheduleID int) error
-	ScanScheduleDisableJob(int) error
-	GetRapporteursScan(id uuid.UUID) ([]*domain.Rapporteur, string, error)
+	CreateScan(ctx context.Context, hostID uuid.UUID, tenantID, operatorID uuid.UUID, startedAt *time.Time) (*domain.Scan, error)
+	GetCurrentScans(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
+	InsertScanResult(context.Context, domain.ScanResult) error
+	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, status enums.ScanStatus) error
+	MarkScanAsFailed(ctx context.Context, scanID uuid.UUID) error
+	MarkScanAsCancelled(ctx context.Context, scanID uuid.UUID) error
+	GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
+	CalculateProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	HandleScanCompletion(ctx context.Context, scanID uuid.UUID) error
+	GetScanVulnerabilitySummaryByID(ctx context.Context, scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	GetAllReportsForTenant(context.Context, uuid.UUID) ([]domain.ReportItem, error)
+	GetScoreCardTrendsForTenant(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
+	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
+	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
+	GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 }
 
 type IScanHandlers interface {
@@ -44,4 +42,23 @@ type IScanHandlers interface {
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
 	DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error
+}
+
+type ScanRepository interface {
+	CreateScan(context.Context, domain.Scan) (*domain.Scan, error)
+	GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
+	GetScanByID(context.Context, uuid.UUID) (*domain.Scan, error)
+	GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
+	GetLatestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
+	GetOldestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
+	GetPreviousScan(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	GetProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
+	GetReportsByTenantID(context.Context, uuid.UUID) ([]domain.ReportItem, error)
+	UpdateProtectionScore(ctx context.Context, scanID uuid.UUID, newScore float64) error
+	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus) error
+	UpdateScanStatusAndEndedAt(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus, endedAt time.Time) error
+}
+
+type ScanResultRepository interface {
+	CreateScanResult(context.Context, domain.ScanResult) error
 }

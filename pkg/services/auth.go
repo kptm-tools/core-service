@@ -39,24 +39,22 @@ func NewFaError(status int, msg string) *FaError {
 }
 
 type AuthService struct {
-	client  *http.Client
-	storage interfaces.IStorage
-	cfg     *config.Config
-	otps    auth.RetentionMap
-	mu      sync.Mutex
+	client *http.Client
+	cfg    *config.Config
+	otps   auth.RetentionMap
+	mu     sync.Mutex
 }
 
 var _ interfaces.IAuthService = (*AuthService)(nil)
 
-func NewAuthService(ctx context.Context, storage interfaces.IStorage) *AuthService {
+func NewAuthService() *AuthService {
 	return &AuthService{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		storage: storage,
-		cfg:     config.LoadConfig(),
-		otps:    auth.NewRetentionMap(ctx, 60*time.Minute),
-		mu:      sync.Mutex{},
+		cfg:  config.LoadConfig(),
+		otps: auth.NewRetentionMap(context.Background(), 60*time.Minute),
+		mu:   sync.Mutex{},
 	}
 }
 
@@ -132,10 +130,10 @@ func (s *AuthService) RegisterTenant(tenantName string) (*domain.Tenant, *domain
 	domainTenant := domain.NewTenant(tenant.Id, app.Id)
 
 	// Store the domainTenant in our Database
-	domainTenant, err = s.storage.CreateTenant(domainTenant)
-	if err != nil {
-		return nil, nil, err
-	}
+	// domainTenant, err = s.storage.CreateTenant(domainTenant)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
 	return domainTenant, domainUser, nil
 }

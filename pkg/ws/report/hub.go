@@ -1,14 +1,15 @@
 package report
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/core-service/pkg/domain"
 
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -133,6 +134,7 @@ func (h *ReportHub) routeMessage(msg common.Message, client interfaces.IReportCl
 }
 
 func (h *ReportHub) AddToRoom(scanID string) {
+	ctx := context.Background()
 	scanUUID, err := uuid.Parse(scanID)
 	if err != nil {
 		slog.Error("Failed to parse scanID when adding client to room", slog.String("scan_id", scanID), slog.Any("error", err))
@@ -149,7 +151,7 @@ func (h *ReportHub) AddToRoom(scanID string) {
 
 	if room.AmountOfClients == 0 {
 		slog.Debug("Fetching vulnerabilities for new room...")
-		vulns, err := h.scanService.GetScanVulnerabilities(scanUUID)
+		vulns, err := h.scanService.GetScanVulnerabilities(ctx, scanUUID)
 		if err != nil {
 			slog.Error("Failed to fetch vulnerabilities from DB when adding client to room", slog.Any("error", err))
 			return
@@ -197,7 +199,7 @@ func ExecuteAfterDelay(delay time.Duration, scanID string, h *ReportHub) {
 	})
 }
 
-func (h *ReportHub) GetRoomVulnerabilities(scanID string) []*domain.Vulnerability {
+func (h *ReportHub) GetRoomVulnerabilities(scanID string) []tools.Vulnerability {
 	roomInterface, _ := h.rooms.Load(scanID)
 	room, ok := roomInterface.(*ReportRoom)
 	if ok {

@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
@@ -59,15 +60,15 @@ type VulnerabilityDetails struct {
 	Availability       string  `json:"availability"`
 }
 
-func NewVulnerabilityDetails(vuln domain.Vulnerability) VulnerabilityDetails {
+func NewVulnerabilityDetails(vuln tools.Vulnerability) VulnerabilityDetails {
 	return VulnerabilityDetails{
-		Name:               vuln.VulnerabilityID,
-		Type:               vuln.Type,
+		Name:               vuln.CveID,
+		Type:               vuln.Type.String(),
 		CVSS:               vuln.BaseCVSSScore,
 		Severity:           vuln.BaseSeverity.String(),
 		Description:        vuln.Description,
 		PrivilegesRequired: vuln.PrivilegesRequired.String(),
-		Classification:     vuln.AccessType.String(),
+		Classification:     vuln.Access.String(),
 		Integrity:          vuln.IntegrityImpact.String(),
 		Availability:       vuln.AvailabilityImpact.String(),
 	}
@@ -121,7 +122,7 @@ type ScanVulnerabilityItemsResponse struct {
 }
 
 type ScanVulnerabilityItem struct {
-	ID             int                   `json:"id"`
+	ID             uuid.UUID             `json:"id"`
 	Name           string                `json:"name"`
 	Type           string                `json:"type"`
 	Severity       string                `json:"severity"`
@@ -224,7 +225,7 @@ type ScoreCardTrendResponse struct {
 // ScanVulnerabilityDetailResponse is the DTO with the details for a particular
 // scan's vulenrability.
 type ScanVulnerabilityDetailResponse struct {
-	ID       int       `json:"id"`
+	ID       string    `json:"id"`
 	ScanDate time.Time `json:"scan_date"`
 
 	Host HostItem  `json:"host"`
@@ -298,13 +299,37 @@ type RiskInfo struct {
 	CVSSV30Vector      *string  `json:"cvss_v3_vector"` // Can be nullable
 }
 
+type HostResponse struct {
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	Domain      string              `json:"domain"`
+	IP          string              `json:"ip"`
+	Credentials []domain.Credential `json:"credentials"`
+	Rapporteurs []domain.Rapporteur `json:"rapporteurs"`
+	CreatedAt   time.Time           `json:"created_at"`
+	UpdatedAt   time.Time           `json:"updated_at"`
+}
+
+func NewHostResponse(host domain.Host) HostResponse {
+	return HostResponse{
+		ID:          host.ID.String(),
+		Name:        host.Name,
+		Domain:      host.Domain,
+		IP:          host.IP,
+		Credentials: host.Credentials,
+		Rapporteurs: host.Rapporteurs,
+		CreatedAt:   host.CreatedAt,
+		UpdatedAt:   host.UpdatedAt,
+	}
+}
+
 func AdaptDomainPortItem(domainPortItem *domain.PortItem) *PortItem {
 	if domainPortItem == nil {
 		return nil
 	}
 
 	return &PortItem{
-		ID:       domainPortItem.ID,
+		ID:       uint16(domainPortItem.ID),
 		Protocol: domainPortItem.Protocol,
 	}
 }
@@ -356,29 +381,22 @@ func AdaptDomainRiskInfo(domainRiskInfo domain.RiskInfo) RiskInfo {
 	}
 }
 
-func ToScanVulnerabilityItem(vuln *domain.Vulnerability) ScanVulnerabilityItem {
-	var analystComment string
-	if vuln.AnalystComment == nil {
-		analystComment = ""
-	} else {
-		analystComment = *vuln.AnalystComment
-	}
-
+func ToScanVulnerabilityItem(vuln tools.Vulnerability) ScanVulnerabilityItem {
 	return ScanVulnerabilityItem{
 		ID:             vuln.ID,
-		Name:           vuln.VulnerabilityID,
-		Type:           vuln.Type,
+		Name:           vuln.CveID,
+		Description:    vuln.Description,
+		Type:           vuln.Type.String(),
 		Severity:       vuln.BaseSeverity.String(),
 		MaxCVSS:        vuln.BaseCVSSScore,
 		RiskScore:      vuln.RiskScore,
 		ImpactScore:    vuln.ImpactScore,
 		Likelihood:     vuln.Likelihood.String(),
-		Access:         vuln.AccessType.String(),
+		Access:         vuln.Access.String(),
 		Complexity:     vuln.Complexity.String(),
 		Privileges:     vuln.PrivilegesRequired.String(),
 		Exploitability: vuln.Exploit.Exploitability.String(),
-		Description:    vuln.Description,
-		Comment:        analystComment,
+		Comment:        vuln.AnalystComment,
 		VendorComments: vuln.VendorComments,
 		References:     vuln.References,
 	}

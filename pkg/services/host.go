@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/utils/validation"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -22,36 +24,31 @@ var (
 )
 
 type HostService struct {
-	storage interfaces.IStorage
+	hostRepo interfaces.HostRepository
 }
 
 var _ interfaces.IHostService = (*HostService)(nil)
 
-func NewHostService(storage interfaces.IStorage) *HostService {
+func NewHostService(hostRepository interfaces.HostRepository) *HostService {
 	return &HostService{
-		storage: storage,
+		hostRepo: hostRepository,
 	}
 }
 
-func (s *HostService) CreateHost(t *domain.Host) (*domain.Host, error) {
-	return s.storage.CreateHost(t)
+func (s *HostService) CreateHost(ctx context.Context, t *domain.Host) (*domain.Host, error) {
+	return s.hostRepo.CreateHost(ctx, t)
 }
 
-func (s *HostService) GetHostsByTenantID(tenantID string) ([]*domain.Host, error) {
-	hosts, err := s.storage.GetHostsByTenantID(tenantID, []int{})
-	if err != nil {
-		return nil, err
-	}
-
-	return hosts, nil
+func (s *HostService) GetHostsByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*domain.Host, error) {
+	return s.hostRepo.GetHostsByTenantID(ctx, tenantID, []uuid.UUID{})
 }
 
-func (s *HostService) GetHostByID(HostID int) (*domain.Host, error) {
-	return s.storage.GetHostByID(HostID)
+func (s *HostService) GetHostByID(ctx context.Context, hostID uuid.UUID) (*domain.Host, error) {
+	return s.hostRepo.GetHostByID(ctx, hostID)
 }
 
-func (s *HostService) DeleteHostByID(ID int) (bool, error) {
-	isDeleted, err := s.storage.DeleteHostByID(ID)
+func (s *HostService) DeleteHostByID(ctx context.Context, hostID uuid.UUID) (bool, error) {
+	isDeleted, err := s.hostRepo.DeleteHostByID(ctx, hostID)
 	if err != nil {
 		return false, err
 	}
@@ -59,8 +56,8 @@ func (s *HostService) DeleteHostByID(ID int) (bool, error) {
 	return isDeleted, nil
 }
 
-func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
-	host, err := s.storage.PatchHostByID(h)
+func (s *HostService) PatchHostByID(ctx context.Context, h *domain.Host) (*domain.Host, error) {
+	host, err := s.hostRepo.PatchHostByID(ctx, *h)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +65,7 @@ func (s *HostService) PatchHostByID(h *domain.Host) (*domain.Host, error) {
 	return host, nil
 }
 
-func (s *HostService) ValidateHost(host string) error {
+func (s *HostService) ValidateHost(ctx context.Context, host string) error {
 	classification, err := validation.ClassifyHostValue(host)
 	if err != nil {
 		slog.Error("Failed to classify host", slog.Any("error", err))
@@ -98,8 +95,8 @@ func (s *HostService) ValidateHost(host string) error {
 	return nil
 }
 
-func (s *HostService) ValidateAlias(alias string) error {
-	exists, err := s.storage.ExistAlias(alias)
+func (s *HostService) ValidateAlias(ctx context.Context, alias string) error {
+	exists, err := s.hostRepo.AliasExists(ctx, alias)
 	if err != nil {
 		return err
 	}

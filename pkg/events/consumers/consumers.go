@@ -1,6 +1,7 @@
 package consumers
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ import (
 // scanID: The UUID of the scan this tool result belongs to.
 // toolResult: The result object from a single tool execution, including its error struct.
 // scanService: An instance of IScanService to interact with scan status.
-func handleToolResultError(scanID uuid.UUID, toolRes tools.ToolResult, scanService interfaces.IScanService) {
+func handleToolResultError(ctx context.Context, scanID uuid.UUID, toolRes tools.ToolResult, scanService interfaces.IScanService) {
 	if toolRes.Err == nil {
 		return
 	}
@@ -47,7 +48,7 @@ func handleToolResultError(scanID uuid.UUID, toolRes tools.ToolResult, scanServi
 			slog.String("error_code", string(toolRes.Err.Code)),
 			slog.String("error_message", toolRes.Err.Message),
 		)
-		if err := scanService.MarkScanAsFailed(scanID); err != nil {
+		if err := scanService.MarkScanAsFailed(ctx, scanID); err != nil {
 			slog.Error("Failed to mark scan as failed",
 				slog.String("scan_id", scanID.String()),
 				slog.Any("error", err),

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/api"
@@ -46,8 +47,16 @@ func NewScanHandlers(
 }
 
 func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) error {
-	tenantID := req.Context().Value(middleware.ContextTenantID).(string)
-	userID := req.Context().Value(middleware.ContextUserID).(string)
+	ctx := req.Context()
+	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: "invalid tenantID"})
+	}
+	userID, ok := ctx.Value(middleware.ContextUserID).(uuid.UUID)
+	if !ok {
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: "invalid tenantID"})
+	}
+
 	scanRequest := new(dto.ScanRequest)
 
 	if err := decodeJSONBody(w, req, scanRequest); err != nil {
@@ -62,14 +71,14 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 	var scan *domain.Scan
 	var err error
 	if scanRequest.ScheduleAt == nil {
-		scan, err = h.scanService.CreateScan(scanRequest.HostID, tenantID, userID, nil)
+		scan, err = h.scanService.CreateScan(ctx, scanRequest.HostID, tenantID, userID, nil)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				statusCode := http.StatusNotFound
 				return api.WriteJSON(w, statusCode, api.APIError{Error: http.StatusText(statusCode)})
 			}
-			if errors.Is(err, customerrors.ErrScanHostFKNotFound) {
-				return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("No host %d found ", scanRequest.HostID)})
+			if errors.Is(err, customerrors.ErrHostNotFound) {
+				return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Host %s not found ", scanRequest.HostID)})
 			}
 			slog.Error("Failed to create scans", slog.Any("error", err))
 			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
@@ -107,7 +116,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 				Error: "Invalid schedule_at field. Must be at least 2 minutes greater than the current time",
 			})
 		}
-		scan, err = h.scanService.CreateScan(scanRequest.HostID, tenantID, userID, &dateSchedule)
+		scan, err = h.scanService.CreateScan(ctx, scanRequest.HostID, tenantID, userID, &dateSchedule)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				statusCode := http.StatusNotFound
@@ -117,7 +126,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 			slog.Error("Failed to create scans", slog.Any("error", err))
 			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		}
-		errScanSchedule := h.scanScheduleService.InsertScanScheduling(scan.ID, dateSchedule, scanRequest.Frequency)
+		_, errScanSchedule := h.scanScheduleService.CreateScanSchedule(ctx, scan.ID, dateSchedule, scanRequest.Frequency)
 		if errScanSchedule != nil {
 			slog.Error("Error inserting scan schedule",
 				slog.String("scan_id", scan.ID.String()),
@@ -134,6 +143,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 }
 
 func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
+	ctx := req.Context()
 	scanID, err := GetUUID(req)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
@@ -158,7 +168,7 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 	}
 
 	// 2. Update scan status and ended_at in our storage
-	if err := h.scanService.MarkScanAsCancelled(scanID); err != nil {
+	if err := h.scanService.MarkScanAsCancelled(ctx, scanID); err != nil {
 		slog.Error("Failed to mark scan as cancelled", slog.Any("error", err))
 		var alreadyFinishedErr *customerrors.ScanAlreadyFinishedError
 		if errors.As(err, &alreadyFinishedErr) {
@@ -167,7 +177,7 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
 	}
 	// 3. Get the emails rapporteurs structure
-	rapporteurs, hostName, errorGerRapporteurs := h.scanService.GetRapporteursScan(scanID)
+	rapporteurs, hostName, errorGerRapporteurs := h.scanService.GetScanRapporteursAndHostAlias(ctx, scanID)
 	if errorGerRapporteurs != nil {
 		slog.Error("Can not obtain rapporteurs associated to the scan",
 			slog.String("scan_id", scanID.String()),
@@ -189,13 +199,14 @@ func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) 
 }
 
 func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: http.StatusText(http.StatusBadRequest)})
 	}
 
-	summary, err := h.scanService.GetScanInsightsByID(scanID)
+	summary, err := h.scanService.GetScanInsights(ctx, scanID)
 	if err != nil {
 		slog.Error("failed to get scan summary by ID", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: err.Error()})
@@ -205,6 +216,7 @@ func (h *ScanHandlers) GetScanInsightsByID(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("err", err))
@@ -221,7 +233,7 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid severity filter. Allowed values: Critical,High,Medium,Low"})
 	}
 
-	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(scanID, timePeriodFilter, severityFilters)
+	summaryData, err := h.scanService.GetScanVulnerabilitySummaryByID(ctx, scanID, timePeriodFilter, severityFilters)
 	if err != nil {
 		slog.Error("failed to get scan vulnerabilities summary",
 			slog.String("scan_id", scanID.String()),
@@ -254,12 +266,17 @@ func (h *ScanHandlers) GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r 
 }
 
 func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	ctx := r.Context()
+	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		slog.Error("Failed type assertion for tenantID", slog.String("type", fmt.Sprintf("%T", tenantID)))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "TenantID is invalid"})
+	}
 
-	reportItems, err := h.scanService.GetAllReportsForTenant(tenantID)
+	reportItems, err := h.scanService.GetAllReportsForTenant(ctx, tenantID)
 	if err != nil {
 		slog.Error("Failed to get all reports for tenant",
-			slog.String("tenant_id", tenantID),
+			slog.String("tenant_id", tenantID.String()),
 			slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
@@ -280,7 +297,16 @@ func (h *ScanHandlers) GetReports(w http.ResponseWriter, r *http.Request) error 
 }
 
 func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error {
-	tenantID := r.Context().Value(middleware.ContextTenantID).(string)
+	ctx := r.Context()
+	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
+	if !ok {
+		slog.Error(
+			"Failed to assert tenantID to uuid.UUID type",
+			"expected_type", "uuid.UUID",
+			"actual_type", fmt.Sprintf("%T", tenantID),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
 
 	fromDate, toDate, err := h.parseDateRange(w, r)
 	if err != nil {
@@ -288,11 +314,13 @@ func (h *ScanHandlers) GetScoreCardTrends(w http.ResponseWriter, r *http.Request
 	}
 
 	var scoreCardTrendItems []*domain.ScoreCardTrendItem
-	scoreCardTrendItems, err = h.scanService.GetScoreCardTrendsForTenant(tenantID, fromDate, toDate)
+	scoreCardTrendItems, err = h.scanService.GetScoreCardTrendsForTenant(ctx, tenantID, fromDate, toDate)
 	if err != nil {
-		slog.Error("Failed to get ScoreCard trends for tenant",
-			slog.String("tenant_id", tenantID),
-			slog.Any("error", err))
+		slog.Error(
+			"Failed to get ScoreCard trends for tenant",
+			slog.String("tenant_id", tenantID.String()),
+			slog.Any("error", err),
+		)
 		return api.WriteJSON(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 
@@ -347,13 +375,18 @@ func (h *ScanHandlers) parseDateRange(w http.ResponseWriter, r *http.Request) (f
 }
 
 func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+			Error: "ScanID must be a UUID",
+		})
 	}
 
-	scan, err := h.scanService.GetScanByID(scanID)
+	scan, err := h.scanService.GetScanByID(ctx, scanID)
 	if err != nil {
+		slog.Error("Failed to get scan by ID", slog.String("scan_id", scanID.String()), slog.Any("error", err))
 		if errors.Is(err, customerrors.ErrScanNotFound) {
 			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})
 		}
@@ -363,17 +396,18 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 	slog.Debug(
 		"Attempting to GetHostByID",
 		slog.String("scan_id", scanID.String()),
-		slog.Int("host_id", scan.HostID),
+		slog.String("host_id", scan.HostID.String()),
 	)
-	host, err := h.hostService.GetHostByID(scan.HostID)
+	host, err := h.hostService.GetHostByID(ctx, scan.HostID)
 	if err != nil {
+		slog.Error("Failed to get host by ID", slog.String("host_id", scan.HostID.String()), slog.Any("error", err))
 		if errors.Is(err, customerrors.ErrHostNotFound) {
 			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("No host found for scan %s", scanID.String())})
 		}
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
 
-	vulners, err := h.scanService.GetScanVulnerabilities(scanID)
+	vulners, err := h.scanService.GetScanVulnerabilities(ctx, scanID)
 	if err != nil {
 		slog.Error("failed to fetch scan vulnerabilities",
 			slog.String("scan_id", scanID.String()),
@@ -382,7 +416,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
 
-	severityCounts, err := h.scanService.GetSeverityCounts(scanID)
+	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
 	if err != nil {
 		slog.Error("failed to fetch severity counts",
 			slog.String("scan_id", scanID.String()),
@@ -406,20 +440,19 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 	scanVulnersItemsResponse.Vulnerabilities = scanVulnerItems
 	scanVulnersItemsResponse.TotalVulnerabilities = len(scanVulnersItemsResponse.Vulnerabilities)
 	// Associate SeverityCounts
-	if severityCounts != nil {
-		scanVulnersItemsResponse.SeverityCounts = *severityCounts
-	}
+	scanVulnersItemsResponse.SeverityCounts = severityCounts
 
 	return api.WriteJSON(w, http.StatusOK, scanVulnersItemsResponse)
 }
 
 func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
-	id, err := GetID(r)
+	ctx := r.Context()
+	id, err := GetIDInt32(r)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusBadRequest, err.Error())
 	}
 
-	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(id)
+	isDeleted, err := h.scanScheduleService.DeleteScanScheduleByID(ctx, id)
 	if err != nil {
 		return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}

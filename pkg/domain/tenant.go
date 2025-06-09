@@ -2,10 +2,12 @@ package domain
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Tenant struct {
-	ID            string    `json:"id"`
+	ID            uuid.UUID `json:"id"`
 	ProviderID    string    `json:"provider_id"`
 	ApplicationID string    `json:"application_id"`
 	CreatedAt     time.Time `json:"created_at"`

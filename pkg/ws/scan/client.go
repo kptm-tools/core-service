@@ -23,7 +23,7 @@ type ScanClient struct {
 	// hub is the hub used to manage the client
 	hub *ScanHub
 	// tenantID is used to know what room user is in
-	tenantID string
+	tenantID uuid.UUID
 
 	// outgoing is the channel used to outgoing data to the client.
 	// It represents the data that the Client is about to send out through it's connection.
@@ -36,7 +36,7 @@ func NewScanClient(
 	cfg *common.Config,
 	conn *websocket.Conn,
 	hub *ScanHub,
-	tenantID string,
+	tenantID uuid.UUID,
 ) *ScanClient {
 	return &ScanClient{
 		ID:         uuid.NewString(),
