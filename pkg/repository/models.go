@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"time"
 
 	apd "github.com/cockroachdb/apd/v3"
 	"github.com/google/uuid"
@@ -301,11 +302,11 @@ type CveDetail struct {
 }
 
 type CweDetail struct {
-	CweID           string         `json:"cwe_id"`
-	Title           sql.NullString `json:"title"`
-	MitigationPhase sql.NullString `json:"mitigation_phase"`
-	Description     sql.NullString `json:"description"`
-	LastUpdated     sql.NullTime   `json:"last_updated"`
+	CweID           string    `json:"cwe_id"`
+	Title           string    `json:"title"`
+	MitigationPhase string    `json:"mitigation_phase"`
+	Description     string    `json:"description"`
+	LastUpdated     time.Time `json:"last_updated"`
 }
 
 type Host struct {

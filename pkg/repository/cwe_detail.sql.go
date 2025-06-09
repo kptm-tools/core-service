@@ -7,7 +7,7 @@ package repository
 
 import (
 	"context"
-	"database/sql"
+	"time"
 )
 
 const createOrUpdateCWEDetail = `-- name: CreateOrUpdateCWEDetail :one
@@ -29,11 +29,11 @@ RETURNING cwe_id, title, mitigation_phase, description, last_updated
 `
 
 type CreateOrUpdateCWEDetailParams struct {
-	CweID           string         `json:"cwe_id"`
-	Title           sql.NullString `json:"title"`
-	MitigationPhase sql.NullString `json:"mitigation_phase"`
-	Description     sql.NullString `json:"description"`
-	LastUpdated     sql.NullTime   `json:"last_updated"`
+	CweID           string    `json:"cwe_id"`
+	Title           string    `json:"title"`
+	MitigationPhase string    `json:"mitigation_phase"`
+	Description     string    `json:"description"`
+	LastUpdated     time.Time `json:"last_updated"`
 }
 
 func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdateCWEDetailParams) (CweDetail, error) {
