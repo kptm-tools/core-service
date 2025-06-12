@@ -167,9 +167,58 @@ func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediatio
 			VendorComments:     generateVendorComments(gofakeit.Number(0, 100), fromDate),
 			Published:          fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
 			LastUpdated:        fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
+
+			Metrics: generateFakeCVSSMetrics(),
+
+			EPSSScore:      gofakeit.Float64Range(0.0, 1.0),
+			EPSSPercentile: gofakeit.Float64Range(0.00, 1.0),
+			EPSSDate:       gofakeit.PastDate(),
 		}
 	}
 	return vulns
+}
+
+func generateFakeCVSSMetrics() []tools.CVSSMetric {
+	allVersions := []enums.CVSSVersion{
+		enums.CVSSv20,
+		enums.CVSSv30,
+		enums.CVSSv31,
+	}
+
+	gofakeit.ShuffleAnySlice(allVersions)
+
+	count := gofakeit.IntRange(0, 3)
+	if count == 0 {
+		return []tools.CVSSMetric{}
+	}
+
+	versionsToGenerate := allVersions[:count]
+
+	metrics := make([]tools.CVSSMetric, 0, count)
+	for _, version := range versionsToGenerate {
+		metrics = append(metrics, generateSingleCVSSMetric(version))
+	}
+	return metrics
+}
+
+func generateSingleCVSSMetric(version enums.CVSSVersion) tools.CVSSMetric {
+	formatScore := func(f float64) float64 {
+		return math.Trunc(f*10) / 10
+	}
+	severities, exploitabilities, accesses, complexities, privileges, _, impacts := generateDefaultEnumsVuln()
+
+	return tools.CVSSMetric{
+		Version:             version,
+		BaseScore:           formatScore(gofakeit.Float64Range(0.0, 10.0)),
+		ImpactScore:         formatScore(gofakeit.Float64Range(0.0, 10.0)),
+		Severity:            severities[gofakeit.IntRange(0, len(severities)-1)],
+		Access:              accesses[gofakeit.IntRange(0, len(accesses)-1)],
+		Complexity:          complexities[gofakeit.IntRange(0, len(complexities)-1)],
+		PrivilegesRequired:  privileges[gofakeit.IntRange(0, len(privileges)-1)],
+		AvailabilityImpact:  impacts[gofakeit.IntRange(0, len(impacts)-1)],
+		Exploitability:      exploitabilities[gofakeit.IntRange(0, len(exploitabilities)-1)],
+		ExploitabilityScore: formatScore(gofakeit.Float64Range(0.0, 10.0)),
+	}
 }
 
 func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityType, []enums.AccessType, []enums.ComplexityType, []enums.PrivilegesRequiredType, []enums.LikelyhoodType, []enums.ImpactType) {
