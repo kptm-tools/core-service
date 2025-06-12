@@ -12,14 +12,14 @@ import (
 )
 
 type (
-	// MaxCVSSPerType maps each WeaknessType to its maximum observed CVSS score
-	MaxCVSSPerType map[enums.WeaknessType]float64
-	// vulnerabilityCountByType maps each WeaknessType to the number of vulnerabilities of that type.
-	vulnerabilityCountByType map[enums.WeaknessType]int
+	// MaxCVSSPerType maps each OwaspCategory to its maximum observed CVSS score
+	MaxCVSSPerType map[enums.OwaspCategory]float64
+	// vulnerabilityCountByType maps each OwaspCategory to the number of vulnerabilities of that type.
+	vulnerabilityCountByType map[enums.OwaspCategory]int
 	// uniqueCVSSValues represents a set of unique CVSS scores.
 	uniqueCVSSValues map[float64]bool
-	// UniqueCVSSValuesByType maps each WeaknessType to a set of its unique CVSS Scores.
-	UniqueCVSSValuesByType map[enums.WeaknessType]uniqueCVSSValues
+	// UniqueCVSSValuesByType maps each OwaspCategory to a set of its unique CVSS Scores.
+	UniqueCVSSValuesByType map[enums.OwaspCategory]uniqueCVSSValues
 )
 
 // BuildVulnerabilityTypeData processes a slice of vulnerabilities to calculate and format data for the initial report response.
@@ -41,27 +41,27 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 	globalCVSSScore := 0.0
 	vulnerabilityTypesData := make([]dto.VulnerabilityTypeData, 0)
 
-	// Initialize maps with all possible WeaknessType enums and default values
-	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
-		maxCVSSPerType[i] = 0.0
-		vulnCountPerType[i] = 0
-		uniqueCVSSValuesPerType[i] = make(uniqueCVSSValues)
-		uniqueCVSSValuesPerType[i][0.0] = true // The user can always opt for 0.0
+	// Initialize maps with all possible OwaspCategory enums and default values
+	for _, cat := range enums.AllOwaspCategories {
+		maxCVSSPerType[cat] = 0.0
+		vulnCountPerType[cat] = 0
+		uniqueCVSSValuesPerType[cat] = make(uniqueCVSSValues)
+		uniqueCVSSValuesPerType[cat][0.0] = true // The user can always opt for 0.0
 	}
 
 	for _, vuln := range vulns {
-		wt := vuln.Type
+		cat := vuln.Type
 
 		// 1. Increase the vuln count for that type
-		vulnCountPerType[wt]++
+		vulnCountPerType[cat]++
 
 		// 2. Check for max CVSS score
-		if vuln.BaseCVSSScore > maxCVSSPerType[wt] {
-			maxCVSSPerType[wt] = vuln.BaseCVSSScore
+		if vuln.BaseCVSSScore > maxCVSSPerType[cat] {
+			maxCVSSPerType[cat] = vuln.BaseCVSSScore
 		}
 
 		// 3. Check for unique CVSS values for that type
-		uniqueCVSSValuesPerType[wt][vuln.BaseCVSSScore] = true
+		uniqueCVSSValuesPerType[cat][vuln.BaseCVSSScore] = true
 
 		// 4. Check and update GlobalCVSSScore
 		if vuln.BaseCVSSScore > globalCVSSScore {
@@ -70,22 +70,22 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 	}
 
 	// Format the reponse data
-	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
-		count := vulnCountPerType[i]
+	for _, cat := range enums.AllOwaspCategories {
+		count := vulnCountPerType[cat]
 		percentage := 0.0
 		if globalTotalVulnerabilities > 0 {
 			percentage = float64(count) / float64(globalTotalVulnerabilities)
 		}
 
 		availableCvssValues := make([]float64, 0, len(uniqueCVSSValuesPerType))
-		for cvss := range uniqueCVSSValuesPerType[i] {
+		for cvss := range uniqueCVSSValuesPerType[cat] {
 			availableCvssValues = append(availableCvssValues, cvss)
 		}
 		sort.Float64s(availableCvssValues)
 
 		vulnerabilityTypesData = append(vulnerabilityTypesData, dto.VulnerabilityTypeData{
-			Name:                i.String(),
-			HighestCvss:         maxCVSSPerType[i],
+			Name:                cat.String(),
+			HighestCvss:         maxCVSSPerType[cat],
 			Count:               count,
 			Percentage:          percentage,
 			AvailableCvssValues: availableCvssValues,
@@ -100,7 +100,7 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 }
 
 // GetMaxCVSSPerType iterates through a slice of vulnerabilities and returns a map
-// where each WeaknessType is associated with the highest CVSS score found for that type.
+// where each OwaspCategory is associated with the highest CVSS score found for that type.
 //
 // Parameters:
 //
@@ -108,34 +108,34 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 //
 // Returns:
 //
-//	A map where keys are enums.WeaknessType and values are the maximum CVSS score for that type.
-func GetMaxCVSSPerType(vulns []tools.Vulnerability) map[enums.WeaknessType]float64 {
-	weaknessMap := make(map[enums.WeaknessType]float64)
+//	A map where keys are enums.OwaspCategory and values are the maximum CVSS score for that type.
+func GetMaxCVSSPerType(vulns []tools.Vulnerability) map[enums.OwaspCategory]float64 {
+	categoryMap := make(map[enums.OwaspCategory]float64)
 
-	// Initialize the map with all possible WeaknessType enums and default values
-	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
-		weaknessMap[i] = 0.0
+	// Initialize the map with all possible OwaspCategory enums and default values
+	for _, cat := range enums.AllOwaspCategories {
+		categoryMap[cat] = 0.0
 	}
 
 	// Iterate through vulnerabilities and update the map with maximum CVSS values
 	for _, vuln := range vulns {
-		wt := vuln.Type
+		cat := vuln.Type
 
 		currentCVSS := vuln.BaseCVSSScore
-		if maxCVSS, exists := weaknessMap[wt]; exists {
+		if maxCVSS, exists := categoryMap[cat]; exists {
 			if currentCVSS > maxCVSS {
-				weaknessMap[wt] = currentCVSS
+				categoryMap[cat] = currentCVSS
 			}
 		} else {
-			weaknessMap[wt] = currentCVSS
+			categoryMap[cat] = currentCVSS
 		}
 	}
 
-	return weaknessMap
+	return categoryMap
 }
 
 // GetVulnCountPerType iterates through a slice of vulnerabilities and returns a map
-// where each WeaknessType is associated with the total count of vulnerabilities of that type.
+// where each OwaspCategory is associated with the total count of vulnerabilities of that type.
 //
 // Parameters:
 //
@@ -143,30 +143,30 @@ func GetMaxCVSSPerType(vulns []tools.Vulnerability) map[enums.WeaknessType]float
 //
 // Returns:
 //
-//	A map where keys are enums.WeaknessType and values are the count of vulnerabilities for that type.
-func GetVulnCountPerType(vulns []*domain.Vulnerability) map[enums.WeaknessType]int {
-	weaknessMap := make(map[enums.WeaknessType]int)
+//	A map where keys are enums.OwaspCategory and values are the count of vulnerabilities for that type.
+func GetVulnCountPerType(vulns []*domain.Vulnerability) map[enums.OwaspCategory]int {
+	categoryMap := make(map[enums.OwaspCategory]int)
 
-	// Initialize the map with all possible WeaknessType enums and 0 values
-	for i := enums.WeaknessSSRF; i <= enums.WeaknessNoInfo; i++ {
-		weaknessMap[i] = 0
+	// Initialize the map with all possible OwaspCategory enums and 0 values
+	for _, cat := range enums.AllOwaspCategories {
+		categoryMap[cat] = 0
 	}
 
 	// Iterate through vulnerabilities and update the map
 	for _, vuln := range vulns {
-		wt, ok := enums.ParseWeaknessFromString(vuln.Type)
+		wt, ok := enums.ParseOwaspCategory(vuln.Type)
 		if !ok {
 			slog.Warn("Found an invalid vulnerability type while counting vulnerability types", slog.String("vuln_type", vuln.Type))
 			continue
 		}
-		if _, exists := weaknessMap[wt]; exists {
-			weaknessMap[wt]++
+		if _, exists := categoryMap[wt]; exists {
+			categoryMap[wt]++
 		} else {
-			slog.Warn("Weakness not found in weakness map while counting vulnerability typs", slog.String("vuln_type", vuln.Type), slog.Any("weakness_map", weaknessMap))
+			slog.Warn("Category not found in category map while counting vulnerability typs", slog.String("vuln_type", vuln.Type), slog.Any("category_map", categoryMap))
 		}
 	}
 
-	return weaknessMap
+	return categoryMap
 }
 
 // GetGlobalCVSSScore iterates through a slice of vulnerabilities and returns the highest CVSS score found across all vulnerabilities.
@@ -212,10 +212,10 @@ func GetGlobalTotalVulnerabilities(vulns []tools.Vulnerability) int {
 //   - notSolved: A slice containing vulnerabilities that would not be considered
 //     solved if the provided status were applied. This includes vulnerabilities
 //     where either:
-//   - Their WeaknessType exists in the status map and their BaseCVSS Score
+//   - Their OwaspCategory exists in the status map and their BaseCVSS Score
 //     is less than or equal to the corresponding CVSS threshold.
-//   - Their WeaknessType does not exist as a key in the status map.
-func FilterVulnerabilitiesByStatus(vulns []tools.Vulnerability, status map[enums.WeaknessType]float64) (
+//   - Their OwaspCategory does not exist as a key in the status map.
+func FilterVulnerabilitiesByStatus(vulns []tools.Vulnerability, status map[enums.OwaspCategory]float64) (
 	solved []tools.Vulnerability,
 	notSolved []tools.Vulnerability,
 ) {
@@ -223,9 +223,9 @@ func FilterVulnerabilitiesByStatus(vulns []tools.Vulnerability, status map[enums
 	notSolved = make([]tools.Vulnerability, 0)
 
 	for _, vuln := range vulns {
-		wt := vuln.Type
+		cat := vuln.Type
 
-		if cvssThreshold, ok := status[wt]; ok {
+		if cvssThreshold, ok := status[cat]; ok {
 			if vuln.BaseCVSSScore > cvssThreshold {
 				solved = append(solved, vuln)
 			} else {
@@ -240,7 +240,7 @@ func FilterVulnerabilitiesByStatus(vulns []tools.Vulnerability, status map[enums
 }
 
 // GetHighestCVSSVulnerabilityOfType gets the vulnerability with the highest CVSS of a slice of a particular type.
-func GetHighestCVSSVulnerabilityOfType(vulns []tools.Vulnerability, vulnType enums.WeaknessType) *tools.Vulnerability {
+func GetHighestCVSSVulnerabilityOfType(vulns []tools.Vulnerability, vulnType enums.OwaspCategory) *tools.Vulnerability {
 	var highestVuln *tools.Vulnerability
 	maxCVSS := -1.0
 
@@ -261,13 +261,13 @@ func GetHighestCVSSVulnerabilityOfType(vulns []tools.Vulnerability, vulnType enu
 	return highestVuln
 }
 
-// GetUniqueVulnTypes returns a slice with unique Weakness Types found within a vulnerability slice.
-func GetUniqueVulnTypes(vulns []tools.Vulnerability) []enums.WeaknessType {
-	uniqueTypes := []enums.WeaknessType{}
+// GetUniqueVulnTypes returns a slice with unique Owasp Categories found within a vulnerability slice.
+func GetUniqueVulnTypes(vulns []tools.Vulnerability) []enums.OwaspCategory {
+	uniqueTypes := []enums.OwaspCategory{}
 	for _, vuln := range vulns {
-		wt := vuln.Type
-		if !slices.Contains(uniqueTypes, wt) {
-			uniqueTypes = append(uniqueTypes, wt)
+		cat := vuln.Type
+		if !slices.Contains(uniqueTypes, cat) {
+			uniqueTypes = append(uniqueTypes, cat)
 		}
 	}
 

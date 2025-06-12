@@ -1,6 +1,7 @@
 package reportutils_test
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -22,18 +23,18 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 			vulns: []tools.Vulnerability{},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
-					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInjection.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInjection.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
 				},
 				GlobalTotalVulnerabilities: 0,
 				GlobalCVSSScore:            0.0,
@@ -42,24 +43,24 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		{
 			name: "Multiple Vulnerabilities of same type",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 8.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 7.5},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 8.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 7.5},
 			},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
-					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInjection.String(), HighestCvss: 8.0, Count: 3, Percentage: 1, AvailableCvssValues: []float64{0.0, 7.5, 8.0}},
-					{Name: enums.WeaknessVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySSRF.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInjection.String(), HighestCvss: 8.0, Count: 3, Percentage: 1, AvailableCvssValues: []float64{0.0, 7.5, 8.0}},
+					{Name: enums.OwaspCategoryVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
 				},
 				GlobalTotalVulnerabilities: 3,
 				GlobalCVSSScore:            8.0,
@@ -68,24 +69,24 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		{
 			name: "Multiple Vulnerabilities of different type",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 9.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 7.5},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 7.5},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 9.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 7.5},
 			},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
-					{Name: enums.WeaknessSSRF.String(), HighestCvss: 9.0, Count: 1, Percentage: 0.3333333333333333, AvailableCvssValues: []float64{0.0, 9.0}},
-					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInjection.String(), HighestCvss: 7.5, Count: 2, Percentage: 0.6666666666666666, AvailableCvssValues: []float64{0.0, 7.5}},
-					{Name: enums.WeaknessVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySSRF.String(), HighestCvss: 9.0, Count: 1, Percentage: 0.3333333333333333, AvailableCvssValues: []float64{0.0, 9.0}},
+					{Name: enums.OwaspCategorySoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInjection.String(), HighestCvss: 7.5, Count: 2, Percentage: 0.6666666666666666, AvailableCvssValues: []float64{0.0, 7.5}},
+					{Name: enums.OwaspCategoryVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
 				},
 				GlobalTotalVulnerabilities: 3,
 				GlobalCVSSScore:            9.0,
@@ -94,23 +95,23 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		{
 			name: "Vulnerabilities with zero CVSS",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 0.0},
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 0.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 0.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 0.0},
 			},
 			want: dto.InitialDataResponse{
 				VulnerabilityTypes: []dto.VulnerabilityTypeData{
-					{Name: enums.WeaknessSSRF.String(), HighestCvss: 0.0, Count: 1, Percentage: 0.5, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInjection.String(), HighestCvss: 0.0, Count: 1, Percentage: 0.5, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessSecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
-					{Name: enums.WeaknessNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySSRF.String(), HighestCvss: 0.0, Count: 1, Percentage: 0.5, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySoftwareAndDataIntegrityFailures.String(), HighestCvss: 0.0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryCryptographicFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryIdentificationAndAuthenticationFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryBrokenAccessControl.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityLoggingAndMonitoringFailures.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInjection.String(), HighestCvss: 0.0, Count: 1, Percentage: 0.5, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryVulnerableAndOutdatedComponents.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryInsecureDesign.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategorySecurityMisconfiguration.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryOther.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
+					{Name: enums.OwaspCategoryNoInfo.String(), HighestCvss: 0, Count: 0, Percentage: 0, AvailableCvssValues: []float64{0.0}},
 				},
 				GlobalTotalVulnerabilities: 2,
 				GlobalCVSSScore:            0.0,
@@ -121,6 +122,17 @@ func TestBuildVulnerabilityTypeData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := reportutils.BuildVulnerabilityTypeData(tc.vulns)
 
+			sort.Slice(got.VulnerabilityTypes, func(i, j int) bool {
+				return got.VulnerabilityTypes[i].Name < got.VulnerabilityTypes[j].Name
+			})
+
+			sort.Slice(tc.want.VulnerabilityTypes, func(i, j int) bool {
+				return tc.want.VulnerabilityTypes[i].Name < tc.want.VulnerabilityTypes[j].Name
+			})
+
+			assert.Equal(t, len(tc.want.VulnerabilityTypes), len(got.VulnerabilityTypes))
+			assert.Equal(t, tc.want.GlobalCVSSScore, got.GlobalCVSSScore)
+			assert.Equal(t, tc.want.GlobalTotalVulnerabilities, got.GlobalTotalVulnerabilities)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -177,96 +189,96 @@ func TestFilterVulnerabilitiesByStatus(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		vulns         []tools.Vulnerability
-		status        map[enums.WeaknessType]float64
+		status        map[enums.OwaspCategory]float64
 		wantSolved    []tools.Vulnerability
 		wantNotSolved []tools.Vulnerability
 	}{
 		{
 			name:          "Empty vulnerability slice",
 			vulns:         []tools.Vulnerability{},
-			status:        map[enums.WeaknessType]float64{},
+			status:        map[enums.OwaspCategory]float64{},
 			wantSolved:    []tools.Vulnerability{},
 			wantNotSolved: []tools.Vulnerability{},
 		},
 		{
 			name: "Vulnerability slice with empty status",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF},
-				{Type: enums.WeaknessInjection},
+				{Type: enums.OwaspCategorySSRF},
+				{Type: enums.OwaspCategoryInjection},
 			},
-			status:     map[enums.WeaknessType]float64{},
+			status:     map[enums.OwaspCategory]float64{},
 			wantSolved: []tools.Vulnerability{},
 			wantNotSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF},
-				{Type: enums.WeaknessInjection},
+				{Type: enums.OwaspCategorySSRF},
+				{Type: enums.OwaspCategoryInjection},
 			},
 		},
 		{
 			name: "Vulnerability slice with non-empty status",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
-			status: map[enums.WeaknessType]float64{
-				enums.WeaknessSSRF:      6.5,
-				enums.WeaknessInjection: 4.0,
+			status: map[enums.OwaspCategory]float64{
+				enums.OwaspCategorySSRF:      6.5,
+				enums.OwaspCategoryInjection: 4.0,
 			},
 			wantSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
 			wantNotSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
 			},
 		},
 		{
 			name: "Vulnerability slice with status equal to the CVSS",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
-			status: map[enums.WeaknessType]float64{
-				enums.WeaknessSSRF:      5.0,
-				enums.WeaknessInjection: 5.0,
+			status: map[enums.OwaspCategory]float64{
+				enums.OwaspCategorySSRF:      5.0,
+				enums.OwaspCategoryInjection: 5.0,
 			},
 			wantSolved: []tools.Vulnerability{},
 			wantNotSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
 		},
 		{
 			name: "Status with 0.0 Desired CVSS",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
-			status: map[enums.WeaknessType]float64{
-				enums.WeaknessSSRF:      0.0,
-				enums.WeaknessInjection: 0.0,
+			status: map[enums.OwaspCategory]float64{
+				enums.OwaspCategorySSRF:      0.0,
+				enums.OwaspCategoryInjection: 0.0,
 			},
 			wantSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
 			wantNotSolved: []tools.Vulnerability{},
 		},
 		{
 			name: "Vulnerability with Type not included in map",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessOther, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryOther, BaseCVSSScore: 5.0},
 			},
-			status: map[enums.WeaknessType]float64{
-				enums.WeaknessSSRF:      0.0,
-				enums.WeaknessInjection: 0.0,
+			status: map[enums.OwaspCategory]float64{
+				enums.OwaspCategorySSRF:      0.0,
+				enums.OwaspCategoryInjection: 0.0,
 			},
 			wantSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessSSRF, BaseCVSSScore: 5.0},
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategorySSRF, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 5.0},
 			},
 			wantNotSolved: []tools.Vulnerability{
-				{Type: enums.WeaknessOther, BaseCVSSScore: 5.0},
+				{Type: enums.OwaspCategoryOther, BaseCVSSScore: 5.0},
 			},
 		},
 	}
@@ -285,20 +297,20 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		vulns    []tools.Vulnerability
-		vulnType enums.WeaknessType
+		vulnType enums.OwaspCategory
 		want     *tools.Vulnerability
 	}{
 		{
 			name: "One vulnerability of type",
 			vulns: []tools.Vulnerability{
 				{
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.5,
 				},
 			},
-			vulnType: enums.WeaknessInjection,
+			vulnType: enums.OwaspCategoryInjection,
 			want: &tools.Vulnerability{
-				Type:          enums.WeaknessInjection,
+				Type:          enums.OwaspCategoryInjection,
 				BaseCVSSScore: 5.5,
 			},
 		},
@@ -306,28 +318,28 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 			name: "One vulnerability but not of type",
 			vulns: []tools.Vulnerability{
 				{
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.5,
 				},
 			},
-			vulnType: enums.WeaknessBrokenAccessControl,
+			vulnType: enums.OwaspCategoryBrokenAccessControl,
 			want:     nil,
 		},
 		{
 			name: "Multiple vulnerabilities of different type",
 			vulns: []tools.Vulnerability{
 				{
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.5,
 				},
 				{
-					Type:          enums.WeaknessSSRF,
+					Type:          enums.OwaspCategorySSRF,
 					BaseCVSSScore: 5.6,
 				},
 			},
-			vulnType: enums.WeaknessInjection,
+			vulnType: enums.OwaspCategoryInjection,
 			want: &tools.Vulnerability{
-				Type:          enums.WeaknessInjection,
+				Type:          enums.OwaspCategoryInjection,
 				BaseCVSSScore: 5.5,
 			},
 		},
@@ -335,17 +347,17 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 			name: "Multiple vulnerabilities of same type",
 			vulns: []tools.Vulnerability{
 				{
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.5,
 				},
 				{
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.6,
 				},
 			},
-			vulnType: enums.WeaknessInjection,
+			vulnType: enums.OwaspCategoryInjection,
 			want: &tools.Vulnerability{
-				Type:          enums.WeaknessInjection,
+				Type:          enums.OwaspCategoryInjection,
 				BaseCVSSScore: 5.6,
 			},
 		},
@@ -354,26 +366,26 @@ func TestGetHighestCVSSVulnerabilityOfType(t *testing.T) {
 			vulns: []tools.Vulnerability{
 				{
 					CveID:         "CVE-2024",
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.5,
 				},
 				{
 					CveID:         "CVE-2012",
-					Type:          enums.WeaknessInjection,
+					Type:          enums.OwaspCategoryInjection,
 					BaseCVSSScore: 5.5,
 				},
 			},
-			vulnType: enums.WeaknessInjection,
+			vulnType: enums.OwaspCategoryInjection,
 			want: &tools.Vulnerability{
 				CveID:         "CVE-2024",
-				Type:          enums.WeaknessInjection,
+				Type:          enums.OwaspCategoryInjection,
 				BaseCVSSScore: 5.5,
 			},
 		},
 		{
 			name:     "Empty vulnerabilities",
 			vulns:    []tools.Vulnerability{},
-			vulnType: enums.WeaknessInjection,
+			vulnType: enums.OwaspCategoryInjection,
 			want:     nil,
 		},
 	}
@@ -391,36 +403,36 @@ func TestGetUniqueVulnTypes(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		vulns []tools.Vulnerability
-		want  []enums.WeaknessType
+		want  []enums.OwaspCategory
 	}{
 		{
 			name: "Slice with one vulnerability type",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection},
+				{Type: enums.OwaspCategoryInjection},
 			},
-			want: []enums.WeaknessType{enums.WeaknessInjection},
+			want: []enums.OwaspCategory{enums.OwaspCategoryInjection},
 		},
 		{
 			name:  "Empty vulnerability slice",
 			vulns: []tools.Vulnerability{},
-			want:  []enums.WeaknessType{},
+			want:  []enums.OwaspCategory{},
 		},
 		{
 			name: "Slice with two vulnerabilities with the same type",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection},
-				{Type: enums.WeaknessInjection},
+				{Type: enums.OwaspCategoryInjection},
+				{Type: enums.OwaspCategoryInjection},
 			},
-			want: []enums.WeaknessType{enums.WeaknessInjection},
+			want: []enums.OwaspCategory{enums.OwaspCategoryInjection},
 		},
 		{
 			name: "Slice with two vulnerabilities with a different type",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection},
-				{Type: enums.WeaknessSSRF},
+				{Type: enums.OwaspCategoryInjection},
+				{Type: enums.OwaspCategorySSRF},
 			},
-			want: []enums.WeaknessType{
-				enums.WeaknessInjection, enums.WeaknessSSRF,
+			want: []enums.OwaspCategory{
+				enums.OwaspCategoryInjection, enums.OwaspCategorySSRF,
 			},
 		},
 	}
@@ -444,15 +456,15 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 		{
 			name: "One unsolved vuln",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 6.6},
 			},
 			notSolvedVulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 6.6},
 			},
 			want: dto.GraphData{
 				Series: []dto.Series{
-					{Name: "Actual", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
-					{Name: "Expected", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
+					{Name: "Actual", Data: []dto.DataPoint{{X: enums.OwaspCategoryInjection.String(), Y: 6.6}}, Average: 6.6},
+					{Name: "Expected", Data: []dto.DataPoint{{X: enums.OwaspCategoryInjection.String(), Y: 6.6}}, Average: 6.6},
 				},
 			},
 		},
@@ -470,13 +482,13 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 		{
 			name: "No unsolved vulns",
 			vulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 6.6},
 			},
 			notSolvedVulns: []tools.Vulnerability{},
 			want: dto.GraphData{
 				Series: []dto.Series{
-					{Name: "Actual", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 6.6}}, Average: 6.6},
-					{Name: "Expected", Data: []dto.DataPoint{{X: enums.WeaknessInjection.String(), Y: 0.0}}, Average: 0.0},
+					{Name: "Actual", Data: []dto.DataPoint{{X: enums.OwaspCategoryInjection.String(), Y: 6.6}}, Average: 6.6},
+					{Name: "Expected", Data: []dto.DataPoint{{X: enums.OwaspCategoryInjection.String(), Y: 0.0}}, Average: 0.0},
 				},
 			},
 		},
@@ -484,7 +496,7 @@ func TestBuildVulnerabilityGraph(t *testing.T) {
 			name:  "No vulns but one unsolved vuln",
 			vulns: []tools.Vulnerability{},
 			notSolvedVulns: []tools.Vulnerability{
-				{Type: enums.WeaknessInjection, BaseCVSSScore: 6.6},
+				{Type: enums.OwaspCategoryInjection, BaseCVSSScore: 6.6},
 			},
 			want: dto.GraphData{
 				Series: []dto.Series{
