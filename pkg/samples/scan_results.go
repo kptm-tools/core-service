@@ -137,14 +137,17 @@ func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment 
 	return vendorComments
 }
 
-func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
+func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.Vulnerability {
 	severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact := generateDefaultEnumsVuln()
+
 	vulns := make([]tools.Vulnerability, size)
 	for i := range vulns {
+		randomCWE := cweDetails[gofakeit.IntRange(0, len(cweDetails)-1)]
 		vulns[i] = tools.Vulnerability{
 			ID:                 uuid.New(),
 			CveID:              "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
 			Type:               enums.AllOwaspCategories[gofakeit.IntRange(0, len(enums.AllOwaspCategories)-1)],
+			CWERemediation:     []tools.CWERemediation{randomCWE},
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
 			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
 			Access:             accessType[gofakeit.IntRange(0, 4)],
@@ -214,7 +217,7 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 	return severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact
 }
 
-func generatePortsData(size int, fromDate time.Time) []tools.PortData {
+func generatePortsData(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.PortData {
 	status := make([]string, 2)
 	status[0] = "open"
 	status[1] = "closed"
@@ -230,38 +233,26 @@ func generatePortsData(size int, fromDate time.Time) []tools.PortData {
 				Confidence: gofakeit.Number(1, 100),
 			},
 			Product:         "nginx",
-			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate),
+			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate, cweDetails),
 		}
 	}
 	return ports
 }
 
-func generateNmapResult(scan domain.Scan) tools.IToolResult {
-	return &tools.NmapResult{
+func generateNmapResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.NmapResult {
+	return tools.NmapResult{
 		HostName:    gofakeit.DomainName(),
 		HostAddress: gofakeit.IPv4Address(),
 		MostLikelyOS: tools.OSData{
-			Name:     "Linux 3.x kernel",
-			Accuracy: gofakeit.Number(1, 10),
-			CPE:      "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
+			Name:            "Linux 3.x kernel",
+			Accuracy:        gofakeit.Number(1, 10),
+			CPE:             "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
+			Vulnerabilities: generateVuln(4, time.Now(), cweDetails),
 		},
-		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt),
+		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt, cweDetails),
 	}
 }
 
-func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanResult {
-	domainScanResult := make([]domain.ScanResult, len(scans))
-	for i, scan := range scans {
-		domainScanResult[i] = domain.ScanResult{
-			ScanID:    scan.ID,
-			ToolName:  enums.ToolNmap.String(),
-			Success:   true,
-			CreatedAt: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
-			Result: tools.ToolResult{
-				Tool:   enums.ToolNmap,
-				Result: generateNmapResult(scan),
-			},
-		}
-	}
-	return domainScanResult
+func SampleNmapScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) tools.NmapResult {
+	return generateNmapResult(scan, cweDetail)
 }
