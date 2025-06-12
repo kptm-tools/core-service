@@ -28,25 +28,39 @@ func (r *CWERepo) getQueries(ctx context.Context) *repository.Queries {
 	return GetQueriesFromContext(ctx, r.defaultQueries)
 }
 
-func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, vuln tools.Vulnerability) (*repository.CweDetail, error) {
+func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe tools.CWERemediation) (*tools.CWERemediation, error) {
 	queries := r.getQueries(ctx)
 
-	// --- Extract the CWE from the Vulnerability payload
+	// --- Extract the CWE from the payload
+	var phase string
+	if len(cwe.Phase) > 0 {
+		phase = cwe.Phase[0]
+	} else {
+		phase = ""
+	}
 
-	// TODO: Fill this with the new remediation struct that must come with a vuln
 	params := repository.CreateOrUpdateCWEDetailParams{
-		CweID:           vuln.Type.String(),
-		Title:           "",
-		MitigationPhase: "Example mitigation Phase",
-		Description:     "Example description",
-		LastUpdated:     time.Now().UTC(),
+		CweID:              cwe.ID,
+		Title:              cwe.Title,
+		MitigationPhase:    phase,
+		Description:        cwe.Description,
+		Effectiveness:      cwe.Effectiveness,
+		EffectivenessNotes: cwe.EffectivenessNotes,
+		LastUpdated:        time.Now().UTC(),
 	}
 
 	// 1. Store the CWE record
-
-	cwe, err := queries.CreateOrUpdateCWEDetail(ctx, params)
+	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
 	if err != nil {
 		return nil, err
 	}
-	return &cwe, nil
+	return &tools.CWERemediation{
+		ID:                 dbCWE.CweID,
+		Title:              dbCWE.Title,
+		Phase:              []string{dbCWE.MitigationPhase},
+		Description:        dbCWE.Description,
+		Effectiveness:      dbCWE.Effectiveness,
+		EffectivenessNotes: dbCWE.EffectivenessNotes,
+		LastUpdated:        dbCWE.LastUpdated,
+	}, nil
 }

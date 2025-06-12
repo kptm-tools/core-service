@@ -302,11 +302,13 @@ type CveDetail struct {
 }
 
 type CweDetail struct {
-	CweID           string    `json:"cwe_id"`
-	Title           string    `json:"title"`
-	MitigationPhase string    `json:"mitigation_phase"`
-	Description     string    `json:"description"`
-	LastUpdated     time.Time `json:"last_updated"`
+	CweID              string    `json:"cwe_id"`
+	Title              string    `json:"title"`
+	MitigationPhase    string    `json:"mitigation_phase"`
+	Description        string    `json:"description"`
+	Effectiveness      string    `json:"effectiveness"`
+	EffectivenessNotes string    `json:"effectiveness_notes"`
+	LastUpdated        time.Time `json:"last_updated"`
 }
 
 type Host struct {
