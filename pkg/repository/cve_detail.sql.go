@@ -60,11 +60,7 @@ INSERT INTO cve_details (
     epss_percentile,
     risk_score,
     likelihood,
-    evaluator_comment,
-    evaluator_impact,
-    evaluator_solution,
     nvd_description,
-    weaknesses,
     nvd_references,
     vendor_comments
 ) VALUES (
@@ -72,8 +68,7 @@ INSERT INTO cve_details (
     $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
     $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
     $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
-    $41, $42, $43, $44, $45, $46, $47, $48, $49, $50,
-    $51, $52
+    $41, $42, $43, $44, $45, $46, $47, $48
   ) 
 ON CONFLICT (cve_id) DO UPDATE SET
     published_date = EXCLUDED.published_date,
@@ -120,15 +115,11 @@ ON CONFLICT (cve_id) DO UPDATE SET
     epss_percentile = EXCLUDED.epss_percentile,
     risk_score = EXCLUDED.risk_score,
     likelihood = EXCLUDED.likelihood,
-    evaluator_comment = EXCLUDED.evaluator_comment,
-    evaluator_impact = EXCLUDED.evaluator_impact,
-    evaluator_solution = EXCLUDED.evaluator_solution,
     nvd_description = EXCLUDED.nvd_description,
-    weaknesses = EXCLUDED.weaknesses,
     nvd_references = EXCLUDED.nvd_references,
     vendor_comments = EXCLUDED.vendor_comments,
     updated_at = NOW()
-RETURNING id, cve_id, published_date, last_modified_date, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, evaluator_comment, evaluator_impact, evaluator_solution, cisa_exploit_add, nvd_description, weaknesses, nvd_references, vendor_comments, created_at, updated_at
+RETURNING id, cve_id, published_date, last_modified_date, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, nvd_description, nvd_references, vendor_comments, created_at, updated_at
 `
 
 type CreateCVEDetailParams struct {
@@ -177,11 +168,7 @@ type CreateCVEDetailParams struct {
 	EpssPercentile               sql.NullString        `json:"epss_percentile"`
 	RiskScore                    apd.NullDecimal       `json:"risk_score"`
 	Likelihood                   sql.NullString        `json:"likelihood"`
-	EvaluatorComment             sql.NullString        `json:"evaluator_comment"`
-	EvaluatorImpact              sql.NullString        `json:"evaluator_impact"`
-	EvaluatorSolution            sql.NullString        `json:"evaluator_solution"`
 	NvdDescription               sql.NullString        `json:"nvd_description"`
-	Weaknesses                   pqtype.NullRawMessage `json:"weaknesses"`
 	NvdReferences                pqtype.NullRawMessage `json:"nvd_references"`
 	VendorComments               pqtype.NullRawMessage `json:"vendor_comments"`
 }
@@ -233,11 +220,7 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 		arg.EpssPercentile,
 		arg.RiskScore,
 		arg.Likelihood,
-		arg.EvaluatorComment,
-		arg.EvaluatorImpact,
-		arg.EvaluatorSolution,
 		arg.NvdDescription,
-		arg.Weaknesses,
 		arg.NvdReferences,
 		arg.VendorComments,
 	)
@@ -289,12 +272,7 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 		&i.EpssPercentile,
 		&i.RiskScore,
 		&i.Likelihood,
-		&i.EvaluatorComment,
-		&i.EvaluatorImpact,
-		&i.EvaluatorSolution,
-		&i.CisaExploitAdd,
 		&i.NvdDescription,
-		&i.Weaknesses,
 		&i.NvdReferences,
 		&i.VendorComments,
 		&i.CreatedAt,

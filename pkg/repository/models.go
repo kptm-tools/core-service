@@ -289,12 +289,7 @@ type CveDetail struct {
 	EpssPercentile               sql.NullString        `json:"epss_percentile"`
 	RiskScore                    apd.NullDecimal       `json:"risk_score"`
 	Likelihood                   sql.NullString        `json:"likelihood"`
-	EvaluatorComment             sql.NullString        `json:"evaluator_comment"`
-	EvaluatorImpact              sql.NullString        `json:"evaluator_impact"`
-	EvaluatorSolution            sql.NullString        `json:"evaluator_solution"`
-	CisaExploitAdd               sql.NullTime          `json:"cisa_exploit_add"`
 	NvdDescription               sql.NullString        `json:"nvd_description"`
-	Weaknesses                   pqtype.NullRawMessage `json:"weaknesses"`
 	NvdReferences                pqtype.NullRawMessage `json:"nvd_references"`
 	VendorComments               pqtype.NullRawMessage `json:"vendor_comments"`
 	CreatedAt                    sql.NullTime          `json:"created_at"`
