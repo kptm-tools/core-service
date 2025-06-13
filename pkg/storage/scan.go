@@ -70,7 +70,7 @@ func (r *ScanRepo) GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([
 	for i, dbScan := range dbScans {
 		scanSummaries[i] = domain.ScanSummary{
 			ScanID:   dbScan.ScanID,
-			ScanDate: dbScan.ScanDate.Time.Format(time.Kitchen),
+			ScanDate: dbScan.ScanDate.Time.Format(time.RFC822),
 			Host:     dbScan.HostAlias,
 			Duration: dbScan.DurationInSeconds,
 		}
