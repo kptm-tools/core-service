@@ -1,8 +1,10 @@
 package samples
 
 import (
+	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -163,7 +165,7 @@ func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediatio
 			RiskScore:          math.Trunc(gofakeit.Float64Range(0, 100)*10) / 10,
 			IntegrityImpact:    integrityImpact[gofakeit.IntRange(0, 3)],
 			AvailabilityImpact: integrityImpact[gofakeit.IntRange(0, 3)],
-			Description:        gofakeit.LoremIpsumWord(),
+			Description:        generateFakeCVEDescription(),
 			VendorComments:     generateVendorComments(gofakeit.Number(0, 100), fromDate),
 			Published:          fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
 			LastUpdated:        fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
@@ -176,6 +178,66 @@ func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediatio
 		}
 	}
 	return vulns
+}
+
+// generateFakeCVEDescription creates a believable, structured fake CVE description.
+func generateFakeCVEDescription() string {
+	// A slice of sentence templates for CVE descriptions
+	templates := []string{
+		"A %s vulnerability in %s version %s allows a remote attacker to %s user passwords via a crafted %s, leading to privilege escalation.",
+		"Improper input validation in the %s component of %s allows for %s via a specially crafted API request to the %s endpoint.",
+		"%s in %s before version %s does not properly handle %s, which allows attackers to cause a denial of service (DoS).",
+		"A cross-site scripting (XSS) vulnerability in the %s module of %s allows attackers to inject arbitrary web script or HTML via the '%s' parameter.",
+		"An issue was discovered in %s. It allows attackers to bypass %s controls by sending a malformed %s packet.",
+	}
+
+	// Pick a random template
+	template := gofakeit.RandomString(templates)
+
+	// Populate the chosen template with relevant fake data
+	// We use a switch to provide the correct arguments for each template's Sprintf call.
+	var description string
+	switch template {
+	case templates[0]:
+		description = fmt.Sprintf(template,
+			gofakeit.HackerAdjective(), // e.g., "remote"
+			gofakeit.AppName(),         // e.g., "GitLab"
+			gofakeit.AppVersion(),      // e.g., "14.2.1"
+			gofakeit.HackerVerb(),      // e.g., "intercept"
+			gofakeit.FileExtension(),   // e.g., ".xml"
+		)
+	case templates[1]:
+		description = fmt.Sprintf(template,
+			strings.ToLower(gofakeit.BuzzWord()), // e.g., "authentication"
+			gofakeit.ProductName(),               // e.g., "Elasticsearch"
+			gofakeit.HackerPhrase(),              // e.g., "SQL injection"
+			gofakeit.URL(),                       // e.g., "https://example.com/api/v1/search"
+		)
+	case templates[2]:
+		description = fmt.Sprintf(template,
+			gofakeit.RandomString([]string{"A buffer overflow", "An integer overflow", "A race condition"}),
+			gofakeit.Company(),    // e.g., "Apache"
+			gofakeit.AppVersion(), // e.g., "2.4.53"
+			gofakeit.HackerNoun(), // e.g., "session tokens"
+		)
+	case templates[3]:
+		description = fmt.Sprintf(template,
+			gofakeit.Word(),    // e.g., "search"
+			gofakeit.AppName(), // e.g., "Jira"
+			gofakeit.Noun(),    // e.g., "query"
+		)
+	case templates[4]:
+		description = fmt.Sprintf(template,
+			gofakeit.ProductName(), // e.g., "OpenSSL"
+			gofakeit.HackerNoun(),  // e.g., "certificate"
+			gofakeit.Adverb(),      // e.g., "malformed"
+		)
+	default:
+		// Fallback to a simpler phrase if something goes wrong
+		description = gofakeit.HackerPhrase()
+	}
+
+	return description
 }
 
 func generateFakeCVSSMetrics() []tools.CVSSMetric {
