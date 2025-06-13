@@ -181,7 +181,7 @@ func populateNetworkOSVulnerabilities(
 			}
 			err = deps.VulnRepo.CreateNetworkOSVulnerabilityForOS(ctx, dbVuln.ID, scan.ID, scan.HostID, os.ID)
 			if err != nil {
-				return fmt.Errorf("failed to create networkOSVUlnerability record for OS: %w", err)
+				return fmt.Errorf("failed to create networkOSVulnerability record for OS: %w", err)
 			}
 		}
 
@@ -217,7 +217,7 @@ func populateNetworkOSVulnerabilities(
 				// 3.2.4 Create a NetworkOS VulnerabilityRecord
 				err = deps.VulnRepo.CreateNetworkOSVulnerabilityForService(ctx, dbVuln.ID, scan.ID, scan.HostID, service.ID)
 				if err != nil {
-					return fmt.Errorf("failed to create networkOSVulnerability record for OS: %w", err)
+					return fmt.Errorf("failed to create networkOSVulnerability record for service: %w", err)
 				}
 			}
 		}
