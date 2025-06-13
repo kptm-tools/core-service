@@ -266,38 +266,11 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 	return severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact
 }
 
-func generatePortsData(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.PortData {
-	status := make([]string, 2)
-	status[0] = "open"
-	status[1] = "closed"
-	ports := make([]tools.PortData, size)
-	for i := range ports {
-		ports[i] = tools.PortData{
-			ID:       uint16(gofakeit.IntRange(1, 100)),
-			Protocol: "tcp",
-			State:    status[gofakeit.Number(0, 1)],
-			Service: tools.Service{
-				Name:       "https",
-				Version:    gofakeit.AppVersion(),
-				Confidence: gofakeit.Number(1, 100),
-			},
-			Product:         "nginx",
-			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate, cweDetails),
-		}
-	}
-	return ports
-}
-
 func generateNmapResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.NmapResult {
 	return tools.NmapResult{
-		HostName:    gofakeit.DomainName(),
-		HostAddress: gofakeit.IPv4Address(),
-		MostLikelyOS: tools.OSData{
-			Name:            "Linux 3.x kernel",
-			Accuracy:        gofakeit.Number(1, 10),
-			CPE:             "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
-			Vulnerabilities: generateVuln(4, time.Now(), cweDetails),
-		},
+		HostName:     gofakeit.DomainName(),
+		HostAddress:  gofakeit.IPv4Address(),
+		MostLikelyOS: generateOSData(cweDetails),
 		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt, cweDetails),
 	}
 }
