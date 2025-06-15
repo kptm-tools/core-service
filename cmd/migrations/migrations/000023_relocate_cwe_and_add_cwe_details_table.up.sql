@@ -15,7 +15,8 @@ ADD COLUMN cwe_id VARCHAR(255);
 ALTER TABLE vulnerabilities
 ADD CONSTRAINT fk_vulnerabilities_cwe_details
 FOREIGN KEY (cwe_id) REFERENCES cwe_details (cwe_id)
-ON DELETE SET NULL;
+ON DELETE SET NULL
+ON UPDATE CASCADE;
 
 CREATE INDEX idx_vulnerabilities_cwe_id ON vulnerabilities (cwe_id);
 
