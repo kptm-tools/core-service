@@ -59,12 +59,7 @@ CREATE TABLE IF NOT EXISTS cve_details (
     likelihood VARCHAR(50),
 
     -- Other NVD fields
-    evaluator_comment TEXT,
-    evaluator_impact TEXT,
-    evaluator_solution TEXT,
-    cisa_exploit_add DATE, -- Assuming these are dates
     nvd_description TEXT, -- The main description from NVD
-    weaknesses JSONB,
     nvd_references JSONB,
     vendor_comments JSONB,
 

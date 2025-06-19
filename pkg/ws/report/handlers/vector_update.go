@@ -28,7 +28,7 @@ func (h *VectorUpdateHandler) Handle(msg common.Message, client interfaces.IRepo
 		return customerrors.NewParseError("failed to unmarshal VectorUpdateMessage payload", err)
 	}
 
-	wt, ok := enums.ParseWeaknessFromString(vectorUpdateMsg.VulnerabilityTypeName)
+	wt, ok := enums.ParseOwaspCategory(vectorUpdateMsg.VulnerabilityTypeName)
 	if !ok {
 		return customerrors.NewParseError("weakness type not found", errors.New(vectorUpdateMsg.VulnerabilityTypeName))
 	}

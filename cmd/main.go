@@ -14,7 +14,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/ws/scan"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
-	"github.com/kptm-tools/core-service/cmd/migrations"
+	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/events"
@@ -41,11 +41,6 @@ func main() {
 	}
 	defer coreStore.Close()
 
-	if err := coreStore.Migrate(); err != nil {
-		logger.Error("Error running migrations", slog.Any("error", err))
-		os.Exit(1)
-	}
-
 	eventBus, err := cmmn.NewNatsEventBus(c.GetNatsConnStr())
 	if err != nil {
 		logger.Error("Error creating Event Bus", slog.Any("error", err))
@@ -59,7 +54,7 @@ func main() {
 	hostService := services.NewHostService(coreStore.Host)
 	dashboardService := services.NewDashboardService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host)
 	scanService := services.NewScanService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.ScanResult)
-	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve)
+	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve, coreStore.Cwe)
 	scanScheduleService := services.NewScanScheduleService(coreStore, coreStore.Scan, coreStore.ScanSchedule)
 	emailService := services.NewEmailService(
 		c.SMTP.Host,

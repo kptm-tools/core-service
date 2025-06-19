@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
+	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
 	"github.com/lib/pq"
 )
 
@@ -70,7 +70,7 @@ func (r *ScanRepo) GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([
 	for i, dbScan := range dbScans {
 		scanSummaries[i] = domain.ScanSummary{
 			ScanID:   dbScan.ScanID,
-			ScanDate: dbScan.ScanDate.Time.Format(time.Kitchen),
+			ScanDate: dbScan.ScanDate.Time.Format(time.RFC822),
 			Host:     dbScan.HostAlias,
 			Duration: dbScan.DurationInSeconds,
 		}

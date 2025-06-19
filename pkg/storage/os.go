@@ -8,10 +8,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	repository "github.com/kptm-tools/core-service/db"
+	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
 )
 
 type OSRepo struct {
@@ -39,12 +40,19 @@ func (r *OSRepo) CreateOS(
 	scanID uuid.UUID,
 	osData tools.OSData,
 ) (*domain.OperatingSystem, error) {
+	acc, err := convert.SafeIntToInt32(osData.Accuracy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert osData Accuracy field to Int32: %w", err)
+	}
 	params := repository.CreateOSParams{
-		HostID: hostID,
-		ScanID: scanID,
-		OsName: sql.NullString{String: osData.Name, Valid: osData.Name != ""},
-		Family: sql.NullString{String: osData.Family, Valid: osData.Family != ""},
-		OsType: sql.NullString{String: osData.Type, Valid: osData.Type != ""},
+		HostID:      hostID,
+		ScanID:      scanID,
+		OsName:      sql.NullString{String: osData.Name, Valid: osData.Name != ""},
+		Family:      sql.NullString{String: osData.Family, Valid: osData.Family != ""},
+		OsType:      sql.NullString{String: osData.Type, Valid: osData.Type != ""},
+		Fingerprint: sql.NullString{String: osData.FingerPrint, Valid: osData.FingerPrint != ""},
+		Cpe:         sql.NullString{String: osData.CPE, Valid: true},
+		Accuracy:    sql.NullInt32{Int32: acc, Valid: true},
 	}
 	queries := r.getQueries(ctx)
 

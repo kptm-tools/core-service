@@ -1,9 +1,8 @@
 # Change these variables as necessary
 main_package_path = ./cmd
-sample_package_path = ./cmd/sampledata/main.go
+sample_package_path = ./db/sampledata/main.go
 binary_name = core-service
-migrations_path = ./cmd/migrations/migrations
-DATABASE_URL = 
+migrations_main = ./db/db_tool/main.go
 
 # ==================================================================================== #
 # HELPERS
@@ -59,26 +58,41 @@ migrate/create:
 		echo "Usage: make migrate/create NAME=<migration-name>"; \
 		exit 1; \
 	fi
-	migrate create -ext sql -dir ${migrations_path} -seq $(NAME)
+	go run ${migrations_main} create $(NAME)
 
 ## migrate/up: apply all up migrations
 .PHONY: migrate/up
 migrate/up:
-	migrate -database $(DATABASE_URL) -path ${migrations_path} up
+	go run ${migrations_main} up
 
 ## migrate/down: apply the latest down migration
 .PHONY: migrate/down
 migrate/down:
-	migrate -database $(DATABASE_URL) -path ${migrations_path} down
+	go run ${migrations_main} down
 
-## migrate/force VERSION=<version>: force a specific miration version
+## migrate/rollback: rollback one step
+.PHONY: migrate/rollback
+migrate/rollback:
+	go run ${migrations_main} rollback
+
+## migrate/drop: drop all migration tables
+.PHONY: migrate/drop
+migrate/drop:
+	go run ${migrations_main} drop
+
+## migrate/force VERSION=<version>: force a specific migration version
 .PHONY: migrate/force
 migrate/force:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Usage: make migrate/force VERSION=<version>"; \
 		exit 1; \
 	fi
-	migrate -database $(DATABASE_URL) -path ${migrations_path} force $(VERSION)
+	go run ${migrations_main} force $(VERSION)
+
+## generate: generate sqlc code
+.PHONY: generate
+generate:
+	go run ${migrations_main} gen
 
 ## populate: populate DB with sample data
 .PHONY: populate
@@ -102,7 +116,7 @@ audit: test
 	go mod verify
 	test -z "$(shell gofmt -l .)" 
 	go vet ./...
-	go run honnef.co/go/tools/cmd/staticcheck@latest -checks=all,-ST1000,-U1000 ./...
+	go run honnef.co/go/tools/cmd/staticcheck@master -checks=all,-ST1000,-U1000 ./...
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 ## test: run all tests

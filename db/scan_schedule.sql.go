@@ -3,7 +3,7 @@
 //   sqlc v1.29.0
 // source: scan_schedule.sql
 
-package repository
+package db
 
 import (
 	"context"

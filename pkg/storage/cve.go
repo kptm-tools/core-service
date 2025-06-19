@@ -7,8 +7,8 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
 )
 
 type CVERepo struct {
@@ -52,10 +52,9 @@ func (r *CVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerabilit
 
 	params := repository.CreateCVEDetailParams{
 		CveID: vuln.CveID,
-		Cwe:   vuln.Type.String(),
 
-		PublishedDate:    sql.NullTime{},
-		LastModifiedDate: sql.NullTime{},
+		PublishedDate:    sql.NullTime{Time: vuln.Published, Valid: true},
+		LastModifiedDate: sql.NullTime{Time: vuln.LastUpdated, Valid: true},
 
 		Likelihood:     sql.NullString{String: vuln.Likelihood.String(), Valid: vuln.Likelihood.String() != ""},
 		NvdDescription: sql.NullString{String: vuln.Description, Valid: vuln.Description != ""},

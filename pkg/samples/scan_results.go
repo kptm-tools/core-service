@@ -1,8 +1,10 @@
 package samples
 
 import (
+	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -137,14 +139,17 @@ func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment 
 	return vendorComments
 }
 
-func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
+func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.Vulnerability {
 	severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact := generateDefaultEnumsVuln()
+
 	vulns := make([]tools.Vulnerability, size)
 	for i := range vulns {
+		randomCWE := cweDetails[gofakeit.IntRange(0, len(cweDetails)-1)]
 		vulns[i] = tools.Vulnerability{
 			ID:                 uuid.New(),
 			CveID:              "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
-			Type:               enums.AllWeaknessTypes[gofakeit.IntRange(0, len(enums.AllWeaknessTypes)-1)],
+			Type:               enums.AllOwaspCategories[gofakeit.IntRange(0, len(enums.AllOwaspCategories)-1)],
+			CWERemediation:     []tools.CWERemediation{randomCWE},
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
 			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
 			Access:             accessType[gofakeit.IntRange(0, 4)],
@@ -160,13 +165,122 @@ func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
 			RiskScore:          math.Trunc(gofakeit.Float64Range(0, 100)*10) / 10,
 			IntegrityImpact:    integrityImpact[gofakeit.IntRange(0, 3)],
 			AvailabilityImpact: integrityImpact[gofakeit.IntRange(0, 3)],
-			Description:        gofakeit.LoremIpsumWord(),
+			Description:        generateFakeCVEDescription(),
 			VendorComments:     generateVendorComments(gofakeit.Number(0, 100), fromDate),
 			Published:          fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
 			LastUpdated:        fromDate.AddDate(0, gofakeit.Month(), gofakeit.Day()),
+
+			Metrics: generateFakeCVSSMetrics(),
+
+			EPSSScore:      gofakeit.Float64Range(0.0, 1.0),
+			EPSSPercentile: gofakeit.Float64Range(0.00, 1.0),
+			EPSSDate:       gofakeit.PastDate(),
 		}
 	}
 	return vulns
+}
+
+// generateFakeCVEDescription creates a believable, structured fake CVE description.
+func generateFakeCVEDescription() string {
+	// A slice of sentence templates for CVE descriptions
+	templates := []string{
+		"A %s vulnerability in %s version %s allows a remote attacker to %s user passwords via a crafted %s, leading to privilege escalation.",
+		"Improper input validation in the %s component of %s allows for %s via a specially crafted API request to the %s endpoint.",
+		"%s in %s before version %s does not properly handle %s, which allows attackers to cause a denial of service (DoS).",
+		"A cross-site scripting (XSS) vulnerability in the %s module of %s allows attackers to inject arbitrary web script or HTML via the '%s' parameter.",
+		"An issue was discovered in %s. It allows attackers to bypass %s controls by sending a malformed %s packet.",
+	}
+
+	// Pick a random template
+	template := gofakeit.RandomString(templates)
+
+	// Populate the chosen template with relevant fake data
+	// We use a switch to provide the correct arguments for each template's Sprintf call.
+	var description string
+	switch template {
+	case templates[0]:
+		description = fmt.Sprintf(template,
+			gofakeit.HackerAdjective(), // e.g., "remote"
+			gofakeit.AppName(),         // e.g., "GitLab"
+			gofakeit.AppVersion(),      // e.g., "14.2.1"
+			gofakeit.HackerVerb(),      // e.g., "intercept"
+			gofakeit.FileExtension(),   // e.g., ".xml"
+		)
+	case templates[1]:
+		description = fmt.Sprintf(template,
+			strings.ToLower(gofakeit.BuzzWord()), // e.g., "authentication"
+			gofakeit.ProductName(),               // e.g., "Elasticsearch"
+			gofakeit.HackerPhrase(),              // e.g., "SQL injection"
+			gofakeit.URL(),                       // e.g., "https://example.com/api/v1/search"
+		)
+	case templates[2]:
+		description = fmt.Sprintf(template,
+			gofakeit.RandomString([]string{"A buffer overflow", "An integer overflow", "A race condition"}),
+			gofakeit.Company(),    // e.g., "Apache"
+			gofakeit.AppVersion(), // e.g., "2.4.53"
+			gofakeit.HackerNoun(), // e.g., "session tokens"
+		)
+	case templates[3]:
+		description = fmt.Sprintf(template,
+			gofakeit.Word(),    // e.g., "search"
+			gofakeit.AppName(), // e.g., "Jira"
+			gofakeit.Noun(),    // e.g., "query"
+		)
+	case templates[4]:
+		description = fmt.Sprintf(template,
+			gofakeit.ProductName(), // e.g., "OpenSSL"
+			gofakeit.HackerNoun(),  // e.g., "certificate"
+			gofakeit.Adverb(),      // e.g., "malformed"
+		)
+	default:
+		// Fallback to a simpler phrase if something goes wrong
+		description = gofakeit.HackerPhrase()
+	}
+
+	return description
+}
+
+func generateFakeCVSSMetrics() []tools.CVSSMetric {
+	allVersions := []enums.CVSSVersion{
+		enums.CVSSv20,
+		enums.CVSSv30,
+		enums.CVSSv31,
+	}
+
+	gofakeit.ShuffleAnySlice(allVersions)
+
+	count := gofakeit.IntRange(0, 3)
+	if count == 0 {
+		return []tools.CVSSMetric{}
+	}
+
+	versionsToGenerate := allVersions[:count]
+
+	metrics := make([]tools.CVSSMetric, 0, count)
+	for _, version := range versionsToGenerate {
+		metrics = append(metrics, generateSingleCVSSMetric(version))
+	}
+	return metrics
+}
+
+func generateSingleCVSSMetric(version enums.CVSSVersion) tools.CVSSMetric {
+	formatScore := func(f float64) float64 {
+		return math.Trunc(f*10) / 10
+	}
+	severities, exploitabilities, accesses, complexities, privileges, _, impacts := generateDefaultEnumsVuln()
+
+	return tools.CVSSMetric{
+		Version:             version,
+		BaseScore:           formatScore(gofakeit.Float64Range(0.0, 10.0)),
+		ImpactScore:         formatScore(gofakeit.Float64Range(0.0, 10.0)),
+		Severity:            severities[gofakeit.IntRange(0, len(severities)-1)],
+		Access:              accesses[gofakeit.IntRange(0, len(accesses)-1)],
+		Complexity:          complexities[gofakeit.IntRange(0, len(complexities)-1)],
+		PrivilegesRequired:  privileges[gofakeit.IntRange(0, len(privileges)-1)],
+		AvailabilityImpact:  impacts[gofakeit.IntRange(0, len(impacts)-1)],
+		Exploitability:      exploitabilities[gofakeit.IntRange(0, len(exploitabilities)-1)],
+		ExploitabilityScore: formatScore(gofakeit.Float64Range(0.0, 10.0)),
+	}
 }
 
 func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityType, []enums.AccessType, []enums.ComplexityType, []enums.PrivilegesRequiredType, []enums.LikelyhoodType, []enums.ImpactType) {
@@ -214,54 +328,15 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 	return severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact
 }
 
-func generatePortsData(size int, fromDate time.Time) []tools.PortData {
-	status := make([]string, 2)
-	status[0] = "open"
-	status[1] = "closed"
-	ports := make([]tools.PortData, size)
-	for i := range ports {
-		ports[i] = tools.PortData{
-			ID:       uint16(gofakeit.IntRange(1, 100)),
-			Protocol: "tcp",
-			State:    status[gofakeit.Number(0, 1)],
-			Service: tools.Service{
-				Name:       "https",
-				Version:    gofakeit.AppVersion(),
-				Confidence: gofakeit.Number(1, 100),
-			},
-			Product:         "nginx",
-			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate),
-		}
-	}
-	return ports
-}
-
-func generateNmapResult(scan domain.Scan) tools.IToolResult {
-	return &tools.NmapResult{
-		HostName:    gofakeit.DomainName(),
-		HostAddress: gofakeit.IPv4Address(),
-		MostLikelyOS: tools.OSData{
-			Name:     "Linux 3.x kernel",
-			Accuracy: gofakeit.Number(1, 10),
-			CPE:      "cpe:2.3:o:f5:tmos:11.6:*:*:*:*:*:*:*",
-		},
-		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt),
+func generateNmapResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.NmapResult {
+	return tools.NmapResult{
+		HostName:     gofakeit.DomainName(),
+		HostAddress:  gofakeit.IPv4Address(),
+		MostLikelyOS: generateOSData(cweDetails),
+		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt, cweDetails),
 	}
 }
 
-func SampleVulnerabilityAnalysisScanResults(scans []domain.Scan) []domain.ScanResult {
-	domainScanResult := make([]domain.ScanResult, len(scans))
-	for i, scan := range scans {
-		domainScanResult[i] = domain.ScanResult{
-			ScanID:    scan.ID,
-			ToolName:  enums.ToolNmap.String(),
-			Success:   true,
-			CreatedAt: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
-			Result: tools.ToolResult{
-				Tool:   enums.ToolNmap,
-				Result: generateNmapResult(scan),
-			},
-		}
-	}
-	return domainScanResult
+func SampleNmapScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) tools.NmapResult {
+	return generateNmapResult(scan, cweDetail)
 }

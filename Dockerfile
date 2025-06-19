@@ -1,4 +1,4 @@
-FROM golang:1.23.8
+FROM golang:1.24.4
 
 WORKDIR /app
 
@@ -9,6 +9,8 @@ RUN go mod download
 COPY cmd/ ./cmd
 
 COPY /pkg ./pkg
+
+COPY db/ ./db
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./bin/core-service ./cmd/main.go
 

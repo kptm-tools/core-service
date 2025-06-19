@@ -19,7 +19,7 @@ func SampleTenants() []domain.Tenant {
 			UpdatedAt:     time.Now().UTC(),
 		},
 		{
-			ID:            uuid.New(),
+			ID:            uuid.MustParse("11111111-0000-0000-0000-000000000000"),
 			ProviderID:    "11111111-0000-0000-0000-000000000000",
 			ApplicationID: "00000000-1111-0000-0000-000000000000",
 			CreatedAt:     time.Now().UTC(),

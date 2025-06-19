@@ -31,7 +31,7 @@ type ReportClient struct {
 
 	// vectorStatus represents the currently selected vectors by the client. This map must be initially
 	// populated on an initial connection, and updated on each vector_update message.
-	vectorStatus map[enums.WeaknessType]float64
+	vectorStatus map[enums.OwaspCategory]float64
 
 	roomID string
 }
@@ -47,7 +47,7 @@ func NewReportClient(
 		connection:   conn,
 		hub:          hub,
 		outgoing:     make(chan []byte, 256),
-		vectorStatus: make(map[enums.WeaknessType]float64),
+		vectorStatus: make(map[enums.OwaspCategory]float64),
 	}
 }
 
@@ -129,16 +129,16 @@ func (c *ReportClient) Close() error {
 	return c.connection.Close()
 }
 
-func (c *ReportClient) GetVectorStatus() map[enums.WeaknessType]float64 {
+func (c *ReportClient) GetVectorStatus() map[enums.OwaspCategory]float64 {
 	return c.vectorStatus
 }
 
-func (c *ReportClient) SetVectorStatus(newVectorStatus map[enums.WeaknessType]float64) {
+func (c *ReportClient) SetVectorStatus(newVectorStatus map[enums.OwaspCategory]float64) {
 	c.vectorStatus = newVectorStatus
 	slog.Debug("New vector status set", slog.Any("vector_status", c.vectorStatus))
 }
 
-func (c *ReportClient) UpdateVector(weakness enums.WeaknessType, newVal float64) {
+func (c *ReportClient) UpdateVector(weakness enums.OwaspCategory, newVal float64) {
 	c.vectorStatus[weakness] = newVal
 }
 
