@@ -144,7 +144,7 @@ func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
 		vulns[i] = tools.Vulnerability{
 			ID:                 uuid.New(),
 			CveID:              "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
-			Type:               enums.AllWeaknessTypes[gofakeit.IntRange(0, len(enums.AllWeaknessTypes)-1)],
+			Type:               enums.AllOwaspCategories[gofakeit.IntRange(0, len(enums.AllOwaspCategories)-1)],
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
 			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
 			Access:             accessType[gofakeit.IntRange(0, 4)],

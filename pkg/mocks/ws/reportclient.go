@@ -9,13 +9,13 @@ type MockReportClient struct {
 	MockReadMessage     func()
 	MockGetHubReport    func() interfaces.IHubReport
 	MockSetRoomID       func(s string)
-	MockSetVectorStatus func(m2 map[enums.WeaknessType]float64)
-	MockGetVectorStatus func() map[enums.WeaknessType]float64
+	MockSetVectorStatus func(m2 map[enums.OwaspCategory]float64)
+	MockGetVectorStatus func() map[enums.OwaspCategory]float64
 	MockGetSend         func() chan []byte
 	Outgoing            chan []byte
 	MockGetRoomID       func() string
 	MockGetID           func() string
-	MockUpdateVector    func(weaknessType enums.WeaknessType, value float64)
+	MockUpdateVector    func(weaknessType enums.OwaspCategory, value float64)
 }
 
 func (m *MockReportClient) GetID() string {
@@ -49,20 +49,20 @@ func (m *MockReportClient) Close() error {
 	return nil
 }
 
-func (m *MockReportClient) GetVectorStatus() map[enums.WeaknessType]float64 {
+func (m *MockReportClient) GetVectorStatus() map[enums.OwaspCategory]float64 {
 	if m.MockGetVectorStatus != nil {
 		return m.MockGetVectorStatus()
 	}
-	return make(map[enums.WeaknessType]float64)
+	return make(map[enums.OwaspCategory]float64)
 }
 
-func (m *MockReportClient) SetVectorStatus(m2 map[enums.WeaknessType]float64) {
+func (m *MockReportClient) SetVectorStatus(m2 map[enums.OwaspCategory]float64) {
 	if m.MockSetVectorStatus != nil {
 		m.MockSetVectorStatus(m2)
 	}
 }
 
-func (m *MockReportClient) UpdateVector(weaknessType enums.WeaknessType, value float64) {
+func (m *MockReportClient) UpdateVector(weaknessType enums.OwaspCategory, value float64) {
 	if m.MockUpdateVector != nil {
 		m.MockUpdateVector(weaknessType, value)
 	}

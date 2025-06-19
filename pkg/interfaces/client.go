@@ -13,9 +13,9 @@ type IClient interface {
 
 type IReportClient interface {
 	IClient // Embedded IClient interface. This means to implement IReportClient you must also implement IClient
-	GetVectorStatus() map[enums.WeaknessType]float64
-	SetVectorStatus(map[enums.WeaknessType]float64)
-	UpdateVector(weaknessType enums.WeaknessType, value float64)
+	GetVectorStatus() map[enums.OwaspCategory]float64
+	SetVectorStatus(map[enums.OwaspCategory]float64)
+	UpdateVector(weaknessType enums.OwaspCategory, value float64)
 	GetHubReport() IHubReport
 	SetRoomID(string)
 	GetRoomID() string

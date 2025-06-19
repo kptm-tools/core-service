@@ -7,7 +7,7 @@ package main
 // 	"os"
 //
 // 	"github.com/kptm-tools/common/common/pkg/enums"
-// 	"github.com/kptm-tools/core-service/cmd/migrations"
+// 	migrations "github.com/kptm-tools/core-service/db/sql"
 // 	"github.com/kptm-tools/core-service/pkg/config"
 // 	"github.com/kptm-tools/core-service/pkg/domain"
 // 	"github.com/kptm-tools/core-service/pkg/interfaces"
