@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
 	"github.com/sqlc-dev/pqtype"
 )
 

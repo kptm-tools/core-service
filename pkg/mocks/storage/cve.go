@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
+	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
 	"github.com/kptm-tools/core-service/pkg/testutil"
 )
 

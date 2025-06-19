@@ -14,7 +14,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/ws/scan"
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
-	"github.com/kptm-tools/core-service/cmd/migrations"
+	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/api"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/events"
@@ -40,11 +40,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer coreStore.Close()
-
-	if err := coreStore.Migrate(); err != nil {
-		logger.Error("Error running migrations", slog.Any("error", err))
-		os.Exit(1)
-	}
 
 	eventBus, err := cmmn.NewNatsEventBus(c.GetNatsConnStr())
 	if err != nil {

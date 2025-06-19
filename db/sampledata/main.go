@@ -8,11 +8,11 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
-	"github.com/kptm-tools/core-service/cmd/migrations"
+	repository "github.com/kptm-tools/core-service/db"
+	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
 	"github.com/kptm-tools/core-service/pkg/samples"
 	"github.com/kptm-tools/core-service/pkg/storage"
 )

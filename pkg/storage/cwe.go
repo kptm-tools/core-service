@@ -6,7 +6,7 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
-	"github.com/kptm-tools/core-service/pkg/repository"
+	repository "github.com/kptm-tools/core-service/db"
 )
 
 type CWERepo struct {
