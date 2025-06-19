@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
-	"github.com/kptm-tools/core-service/pkg/interfaces"
 	repository "github.com/kptm-tools/core-service/db"
+	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
 type CWERepo struct {

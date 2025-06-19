@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,6 +12,7 @@ import (
 	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
 )
 
@@ -18,6 +20,7 @@ import (
 var (
 	coreStore      *storage.PostgreSQLStore
 	logger         *slog.Logger
+	db             *sql.DB
 	migrationsPath = "./cmd/migrations/migrations"
 )
 
@@ -30,19 +33,37 @@ func init() {
 	slog.SetDefault(logger)
 
 	// Load config
-	c := config.LoadConfig()
+	cfg := config.LoadConfig()
 
-	// Initialize database
+	// Initialize database store (migrations)
 	var err error
-	coreStore, err = storage.NewPostgreSQLStore(c, migrations.Migrations)
+	coreStore, err = storage.NewPostgreSQLStore(cfg, migrations.Migrations)
 	if err != nil {
 		logger.Error("Failed to create Core DB store", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	// Also open a direct DB connection for custom commands
+	db, err = sql.Open("postgres", cfg.PostgreSQLCoreDatabaseURL())
+	if err != nil {
+		logger.Error("Failed to open DB connection", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(5)
+	db.SetConnMaxIdleTime(30 * time.Minute)
+
+	// Ping the DB to healthcheck it
+	if err := db.Ping(); err != nil {
+		logger.Error("Failed to ping DB", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
 
 func main() {
 	defer coreStore.Close()
+	defer db.Close()
 
 	args := os.Args[1:]
 	if len(args) < 1 {
@@ -61,6 +82,7 @@ func main() {
 		runMigrationsRollback()
 	case "drop":
 		runMigrationsDrop()
+		resetPublicSchema()
 	case "force":
 		if len(args) < 2 {
 			logger.Error("Missing version number. Usage: go run main.go force <version>")
@@ -83,14 +105,14 @@ func main() {
 
 func runMigrationsUp() {
 	if err := coreStore.Up(); err != nil {
-		logger.Error("Error running migrations", slog.Any("error", err))
+		logger.Error("Error running migrations up", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
 
 func runMigrationsDown() {
 	if err := coreStore.Down(); err != nil {
-		logger.Error("Error running down migrations", slog.Any("error", err))
+		logger.Error("Error running migrations down", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
@@ -113,6 +135,22 @@ func runMigrationsDrop() {
 	if err := coreStore.Drop(); err != nil {
 		logger.Error("Error dropping database schema", slog.Any("error", err))
 		os.Exit(1)
+	}
+	logger.Info("Database schema dropped successfully")
+}
+
+// dropEnums drops all configured ENUM types from the database
+func resetPublicSchema() {
+	statements := []string{
+		"DROP SCHEMA public CASCADE;",
+		"CREATE SCHEMA public;",
+	}
+	for _, stmt := range statements {
+		if _, err := db.Exec(stmt); err != nil {
+			logger.Error("Error executing statement", slog.String("stmt", stmt), slog.Any("error", err))
+			os.Exit(1)
+		}
+		logger.Info("Executed statement", slog.String("stmt", stmt))
 	}
 }
 
@@ -168,7 +206,7 @@ func printHelp() {
 	fmt.Println("  up              - Run database migrations up")
 	fmt.Println("  down            - Revert the latest migration")
 	fmt.Println("  rollback        - Rollback one step of migrations")
-	fmt.Println("  drop            - Drop all migration tables")
+	fmt.Println("  drop            - Drop all migration tables and enum types")
 	fmt.Println("  force <version> - Force migration to a specific version")
 	fmt.Println("  gen             - Run sqlc code generation")
 }
