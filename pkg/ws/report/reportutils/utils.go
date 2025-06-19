@@ -11,21 +11,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/dto"
 )
 
-var allOwaspCategories = []enums.OwaspCategory{
-	enums.OwaspCategoryBrokenAccessControl,
-	enums.OwaspCategoryCryptographicFailures,
-	enums.OwaspCategoryInjection,
-	enums.OwaspCategoryInsecureDesign,
-	enums.OwaspCategorySecurityMisconfiguration,
-	enums.OwaspCategoryVulnerableAndOutdatedComponents,
-	enums.OwaspCategoryIdentificationAndAuthenticationFailures,
-	enums.OwaspCategorySoftwareAndDataIntegrityFailures,
-	enums.OwaspCategorySecurityLoggingAndMonitoringFailures,
-	enums.OwaspCategorySSRF,
-	enums.OwaspCategoryOther,
-	enums.OwaspCategoryNoInfo,
-}
-
 type (
 	// MaxCVSSPerType maps each OwaspCategory to its maximum observed CVSS score
 	MaxCVSSPerType map[enums.OwaspCategory]float64
