@@ -127,7 +127,7 @@ func (s *PostgreSQLStore) Up() error {
 	return nil
 }
 
-// Down rolls back the most recent migration.
+// RollBack rolls back the most recent migration.
 func (s *PostgreSQLStore) RollBack() error {
 	slog.Debug("Running RollBack migration")
 	m, err := s.migrator()
@@ -154,7 +154,7 @@ func (s *PostgreSQLStore) Drop() error {
 	return nil
 }
 
-// Drop drops all database objects (brings version to zero).
+// Down drops all database objects (brings version to zero).
 func (s *PostgreSQLStore) Down() error {
 	slog.Debug("Running Down migrations")
 	m, err := s.migrator()
