@@ -10,6 +10,8 @@ COPY cmd/ ./cmd
 
 COPY /pkg ./pkg
 
+COPY db/ ./db
+
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./bin/core-service ./cmd/main.go
 
 EXPOSE 8000
