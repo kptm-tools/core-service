@@ -108,6 +108,7 @@ func runMigrationsUp() {
 		logger.Error("Error running migrations up", slog.Any("error", err))
 		os.Exit(1)
 	}
+	logger.Info("Up migrations ran successfully")
 }
 
 func runMigrationsDown() {
@@ -115,6 +116,7 @@ func runMigrationsDown() {
 		logger.Error("Error running migrations down", slog.Any("error", err))
 		os.Exit(1)
 	}
+	logger.Info("Down migrations ran successfully")
 }
 
 func runMigrationsForce(version int) {
@@ -122,6 +124,7 @@ func runMigrationsForce(version int) {
 		logger.Error("Error forcing migration version", slog.Any("error", err))
 		os.Exit(1)
 	}
+	logger.Info("Migrations version forced successfully", "version", version)
 }
 
 func runMigrationsRollback() {
@@ -129,6 +132,7 @@ func runMigrationsRollback() {
 		logger.Error("Error rolling back migrations", slog.Any("error", err))
 		os.Exit(1)
 	}
+	logger.Info("Migrations rolled back successfully")
 }
 
 func runMigrationsDrop() {
