@@ -1,0 +1,15 @@
+meta {
+  name: Get FusionAuth Tenant
+  type: http
+  seq: 7
+}
+
+get {
+  url: http://localhost:9011/api/tenant/d7d09513-a3f5-401c-9685-34ab6c552453
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: this_really_should_be_a_long_random_alphanumeric_value_but_this_still_works
+}

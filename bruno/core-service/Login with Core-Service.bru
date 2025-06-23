@@ -1,0 +1,23 @@
+meta {
+  name: Login with Core-Service
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8000/api/login
+  body: json
+  auth: none
+}
+
+headers {
+  Origin: http://localhost:5173/
+}
+
+body:json {
+  {
+    "loginId": "lucasgrez3010@gmail.com",
+    "password": "password",
+    "application_id": "00000000-1111-0000-0000-000000000000"
+  }
+}

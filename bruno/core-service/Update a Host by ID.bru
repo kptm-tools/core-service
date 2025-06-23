@@ -1,0 +1,45 @@
+meta {
+  name: Update a Host by ID
+  type: http
+  seq: 16
+}
+
+patch {
+  url: http://localhost:8000/api/hosts/{{hostID}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+   "name": "Huappa Webstore",
+   "value": "192.168.100.4",
+   "value_type": "IP",
+   "credentials": [
+      {
+      "username": "myuser3",
+      "password": "mypassword"
+      },
+      {
+      "username": "myuser5",
+      "password": "mypassword"
+      } 
+   ],
+   "rapporteurs": [
+      {
+          "name": "Fernanda",
+          "email": "fbaldeon@i2linked.com",
+          "is_principal": false
+      },
+          {
+          "name": "Orlando",
+          "email": "oespezua@i2linked.com",
+          "is_principal": true
+      }
+   ]
+  }
+}

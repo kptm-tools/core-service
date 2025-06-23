@@ -1,0 +1,21 @@
+meta {
+  name: Get a Host by ID
+  type: http
+  seq: 14
+}
+
+get {
+  url: http://localhost:8000/api/hosts/{{hostID}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+   "tenant_id": ""
+  }
+}

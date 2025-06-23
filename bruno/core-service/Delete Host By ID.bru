@@ -1,0 +1,21 @@
+meta {
+  name: Delete Host By ID
+  type: http
+  seq: 15
+}
+
+delete {
+  url: http://localhost:8000/api/hosts/{{hostID}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+   "tenant_id": ""
+  }
+}

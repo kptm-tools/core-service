@@ -1,0 +1,15 @@
+meta {
+  name: Get all Reports
+  type: http
+  seq: 24
+}
+
+get {
+  url: localhost:8000/api/reports
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}

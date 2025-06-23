@@ -1,0 +1,21 @@
+meta {
+  name: Validate a Host
+  type: http
+  seq: 17
+}
+
+post {
+  url: http://localhost:8000/api/hosts/validate-host
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+      "value": "https://142.250.189.206"
+  }
+}

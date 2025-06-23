@@ -1,0 +1,36 @@
+meta {
+  name: Register Host
+  type: http
+  seq: 12
+}
+
+post {
+  url: http://localhost:8000/api/hosts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+      "name": "Nmap Scanme",
+      "credentials": [
+          {
+              "username": "admin",
+              "password": "admin"
+          }
+      ],
+      "rapporteurs": [
+          {
+              "name": "Lucas",
+              "email": "lucasgrez3010@gmail.com",
+              "is_principal": false
+          }
+      ],
+      "value": "nmap.scanme.org",
+      "value_type": "Subdomain"
+  }
+}

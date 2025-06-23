@@ -1,0 +1,26 @@
+meta {
+  name: Post a Scheduled Scan
+  type: http
+  seq: 19
+}
+
+post {
+  url: localhost:8000/api/scans
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+      "host_id": 1,
+      "schedule_at": "2025-03-05T18:04:59.000Z",
+      "repeat_frequency": {
+          "quantity": 3,
+          "unit_of_frequency": "day"
+      }
+  }
+}
