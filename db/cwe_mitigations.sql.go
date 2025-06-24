@@ -21,12 +21,7 @@ INSERT INTO cwe_mitigations (
     created_at
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7
-) ON CONFLICT (cwe_id, mitigation_id) DO UPDATE SET
-  phase = EXCLUDED.phase,
-  description = EXCLUDED.description,
-  effectiveness = EXCLUDED.effectiveness,
-  effectiveness_notes = EXCLUDED.effectiveness_notes,
-  created_at = EXCLUDED.created_at
+) ON CONFLICT (cwe_id, mitigation_id, phase) DO NOTHING
 RETURNING id, cwe_id, mitigation_id, phase, description, effectiveness, effectiveness_notes, created_at
 `
 

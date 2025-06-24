@@ -22,7 +22,13 @@ CREATE    TABLE IF NOT EXISTS cwe_mitigations (
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
           );
 
--- Add foreign key constraint only if it does not already exist
+ALTER TABLE cwe_mitigations
+ADD CONSTRAINT unique_cwe_mitigation_phase UNIQUE (cwe_id, mitigation_id, phase);
+
+-- -- Add foreign key constraint only if it does not already exist
+-- ALTER TABLE cwe_mitigations
+-- ADD CONSTRAINT fk_cwe_mitigation_cwe_id FOREIGN KEY (cwe_id) REFERENCES cwe_details (cwe_id);
+
 -- Create indexes on cwe_mitigations (if they do not already exist)
 CREATE    INDEX IF NOT EXISTS idx_cwe_mitigations_cwe_id ON cwe_mitigations (cwe_id);
 

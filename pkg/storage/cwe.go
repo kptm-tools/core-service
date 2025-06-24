@@ -30,6 +30,10 @@ func (r *CWERepo) getQueries(ctx context.Context) *repository.Queries {
 }
 
 func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe tools.CWERemediation) (*tools.CWERemediation, error) {
+	if cwe.ID == "" {
+		return nil, nil
+	}
+
 	queries := r.getQueries(ctx)
 
 	params := repository.CreateOrUpdateCWEDetailParams{

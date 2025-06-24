@@ -66,6 +66,7 @@ func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore,
 		Vulnerability: NewVulnerRepository(queries, sqlDB),
 		ScanResult:    NewScanResultRepository(queries),
 		Cve:           NewCVERepository(queries),
+		Cwe:           NewCWERepository(queries),
 		migrations:    migrations,
 		config:        cfg,
 	}, nil
