@@ -2,7 +2,8 @@ package storage
 
 import (
 	"context"
-	"time"
+	"database/sql"
+	"strconv"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
@@ -31,85 +32,96 @@ func (r *CWERepo) getQueries(ctx context.Context) *repository.Queries {
 func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe tools.CWERemediation) (*tools.CWERemediation, error) {
 	queries := r.getQueries(ctx)
 
-	// --- Extract the CWE from the payload
-	var phase string
-	if len(cwe.Phase) > 0 {
-		phase = cwe.Phase[0]
-	} else {
-		phase = ""
-	}
-
 	params := repository.CreateOrUpdateCWEDetailParams{
-		CweID:              cwe.ID,
-		Title:              cwe.Title,
-		MitigationPhase:    phase,
-		Description:        cwe.Description,
-		Effectiveness:      cwe.Effectiveness,
-		EffectivenessNotes: cwe.EffectivenessNotes,
-		LastUpdated:        time.Now().UTC(),
+		CweID:       cwe.ID,
+		Title:       cwe.Title,
+		Description: cwe.Description,
+		LastUpdated: cwe.LastUpdated,
 	}
 
-	// 1. Store the CWE record
 	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
 	if err != nil {
 		return nil, err
 	}
+
 	return &tools.CWERemediation{
-		ID:                 dbCWE.CweID,
-		Title:              dbCWE.Title,
-		Phase:              []string{dbCWE.MitigationPhase},
-		Description:        dbCWE.Description,
-		Effectiveness:      dbCWE.Effectiveness,
-		EffectivenessNotes: dbCWE.EffectivenessNotes,
-		LastUpdated:        dbCWE.LastUpdated,
+		ID:          dbCWE.CweID,
+		Title:       dbCWE.Title,
+		Description: dbCWE.Description,
+		LastUpdated: dbCWE.LastUpdated,
 	}, nil
 }
 
 func (r *CWERepo) CreateCWERemediation(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error) {
 	queries := r.getQueries(ctx)
 
-	params := repository.CreateOrUpdateCWEDetailParams{
+	params := repository.CreateCWERemediationParams{
 		CweID:              remediation.ID,
-		Title:              remediation.Title,
-		MitigationPhase:    "",
+		MitigationID:       sql.NullString{Valid: false},
+		Phase:              "",
 		Description:        remediation.Description,
-		Effectiveness:      remediation.Effectiveness,
-		EffectivenessNotes: remediation.EffectivenessNotes,
-		LastUpdated:        time.Now().UTC(),
+		Effectiveness:      sql.NullString{Valid: false},
+		EffectivenessNotes: sql.NullString{Valid: false},
+		CreatedAt:          sql.NullTime{Valid: false},
 	}
 
-	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
+	if len(remediation.Phase) > 0 {
+		params.Phase = remediation.Phase[0]
+	}
+
+	if remediation.MitigationID != "" {
+		params.MitigationID = sql.NullString{String: remediation.MitigationID, Valid: true}
+	}
+
+	if remediation.Effectiveness != "" {
+		params.Effectiveness = sql.NullString{String: remediation.Effectiveness, Valid: true}
+	}
+
+	if remediation.EffectivenessNotes != "" {
+		params.EffectivenessNotes = sql.NullString{String: remediation.EffectivenessNotes, Valid: true}
+	}
+
+	if !remediation.LastUpdated.IsZero() {
+		params.CreatedAt = sql.NullTime{Time: remediation.LastUpdated, Valid: true}
+	}
+
+	dbCWE, err := queries.CreateCWERemediation(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
 	return &tools.CWERemediation{
 		ID:                 dbCWE.CweID,
-		Title:              dbCWE.Title,
-		Phase:              []string{dbCWE.MitigationPhase},
+		MitigationID:       dbCWE.MitigationID.String,
+		Phase:              []string{dbCWE.Phase},
 		Description:        dbCWE.Description,
-		Effectiveness:      dbCWE.Effectiveness,
-		EffectivenessNotes: dbCWE.EffectivenessNotes,
-		LastUpdated:        dbCWE.LastUpdated,
+		Effectiveness:      dbCWE.Effectiveness.String,
+		EffectivenessNotes: dbCWE.EffectivenessNotes.String,
+		LastUpdated:        dbCWE.CreatedAt.Time,
 	}, nil
 }
 
 func (r *CWERepo) GetCWERemediationByID(ctx context.Context, mitigationID string) (*tools.CWERemediation, error) {
 	queries := r.getQueries(ctx)
 
-	dbCWE, err := queries.GetCWEDetailByID(ctx, mitigationID)
+	idInt, err := strconv.Atoi(mitigationID)
+	if err != nil {
+		return nil, err
+	}
+
+	dbCWE, err := queries.GetCWEDetailByID(ctx, int32(idInt))
 	if err != nil {
 		return nil, err
 	}
 
 	return &tools.CWERemediation{
 		ID:                 dbCWE.CweID,
-		Title:              dbCWE.Title,
-		Phase:              []string{dbCWE.MitigationPhase},
+		MitigationID:       dbCWE.MitigationID.String,
+		Phase:              []string{dbCWE.Phase},
 		Description:        dbCWE.Description,
-		Effectiveness:      dbCWE.Effectiveness,
-		EffectivenessNotes: dbCWE.EffectivenessNotes,
-		LastUpdated:        dbCWE.LastUpdated,
+		Effectiveness:      dbCWE.Effectiveness.String,
+		EffectivenessNotes: dbCWE.EffectivenessNotes.String,
+		LastUpdated:        dbCWE.CreatedAt.Time,
 	}, nil
 }
 
@@ -125,12 +137,12 @@ func (r *CWERepo) GetCWERemediationsByCWEID(ctx context.Context, cweID string) (
 	for i, dbCWE := range dbCWEs {
 		remediations[i] = tools.CWERemediation{
 			ID:                 dbCWE.CweID,
-			Title:              dbCWE.Title,
-			Phase:              []string{dbCWE.MitigationPhase},
+			MitigationID:       dbCWE.MitigationID.String,
+			Phase:              []string{dbCWE.Phase},
 			Description:        dbCWE.Description,
-			Effectiveness:      dbCWE.Effectiveness,
-			EffectivenessNotes: dbCWE.EffectivenessNotes,
-			LastUpdated:        dbCWE.LastUpdated,
+			Effectiveness:      dbCWE.Effectiveness.String,
+			EffectivenessNotes: dbCWE.EffectivenessNotes.String,
+			LastUpdated:        dbCWE.CreatedAt.Time,
 		}
 	}
 

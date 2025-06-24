@@ -169,12 +169,15 @@ func populateNetworkOSVulnerabilities(
 			if err != nil {
 				return fmt.Errorf("failed to insert os vulnerability CVE detail: %w", err)
 			}
-			if len(vuln.CWERemediation) > 0 {
-				_, err := deps.CWERepo.CreateOrUpdateCWE(ctx, vuln.CWERemediation[0])
-				if err != nil {
-					return fmt.Errorf("failed to insert os vulnerability CWE detail: %w", err)
-				}
-			}
+
+			// _, err = deps.CWERepo.CreateOrUpdateCWE(ctx, vuln.CWERemediation[0])
+			// if err != nil {
+			// 	return fmt.Errorf("failed to insert os vulnerability CWE detail: %w", err)
+			// }
+
+			// Geneerate a log to see the vuln.CWERemediation[0]
+			fmt.Printf("Vulnerability Remediation: %s\n", vuln.CWERemediation[0])
+
 			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS)
 			if err != nil {
 				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
@@ -185,6 +188,7 @@ func populateNetworkOSVulnerabilities(
 			}
 		}
 
+		
 		// Store Service data
 
 		// Loop through each portItem
@@ -202,12 +206,13 @@ func populateNetworkOSVulnerabilities(
 					return fmt.Errorf("failed to insert port vulnerability CVE detail: %w", err)
 				}
 				// 3.2.2 Storage CWE detail of the vuln
-				if len(vuln.CWERemediation) > 0 {
-					_, err = deps.CWERepo.CreateOrUpdateCWE(ctx, vuln.CWERemediation[0])
-					if err != nil {
-						return fmt.Errorf("failed to insert os vulnerability CWE detail: %w", err)
-					}
-				}
+				// _, err = deps.CWERepo.CreateOrUpdateCWE(ctx, vuln.CWERemediation[0])
+				// if err != nil {
+				// 	return fmt.Errorf("failed to insert os vulnerability CWE detail: %w", err)
+				// }
+
+				// Geneerate a log to see the vuln.CWERemediation[0]
+				fmt.Printf("Vulnerability Remediation: %s\n", vuln.CWERemediation[0])
 
 				// 3.2.3 Create a Vulnerability record
 				dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS)
