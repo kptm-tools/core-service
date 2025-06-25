@@ -108,12 +108,12 @@ func (r *CWERepo) CreateCWERemediation(ctx context.Context, remediation *tools.C
 func (r *CWERepo) GetCWERemediationByID(ctx context.Context, mitigationID string) (*tools.CWERemediation, error) {
 	queries := r.getQueries(ctx)
 
-	idInt, err := strconv.Atoi(mitigationID)
+	idInt32, err := strconv.ParseInt(mitigationID, 10, 32)
 	if err != nil {
 		return nil, err
 	}
 
-	dbCWE, err := queries.GetCWEDetailByID(ctx, int32(idInt))
+	dbCWE, err := queries.GetCWEDetailByID(ctx, int32(idInt32))
 	if err != nil {
 		return nil, err
 	}
