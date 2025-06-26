@@ -14,53 +14,38 @@ const createOrUpdateCWEDetail = `-- name: CreateOrUpdateCWEDetail :one
 INSERT INTO cwe_details (
     cwe_id,
     title,
-    mitigation_phase,
     description,
-    effectiveness,
-    effectiveness_notes,
     last_updated
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7
-)
-ON CONFLICT (cwe_id) DO UPDATE SET
+  $1, $2, $3, $4
+) ON CONFLICT (cwe_id) DO UPDATE SET
   title = EXCLUDED.title,
-  mitigation_phase = EXCLUDED.mitigation_phase,
   description = EXCLUDED.description,
-  effectiveness = EXCLUDED.effectiveness,
-  effectiveness_notes = EXCLUDED.effectiveness_notes,
   last_updated = EXCLUDED.last_updated
-RETURNING cwe_id, title, mitigation_phase, description, effectiveness, effectiveness_notes, last_updated
+RETURNING cwe_id, title, description, last_updated, created_at
 `
 
 type CreateOrUpdateCWEDetailParams struct {
-	CweID              string    `json:"cwe_id"`
-	Title              string    `json:"title"`
-	MitigationPhase    string    `json:"mitigation_phase"`
-	Description        string    `json:"description"`
-	Effectiveness      string    `json:"effectiveness"`
-	EffectivenessNotes string    `json:"effectiveness_notes"`
-	LastUpdated        time.Time `json:"last_updated"`
+	CweID       string    `json:"cwe_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdateCWEDetailParams) (CweDetail, error) {
 	row := q.db.QueryRowContext(ctx, createOrUpdateCWEDetail,
 		arg.CweID,
 		arg.Title,
-		arg.MitigationPhase,
 		arg.Description,
-		arg.Effectiveness,
-		arg.EffectivenessNotes,
 		arg.LastUpdated,
 	)
 	var i CweDetail
 	err := row.Scan(
 		&i.CweID,
 		&i.Title,
-		&i.MitigationPhase,
 		&i.Description,
-		&i.Effectiveness,
-		&i.EffectivenessNotes,
 		&i.LastUpdated,
+		&i.CreatedAt,
 	)
 	return i, err
 }

@@ -297,13 +297,22 @@ type CveDetail struct {
 }
 
 type CweDetail struct {
-	CweID              string    `json:"cwe_id"`
-	Title              string    `json:"title"`
-	MitigationPhase    string    `json:"mitigation_phase"`
-	Description        string    `json:"description"`
-	Effectiveness      string    `json:"effectiveness"`
-	EffectivenessNotes string    `json:"effectiveness_notes"`
-	LastUpdated        time.Time `json:"last_updated"`
+	CweID       string       `json:"cwe_id"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	LastUpdated time.Time    `json:"last_updated"`
+	CreatedAt   sql.NullTime `json:"created_at"`
+}
+
+type CweMitigation struct {
+	ID                 int32          `json:"id"`
+	CweID              string         `json:"cwe_id"`
+	MitigationID       sql.NullString `json:"mitigation_id"`
+	Phase              string         `json:"phase"`
+	Description        string         `json:"description"`
+	Effectiveness      sql.NullString `json:"effectiveness"`
+	EffectivenessNotes sql.NullString `json:"effectiveness_notes"`
+	CreatedAt          sql.NullTime   `json:"created_at"`
 }
 
 type Host struct {
