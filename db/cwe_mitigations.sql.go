@@ -21,7 +21,13 @@ INSERT INTO cwe_mitigations (
     created_at
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7
-) ON CONFLICT (cwe_id, mitigation_id, phase) DO NOTHING
+)
+ON CONFLICT (cwe_id, description, phase)
+  DO UPDATE
+    SET
+      mitigation_id       = COALESCE(cwe_mitigations.mitigation_id, EXCLUDED.mitigation_id),
+      effectiveness        = COALESCE(cwe_mitigations.effectiveness,  EXCLUDED.effectiveness),
+      effectiveness_notes  = COALESCE(cwe_mitigations.effectiveness_notes, EXCLUDED.effectiveness_notes)
 RETURNING id, cwe_id, mitigation_id, phase, description, effectiveness, effectiveness_notes, created_at
 `
 

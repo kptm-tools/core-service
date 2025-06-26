@@ -35,5 +35,14 @@ func SampleCWEDetails() []tools.CWERemediation {
 			EffectivenessNotes: "Must be thorough.",
 			LastUpdated:        time.Now().UTC(),
 		},
+		{
+			ID:                 "CWE-22",
+			Title:              "Copy of Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+			Phase:              []string{"Implementation"},
+			Description:        "Copy of Sanitize all user-controllable filenames and paths. Use an allow-list of paths and filenames.",
+			Effectiveness:      "Very effective",
+			EffectivenessNotes: "Must be thorough.",
+			LastUpdated:        time.Now().UTC(),
+		},
 	}
 }
