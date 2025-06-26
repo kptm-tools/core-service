@@ -10,9 +10,9 @@ import (
 )
 
 type MockCWERepo struct {
-	MockCreateOrUpdateCWE     func(ctx context.Context, vuln tools.CWERemediation) (*tools.CWERemediation, error)
-	MockCreateCWERemediation  func(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error)
-	MockGetCWERemediationByID func(ctx context.Context, mitigationID string) (*tools.CWERemediation, error)
+	MockCreateOrUpdateCWE         func(ctx context.Context, vuln tools.CWERemediation) (*tools.CWERemediation, error)
+	MockCreateCWERemediation      func(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error)
+	MockGetCWERemediationByID     func(ctx context.Context, mitigationID string) (*tools.CWERemediation, error)
 	MockGetCWERemediationsByCWEID func(ctx context.Context, cweID string) ([]tools.CWERemediation, error)
 }
 
