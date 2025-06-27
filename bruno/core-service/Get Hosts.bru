@@ -1,0 +1,15 @@
+meta {
+  name: Get Hosts
+  type: http
+  seq: 13
+}
+
+get {
+  url: http://localhost:8000/api/hosts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}

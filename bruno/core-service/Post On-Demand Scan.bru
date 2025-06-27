@@ -1,0 +1,21 @@
+meta {
+  name: Post On-Demand Scan
+  type: http
+  seq: 18
+}
+
+post {
+  url: localhost:8000/api/scans
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
+
+body:json {
+  {
+      "host_id": "{{hostID}}"
+  }
+}

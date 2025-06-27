@@ -1,0 +1,15 @@
+meta {
+  name: Get a Scan's Insights
+  type: http
+  seq: 21
+}
+
+get {
+  url: localhost:8000/api/scans/{{scanID}}/insights
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Login with FusionAuth
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:9011/api/login
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: this_really_should_be_a_long_random_alphanumeric_value_but_this_still_works
+}
+
+body:json {
+  {
+    "loginId": "lucasgrez3010@gmail.com",
+    "password": "passwordio",
+    "applicationId": "c412a5bf-2524-46e9-85a6-08d1f1777295"
+  }
+}

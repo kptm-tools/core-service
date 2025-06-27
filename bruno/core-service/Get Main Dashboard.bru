@@ -1,0 +1,15 @@
+meta {
+  name: Get Main Dashboard
+  type: http
+  seq: 11
+}
+
+get {
+  url: http://localhost:8000/api/dashboard
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}

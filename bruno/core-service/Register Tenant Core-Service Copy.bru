@@ -1,0 +1,17 @@
+meta {
+  name: Register Tenant Core-Service Copy
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:8000/api/tenant
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+      "name": "My New Example Tenant 30"
+  }
+}

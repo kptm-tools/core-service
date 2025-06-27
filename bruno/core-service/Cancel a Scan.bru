@@ -1,0 +1,15 @@
+meta {
+  name: Cancel a Scan
+  type: http
+  seq: 20
+}
+
+post {
+  url: localhost:8000/api/scans/{{scanID}}/cancel
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth token}}
+}
