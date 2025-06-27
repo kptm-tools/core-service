@@ -1,0 +1,2 @@
+-- Migration: 000027_create_web_vulnerabilities_table.down.sql
+DROP TABLE IF EXISTS web_vulnerabilities;
