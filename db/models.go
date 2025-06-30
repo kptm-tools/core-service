@@ -445,7 +445,6 @@ type WebVulnerability struct {
 	ServiceID       sql.NullInt32  `json:"service_id"`
 	SolutionAdvice  sql.NullString `json:"solution_advice"`
 	Reference       sql.NullString `json:"reference"`
-	OtherInfo       sql.NullString `json:"other_info"`
 	CreatedAt       sql.NullTime   `json:"created_at"`
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
 }

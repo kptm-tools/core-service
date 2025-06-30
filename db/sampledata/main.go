@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"math/rand"
 	"os"
 	"time"
@@ -186,7 +185,7 @@ func populateNetworkOSVulnerabilities(
 					return fmt.Errorf("failed to insert os vulnerability CWE remediation: %w", err)
 				}
 			}
-			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD")
+			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD", "")
 			if err != nil {
 				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
 			}
@@ -224,7 +223,7 @@ func populateNetworkOSVulnerabilities(
 				}
 
 				// 3.2.3 Create a Vulnerability record
-				dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD")
+				dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD", "")
 				if err != nil {
 					return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
 				}
@@ -282,17 +281,16 @@ func populateWebScanVulnerabilities(
 			}
 
 			vulnData := tools.Vulnerability{
-				ID:                 uuid.UUID{},
-				HostID:             uuid.UUID{},
-				ScanID:             uuid.UUID{},
+				HostID:             scan.HostID,
+				ScanID:             scan.ID,
 				CveID:              "",
-				CweID:              "",
+				CweID:              vuln.CweID,
 				Type:               "",
 				BaseCVSSScore:      0,
-				References:         nil,
+				References:         []string{vuln.Reference},
 				Metrics:            nil,
 				CWERemediation:     nil,
-				Description:        "",
+				Description:        vuln.Name,
 				Access:             "",
 				Complexity:         "",
 				PrivilegesRequired: "",
@@ -312,7 +310,7 @@ func populateWebScanVulnerabilities(
 				EPSSDate:           time.Time{},
 			}
 			// 3.2.3 Create a Vulnerability record
-			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vulnData, repository.VulnerabilityTypeEnumWEBAPPLICATION, "OWASP ZAP")
+			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vulnData, repository.VulnerabilityTypeEnumWEBAPPLICATION, "OWASP ZAP", vuln.WascID)
 			if err != nil {
 				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
 			}
