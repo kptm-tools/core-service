@@ -246,7 +246,7 @@ func populateWebScanVulnerabilities(
 	cweDetails []tools.CWERemediation,
 ) error {
 	for _, scan := range scans {
-		sampleWebScanResult := samples.SampleWebScanResults(scan, cweDetails)
+		sampleWebScanResult := samples.SampleWebScanResults()
 		for _, vuln := range sampleWebScanResult.WebVulnerabilities {
 
 			portData := tools.PortData{

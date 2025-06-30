@@ -341,13 +341,63 @@ func SampleNmapScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) t
 	return generateNmapResult(scan, cweDetail)
 }
 
-func SampleWebScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) tools.WebScanResult {
-	return generateWebScanResult(scan, cweDetail)
+func SampleWebScanResults() tools.WebScanResult {
+	return generateWebScanResult()
 }
 
-func generateWebScanResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.WebScanResult {
+func generateWebScanResult() tools.WebScanResult {
 	return tools.WebScanResult{
 		ScanType:           "active",
-		WebVulnerabilities: make([]tools.WebVulnerability, 0),
+		WebVulnerabilities: generateWebVulnerabilities(),
 	}
+}
+
+func generateWebVulnerabilities() []tools.WebVulnerability {
+	webVulnNames := []string{
+		"Cross Site Scripting",
+		"SQL Injection",
+		"Directory Traversal",
+		"Remote File Inclusion",
+		"Command Injection",
+		"Open Redirect",
+		"CSRF",
+		"Sensitive Data Exposure",
+		"Security Misconfiguration",
+		"Broken Authentication",
+	}
+	sizeWebVulns := gofakeit.Number(1, len(webVulnNames))
+	webVulns := make([]tools.WebVulnerability, 0, sizeWebVulns)
+	gofakeit.ShuffleAnySlice(webVulnNames)
+	for i := 0; i < sizeWebVulns; i++ {
+		webVuln := tools.WebVulnerability{
+			Name:       webVulnNames[i],
+			Risk:       enums.RiskCodeType(gofakeit.RandomString([]string{"Low", "Medium", "High", "Informational"})),
+			Instances:  generateInstancesWebVuln(gofakeit.Number(1, 50)),
+			Confidence: enums.ConfidenceWebScanType(gofakeit.RandomString([]string{"Low", "Medium", "High", "FalsePositive"})),
+			Solution:   gofakeit.LoremIpsumWord(),
+			Reference:  gofakeit.URL(),
+			CweID:      "CWE-" + strconv.Itoa(gofakeit.Number(1, 1000)),
+			WascID:     "WASC-" + strconv.Itoa(gofakeit.Number(1, 100)),
+		}
+		webVulns = append(webVulns, webVuln)
+	}
+	return webVulns
+}
+
+func generateInstancesWebVuln(sizeInstances int) []tools.InstanceAlert {
+	instances := make([]tools.InstanceAlert, sizeInstances)
+	methodNames := []string{"GET", "POST", "PUT", "DELETE", "PATCH"}
+	for i := 0; i < sizeInstances; i++ {
+		instance := tools.InstanceAlert{
+			ID:        strconv.Itoa(gofakeit.Number(1, 100)),
+			URI:       gofakeit.URL(),
+			Method:    enums.MethodType(methodNames[gofakeit.Number(0, 3)]),
+			Param:     "JSESSIONID",
+			Attack:    gofakeit.Question(),
+			Evidence:  gofakeit.Comment(),
+			OtherInfo: gofakeit.Comment(),
+		}
+		instances = append(instances, instance)
+	}
+	return instances
 }
