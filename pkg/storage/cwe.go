@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"time"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
@@ -151,4 +152,30 @@ func (r *CWERepo) GetCWERemediationsByCWEID(ctx context.Context, cweID string) (
 	}
 
 	return remediations, nil
+}
+
+func (r *CWERepo) CreateOrUpdateCWEFromWebVulnerability(ctx context.Context, vuln tools.WebVulnerability) (*tools.CWERemediation, error) {
+	if vuln.CweID == "" {
+		return nil, nil
+	}
+
+	queries := r.getQueries(ctx)
+
+	params := repository.CreateOrUpdateCWEDetailParams{
+		CweID:       vuln.CweID,
+		Title:       "",
+		Description: "",
+		LastUpdated: time.Now(),
+	}
+	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tools.CWERemediation{
+		ID:          dbCWE.CweID,
+		Title:       dbCWE.Title,
+		Description: dbCWE.Description,
+		LastUpdated: dbCWE.LastUpdated,
+	}, nil
 }
