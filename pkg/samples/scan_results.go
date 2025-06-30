@@ -340,3 +340,14 @@ func generateNmapResult(scan domain.Scan, cweDetails []tools.CWERemediation) too
 func SampleNmapScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) tools.NmapResult {
 	return generateNmapResult(scan, cweDetail)
 }
+
+func SampleWebScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) tools.WebScanResult {
+	return generateWebScanResult(scan, cweDetail)
+}
+
+func generateWebScanResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.WebScanResult {
+	return tools.WebScanResult{
+		ScanType:           "active",
+		WebVulnerabilities: make([]tools.WebVulnerability, 0),
+	}
+}

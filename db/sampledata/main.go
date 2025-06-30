@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"math/rand"
 	"os"
+	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
@@ -26,6 +28,7 @@ type PopulatorDependencies struct {
 	OSRepo      interfaces.OSRepository
 	ServiceRepo interfaces.ServiceRepository
 	ScanResRepo interfaces.ScanResultRepository
+	WascRepo    interfaces.WASCRepository
 }
 
 func Run() {
@@ -129,6 +132,10 @@ func populateScans(
 		return fmt.Errorf("error populating NetworkOSVulnerabilities: %w", err)
 	}
 
+	if err := populateWebScanVulnerabilities(ctx, deps, sampleScans, cweDetails); err != nil {
+		return fmt.Errorf("error populating WebScanVulnerabilities: %w", err)
+	}
+
 	// Mark scans as Completed and Update Protection Score
 	for _, scan := range sampleScans {
 		if err := deps.ScanRepo.UpdateScanStatusAndEndedAt(
@@ -179,7 +186,7 @@ func populateNetworkOSVulnerabilities(
 					return fmt.Errorf("failed to insert os vulnerability CWE remediation: %w", err)
 				}
 			}
-			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS)
+			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD")
 			if err != nil {
 				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
 			}
@@ -217,7 +224,7 @@ func populateNetworkOSVulnerabilities(
 				}
 
 				// 3.2.3 Create a Vulnerability record
-				dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS)
+				dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD")
 				if err != nil {
 					return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
 				}
@@ -225,6 +232,101 @@ func populateNetworkOSVulnerabilities(
 				err = deps.VulnRepo.CreateNetworkOSVulnerabilityForService(ctx, dbVuln.ID, scan.ID, scan.HostID, service.ID)
 				if err != nil {
 					return fmt.Errorf("failed to create networkOSVulnerability record for service: %w", err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func populateWebScanVulnerabilities(
+	ctx context.Context,
+	deps PopulatorDependencies,
+	scans []domain.Scan,
+	cweDetails []tools.CWERemediation,
+) error {
+	for _, scan := range scans {
+		sampleWebScanResult := samples.SampleWebScanResults(scan, cweDetails)
+		for _, vuln := range sampleWebScanResult.WebVulnerabilities {
+
+			portData := tools.PortData{
+				Protocol: "http",
+				Service: tools.Service{
+					Name:       "",
+					Version:    "",
+					Confidence: 0,
+					CPE:        "",
+				},
+				Product:         "",
+				State:           "",
+				Vulnerabilities: nil,
+			}
+			if vuln.WascID == "45" {
+				portData.Protocol = "nginx"
+			}
+
+			service, err := deps.ServiceRepo.CreateOrUpdateService(ctx, scan.HostID, scan.ID, portData)
+			if err != nil {
+				return fmt.Errorf("failed to create or update service: %w", err)
+			}
+			// 2.1.1 Store CVE detail of the vuln
+			_, err = deps.CWERepo.CreateOrUpdateCWEFromWebVulnerability(ctx, vuln)
+			if err != nil {
+				return fmt.Errorf("failed to insert web scan vulnerability CWE detail: %w", err)
+			}
+
+			// 2.1.2 Store WASC detail of the vuln
+			_, err = deps.WascRepo.CreateOrUpdateWASC(ctx, vuln)
+			if err != nil {
+				return fmt.Errorf("failed to insert web scan vulnerability WASC detail: %w", err)
+			}
+
+			vulnData := tools.Vulnerability{
+				ID:                 uuid.UUID{},
+				HostID:             uuid.UUID{},
+				ScanID:             uuid.UUID{},
+				CveID:              "",
+				CweID:              "",
+				Type:               "",
+				BaseCVSSScore:      0,
+				References:         nil,
+				Metrics:            nil,
+				CWERemediation:     nil,
+				Description:        "",
+				Access:             "",
+				Complexity:         "",
+				PrivilegesRequired: "",
+				Likelihood:         "",
+				RiskScore:          0,
+				ImpactScore:        0,
+				Exploit:            tools.Exploit{},
+				IntegrityImpact:    "",
+				AvailabilityImpact: "",
+				BaseSeverity:       "",
+				AnalystComment:     "",
+				VendorComments:     nil,
+				Published:          time.Time{},
+				LastUpdated:        time.Time{},
+				EPSSScore:          0,
+				EPSSPercentile:     0,
+				EPSSDate:           time.Time{},
+			}
+			// 3.2.3 Create a Vulnerability record
+			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vulnData, repository.VulnerabilityTypeEnumWEBAPPLICATION, "OWASP ZAP")
+			if err != nil {
+				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
+			}
+			// 3.2.4 Create a NetworkOS VulnerabilityRecord
+			err = deps.VulnRepo.CreateWebVulnerability(ctx, dbVuln.ID, scan.ID, scan.HostID, service.ID, vuln.Solution, vuln.Reference)
+			if err != nil {
+				return fmt.Errorf("failed to create networkOSVUlnerability record for OS: %w", err)
+			}
+
+			// 2.1.5 Create a WebScan Detail VulnerabilityRecord
+			for _, vulnDetail := range vuln.Instances {
+				err = deps.VulnRepo.CreateWebVulnerabilityDetail(ctx, dbVuln.ID, vulnDetail.URI, string(vulnDetail.Method), vulnDetail.Param, vulnDetail.Attack, vulnDetail.Evidence, vulnDetail.OtherInfo)
+				if err != nil {
+					return fmt.Errorf("failed to create networkOSVUlnerability record for OS: %w", err)
 				}
 			}
 		}
