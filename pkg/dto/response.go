@@ -248,10 +248,43 @@ type ScanVulnerabilityDetailResponse struct {
 	VendorComments []tools.VendorComment `json:"vendor_comments"`
 	References     []string              `json:"references"`
 
+	Metrics []CVSSMetric `json:"metrics"`
+
+	CWERemediations []CWERemediation `json:"remediation"`
+
+	EPSSScore      *float64   `json:"epss_score,omitempty"`
+	EPSSPercentile *float64   `json:"epss_percentile,omitempty"`
+	EPSSDate       *time.Time `json:"epss_date,omitempty"`
+
 	DateInfo   DateInfo   `json:"date"`
 	PluginInfo PluginInfo `json:"plugin"`
 	VPRKeyD    VPRKeyInfo `json:"vpr_key_d"`
 	RiskInfo   RiskInfo   `json:"risk"`
+}
+
+type CVSSMetric struct {
+	Version             string   `json:"version"`
+	BaseScore           *float64 `json:"base_score"`
+	ImpactScore         *float64 `json:"impact_score"`
+	Severity            *string  `json:"severity"`
+	Access              *string  `json:"access"`
+	Complexity          *string  `json:"complexity"`
+	PrivilegesRequired  *string  `json:"privileges_required"`
+	IntegrityImpact     *string  `json:"integrity_impact"`
+	AvailabilityImpact  *string  `json:"availability_impact"`
+	ExploitabilityScore *float64 `json:"exploitability_score"`
+	Exploitability      *string  `json:"exploitability"`
+}
+
+type CWERemediation struct {
+	ID                 string    `json:"cwe_id"`
+	MitigationID       *string   `json:"mitigation_id"`
+	Title              string    `json:"title"`
+	Phase              *string   `json:"phase"`
+	Description        string    `json:"description"`
+	Effectiveness      *string   `json:"effectiveness"`
+	EffectivenessNotes *string   `json:"effectiveness_notes"`
+	LastUpdated        time.Time `json:"last_updated"`
 }
 
 type HostItem struct {
@@ -400,4 +433,68 @@ func ToScanVulnerabilityItem(vuln tools.Vulnerability) ScanVulnerabilityItem {
 		VendorComments: vuln.VendorComments,
 		References:     vuln.References,
 	}
+}
+
+func ToCVSSMetrics(cvssMetrics []tools.CVSSMetric) []CVSSMetric {
+	if len(cvssMetrics) == 0 {
+		return []CVSSMetric{}
+	}
+
+	result := make([]CVSSMetric, 0, len(cvssMetrics))
+	for _, cm := range cvssMetrics {
+		// convert enum types to strings and get pointers
+		severityStr := cm.Severity.String()
+		accessStr := cm.Access.String()
+		complexityStr := cm.Complexity.String()
+		privRequiredStr := cm.PrivilegesRequired.String()
+		integrityStr := cm.IntegrityImpact.String()
+		availabilityStr := cm.AvailabilityImpact.String()
+		exploitStr := cm.Exploitability.String()
+
+		m := CVSSMetric{
+			Version:             string(cm.Version),
+			BaseScore:           &cm.BaseScore,
+			ImpactScore:         &cm.ImpactScore,
+			Severity:            &severityStr,
+			Access:              &accessStr,
+			Complexity:          &complexityStr,
+			PrivilegesRequired:  &privRequiredStr,
+			IntegrityImpact:     &integrityStr,
+			AvailabilityImpact:  &availabilityStr,
+			ExploitabilityScore: &cm.ExploitabilityScore,
+			Exploitability:      &exploitStr,
+		}
+		result = append(result, m)
+	}
+	return result
+}
+
+func ToCWERemediation(cweRemediations []tools.CWERemediation) []CWERemediation {
+	if len(cweRemediations) == 0 {
+		return []CWERemediation{}
+	}
+
+	result := make([]CWERemediation, 0, len(cweRemediations))
+	for _, cwe := range cweRemediations {
+		// Defensive check for Phase slice with zero elements before accessing Phase[0]
+		var phasePtr *string
+		if len(cwe.Phase) > 0 {
+			phasePtr = &cwe.Phase[0]
+		} else {
+			phasePtr = nil
+		}
+
+		r := CWERemediation{
+			ID:                 cwe.ID,
+			MitigationID:       &cwe.MitigationID,
+			Title:              cwe.Title,
+			Phase:              phasePtr,
+			Description:        cwe.Description,
+			Effectiveness:      &cwe.Effectiveness,
+			EffectivenessNotes: &cwe.EffectivenessNotes,
+			LastUpdated:        cwe.LastUpdated,
+		}
+		result = append(result, r)
+	}
+	return result
 }

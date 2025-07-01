@@ -5,11 +5,11 @@ meta {
 }
 
 get {
-  url: localhost:8000/api/reports
+  url: http://localhost:8000/api/reports
   body: json
   auth: bearer
 }
 
 auth:bearer {
-  token: {{auth token}}
+  token: {{auth_token}}
 }

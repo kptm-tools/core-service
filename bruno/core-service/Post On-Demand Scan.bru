@@ -5,13 +5,13 @@ meta {
 }
 
 post {
-  url: localhost:8000/api/scans
+  url: http://localhost:8000/api/scans
   body: json
   auth: bearer
 }
 
 auth:bearer {
-  token: {{auth token}}
+  token: {{auth_token}}
 }
 
 body:json {
