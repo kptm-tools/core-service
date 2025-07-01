@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: localhost:8000/api/scans/{{scanID}}/vulnerabilities/summary
+  url: http://localhost:8000/api/scans/{{scanID}}/vulnerabilities/summary
   body: json
   auth: bearer
 }
