@@ -51,6 +51,7 @@ func Run() {
 		OSRepo:      store.OS,
 		ServiceRepo: store.Service,
 		ScanResRepo: store.ScanResult,
+		WascRepo:    store.Wasc,
 	}
 
 	command := os.Args[1]
@@ -131,7 +132,7 @@ func populateScans(
 		return fmt.Errorf("error populating NetworkOSVulnerabilities: %w", err)
 	}
 
-	if err := populateWebScanVulnerabilities(ctx, deps, sampleScans, cweDetails); err != nil {
+	if err := populateWebScanVulnerabilities(ctx, deps, sampleScans); err != nil {
 		return fmt.Errorf("error populating WebScanVulnerabilities: %w", err)
 	}
 
@@ -242,7 +243,6 @@ func populateWebScanVulnerabilities(
 	ctx context.Context,
 	deps PopulatorDependencies,
 	scans []domain.Scan,
-	cweDetails []tools.CWERemediation,
 ) error {
 	for _, scan := range scans {
 		sampleWebScanResult := samples.SampleWebScanResults()
@@ -257,7 +257,7 @@ func populateWebScanVulnerabilities(
 					CPE:        "",
 				},
 				Product:         "",
-				State:           "",
+				State:           "closed",
 				Vulnerabilities: nil,
 			}
 			if vuln.WascID == "45" {
@@ -268,7 +268,7 @@ func populateWebScanVulnerabilities(
 			if err != nil {
 				return fmt.Errorf("failed to create or update service: %w", err)
 			}
-			// 2.1.1 Store CVE detail of the vuln
+			// 2.1.1 Store CWE detail of the vuln
 			_, err = deps.CWERepo.CreateOrUpdateCWEFromWebVulnerability(ctx, vuln)
 			if err != nil {
 				return fmt.Errorf("failed to insert web scan vulnerability CWE detail: %w", err)
