@@ -18,40 +18,6 @@ Two common patterns are available in Go:
 - **Pointers for null values**: Using pointers (e.g., `*string`, `*int`) to represent nullable fields, where `nil` means the value is explicitly null.
 - **`omitempty` tag**: Using the `omitempty` struct tag to omit fields that have zero values from the JSON output, modeling implicit absence.
 
-## ⚖️ Alternatives Considered
-
-### Alternative 1: Use pointers for all optional fields without `omitempty`
-
-- Pros:
-  - Explicitly represents presence or absence (`nil` vs set value).
-  - JSON will include fields with `null` value if pointer is nil (if no `omitempty` used).
-- Cons:
-  - All optional fields appear in JSON even if null, which might clutter responses.
-  - Consumers must handle explicit nulls.
-
-### Alternative 2: Use value types with `omitempty` only
-
-- Pros:
-  - Keeps JSON payloads smaller by omitting empty values.
-  - Simpler struct definitions for some fields.
-- Cons:
-  - Cannot distinguish between "zero value" and "absent value".
-  - Less explicit about null semantics.
-
-### Alternative 3: Combine pointers and `omitempty` where appropriate (Chosen approach)
-
-- Use pointers (`*Type`) for fields where explicit null values are semantically significant.
-- Use `omitempty` tag on pointer fields to exclude absent/null values from JSON output.
-- Use value types with `omitempty` for truly optional fields with no need to distinguish explicit null.
-
-- Pros:
-  - Flexible and explicit optionality representation.
-  - Keeps JSON payloads concise while maintaining clarity.
-  - Matches expectations for APIs consuming this data.
-- Cons:
-  - Slightly more complex structs and marshaling logic.
-  - Developers must understand pointer semantics and JSON tags properly.
-
 ## 💪 Decision
 
 We decided to adopt **Alternative 3**—a combined approach using pointers for fields that require explicit nullability, paired with the `omitempty` JSON struct tag to omit absent fields during marshaling.
