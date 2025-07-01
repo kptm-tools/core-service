@@ -428,4 +428,35 @@ type Vulnerability struct {
 	CreatedAt      sql.NullTime          `json:"created_at"`
 	UpdatedAt      sql.NullTime          `json:"updated_at"`
 	CweID          sql.NullString        `json:"cwe_id"`
+	WascID         sql.NullString        `json:"wasc_id"`
+}
+
+type WascDetail struct {
+	WascID      string    `json:"wasc_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	LastUpdated time.Time `json:"last_updated"`
+}
+
+type WebVulnerability struct {
+	VulnerabilityID uuid.UUID      `json:"vulnerability_id"`
+	ScanID          uuid.UUID      `json:"scan_id"`
+	HostID          uuid.UUID      `json:"host_id"`
+	ServiceID       sql.NullInt32  `json:"service_id"`
+	SolutionAdvice  sql.NullString `json:"solution_advice"`
+	Reference       sql.NullString `json:"reference"`
+	OtherInfo       sql.NullString `json:"other_info"`
+	CreatedAt       sql.NullTime   `json:"created_at"`
+	UpdatedAt       sql.NullTime   `json:"updated_at"`
+}
+
+type WebVulnerabilityDetail struct {
+	ID              uuid.UUID      `json:"id"`
+	VulnerabilityID uuid.UUID      `json:"vulnerability_id"`
+	Uri             sql.NullString `json:"uri"`
+	Method          sql.NullString `json:"method"`
+	Param           sql.NullString `json:"param"`
+	Attack          sql.NullString `json:"attack"`
+	Evidence        sql.NullString `json:"evidence"`
+	OtherInfo       sql.NullString `json:"other_info"`
 }
