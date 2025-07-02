@@ -449,7 +449,7 @@ type WebVulnerability struct {
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
 }
 
-type WebVulnerabilityDetail struct {
+type WebVulnerabilityInstance struct {
 	ID              uuid.UUID      `json:"id"`
 	VulnerabilityID uuid.UUID      `json:"vulnerability_id"`
 	Uri             sql.NullString `json:"uri"`

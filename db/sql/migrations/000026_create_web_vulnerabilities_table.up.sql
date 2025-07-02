@@ -1,4 +1,4 @@
--- Migration: 000027_create_web_vulnerabilities_table.up.sql
+-- Migration: 000026_create_web_vulnerabilities_table.up.sql
 CREATE TABLE IF NOT EXISTS web_vulnerabilities (
     vulnerability_id UUID PRIMARY KEY,
     scan_id UUID NOT NULL, -- The specific scan run that found this instance
