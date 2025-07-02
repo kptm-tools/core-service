@@ -73,6 +73,7 @@ func (r *ScanRepo) GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([
 			ScanDate: dbScan.ScanDate.Time.Format(time.RFC822),
 			Host:     dbScan.HostAlias,
 			Duration: dbScan.DurationInSeconds,
+			Status:   string(dbScan.Status),
 		}
 	}
 	return scanSummaries, nil
