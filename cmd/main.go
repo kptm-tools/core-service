@@ -105,7 +105,7 @@ func main() {
 
 	// Server
 	s := api.NewAPIServer(
-		":8000",
+		":"+c.Server.Port,
 		healthHandler,
 		hostHandlers,
 		dashboardHandlers,

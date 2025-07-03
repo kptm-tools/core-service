@@ -19,6 +19,12 @@ func NewHealthcheckHandlers(healthcheckService interfaces.IHealthcheckService) *
 	}
 }
 
+// @Summary      HealthCheck
+// @Description  Check status of the UW Auth service
+// @Tags         System Status
+// @Produce      json
+// @Success      200  {string}  string  "Healthcheck - OK"
+// @Router       /healthcheck [get]
 func (h *HealthcheckHandlers) Healthcheck(w http.ResponseWriter, req *http.Request) error {
 	status := h.healthcheckService.CheckHealth()
 

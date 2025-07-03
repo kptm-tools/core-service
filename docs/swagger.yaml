@@ -1,0 +1,22 @@
+info:
+  contact: {}
+paths:
+  /healthcheck:
+    get:
+      description: Check status of the UW Auth service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Healthcheck - OK
+          schema:
+            type: string
+      summary: HealthCheck
+      tags:
+      - System Status
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

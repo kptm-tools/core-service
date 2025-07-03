@@ -11,7 +11,11 @@ import (
 )
 
 type Config struct {
-	AllowedOrigins string
+	Server struct {
+		Host           string
+		Port           string
+		AllowedOrigins string
+	}
 
 	FusionAuth struct {
 		APIKey                 string
@@ -69,7 +73,15 @@ func load() *Config {
 		}
 	}
 
-	cfg := &Config{
+	cfg := &Config{}
+
+	cfg.Server = struct {
+		Host           string
+		Port           string
+		AllowedOrigins string
+	}{
+		Host:           fetchEnv("SERVER_HOST", "localhost"),
+		Port:           fetchEnv("SERVER_PORT", "8000"),
 		AllowedOrigins: fetchEnv("ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:5173"),
 	}
 
@@ -180,7 +192,7 @@ func (c *Config) PostgreSQLCoreDatabaseURL() string {
 }
 
 func (c *Config) GetAllowedOrigins() []string {
-	return strings.Split(c.AllowedOrigins, ",")
+	return strings.Split(c.Server.AllowedOrigins, ",")
 }
 
 func (c *Config) GetNatsConnStr() string {
@@ -193,4 +205,27 @@ func (c *Config) GetNatsHealthcheckURL() string {
 
 func isTestEnv() bool {
 	return os.Getenv("GO_ENV") == "test" || strings.HasSuffix(os.Args[0], ".test")
+}
+
+func (c *Config) GetServerHost(hasPrefix bool) string {
+	var s string
+	if c.Server.Host == "localhost" {
+		s = c.Server.Host + ":" + c.Server.Port
+		if !hasPrefix {
+			return s
+		}
+		return "http://" + s
+	} else {
+		if !hasPrefix {
+			return c.Server.Host
+		}
+		return "https://" + s
+	}
+}
+
+func (c *Config) GetScheme() []string {
+	if c.Server.Host == "localhost" {
+		return []string{"http"}
+	}
+	return []string{"https"}
 }

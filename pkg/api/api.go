@@ -8,10 +8,14 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/kptm-tools/core-service/docs"
+	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/middleware"
 
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type APIServer struct {
@@ -61,11 +65,28 @@ func NewAPIServer(
 	}
 }
 
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 func (s *APIServer) Init() http.Server {
+	c := config.LoadConfig()
+
+	docs.SwaggerInfo.Title = "KPTM Core Service API"
+	docs.SwaggerInfo.Description = "KPTM Core Service API documentation"
+	docs.SwaggerInfo.Version = "1.0.0"
+	docs.SwaggerInfo.Host = c.GetServerHost(false)
+	docs.SwaggerInfo.BasePath = ""
+	docs.SwaggerInfo.Schemes = c.GetScheme()
+
 	router := http.NewServeMux()
 
 	go s.scanHub.Run()
 	go s.reportHub.Run()
+
+	// swagger
+	router.HandleFunc("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL(c.GetServerHost(true)+"/swagger/doc.json"),
+	))
 
 	router.HandleFunc("GET /healthcheck",
 		makeHTTPHandlerFunc(s.healthHandlers.Healthcheck),
