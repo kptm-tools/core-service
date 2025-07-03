@@ -19,9 +19,9 @@ func NewHealthcheckHandlers(healthcheckService interfaces.IHealthcheckService) *
 	}
 }
 
-// Healthcheck returns the overall health status of the UW Auth service.
+// Healthcheck returns the overall health status of the KPTM Tools - Core Service.
 // @Summary      HealthCheck
-// @Description  Check status of the UW Auth service
+// @Description  Check status of the KPTM Tools - Core Service
 // @Tags         System Status
 // @Produce      json
 // @Success      200  {string}  string  "Healthcheck - OK"
