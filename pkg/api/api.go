@@ -65,6 +65,7 @@ func NewAPIServer(
 	}
 }
 
+// Init configures and returns the HTTP server with all routes, middleware, and Swagger metadata.
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization

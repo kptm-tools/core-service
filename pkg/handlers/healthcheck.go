@@ -19,6 +19,7 @@ func NewHealthcheckHandlers(healthcheckService interfaces.IHealthcheckService) *
 	}
 }
 
+// Healthcheck returns the overall health status of the UW Auth service.
 // @Summary      HealthCheck
 // @Description  Check status of the UW Auth service
 // @Tags         System Status
