@@ -119,3 +119,45 @@ func (q *Queries) GetServiceByID(ctx context.Context, id int32) (Service, error)
 	)
 	return i, err
 }
+
+const getServiceByScanIDAndHostIDAndPortAndProtocol = `-- name: GetServiceByScanIDAndHostIDAndPortAndProtocol :one
+SELECT id, host_id, scan_id, port, protocol, sv_name, sv_version, confidence, cpe, product, port_state, created_at, updated_at
+FROM services
+WHERE scan_id = $1
+  AND host_id = $2
+  AND port = $3
+  AND protocol = $4
+`
+
+type GetServiceByScanIDAndHostIDAndPortAndProtocolParams struct {
+	ScanID   uuid.UUID      `json:"scan_id"`
+	HostID   uuid.UUID      `json:"host_id"`
+	Port     int32          `json:"port"`
+	Protocol sql.NullString `json:"protocol"`
+}
+
+func (q *Queries) GetServiceByScanIDAndHostIDAndPortAndProtocol(ctx context.Context, arg GetServiceByScanIDAndHostIDAndPortAndProtocolParams) (Service, error) {
+	row := q.db.QueryRowContext(ctx, getServiceByScanIDAndHostIDAndPortAndProtocol,
+		arg.ScanID,
+		arg.HostID,
+		arg.Port,
+		arg.Protocol,
+	)
+	var i Service
+	err := row.Scan(
+		&i.ID,
+		&i.HostID,
+		&i.ScanID,
+		&i.Port,
+		&i.Protocol,
+		&i.SvName,
+		&i.SvVersion,
+		&i.Confidence,
+		&i.Cpe,
+		&i.Product,
+		&i.PortState,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
