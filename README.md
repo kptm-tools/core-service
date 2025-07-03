@@ -49,6 +49,7 @@ Welcome to **Core-Service**, the heart of the Kriptome-Tools project! This servi
 | `make help`          | Display all available commands.              |
 | `make tidy`          | Tidy mod files and format Go files.          |
 | `make build`         | Build the application binary.                |
+| `make swagger`       | Build the swagger file with current code.    |
 | `make run`           | Run the application locally.                 |
 | `make run/live`      | Run the application with live reload.        |
 | `make populate`      | Populate the database with sample data.      |
@@ -91,6 +92,8 @@ docker-compose up --build
 |-----------|----------------------------------------------|
 | `/cmd`    | Main application entry points and utilities.|
 | `/pkg`    | Core libraries and reusable components.     |
+| `/docs`   | Documentation and swagger file.             |
+| `/db`     | Database layer with SQL and SQLc with Tools.|
 | `/bin`    | Compiled binary artifacts.                  |
 
 ---

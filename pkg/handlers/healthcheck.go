@@ -19,6 +19,13 @@ func NewHealthcheckHandlers(healthcheckService interfaces.IHealthcheckService) *
 	}
 }
 
+// Healthcheck returns the overall health status of the KPTM Tools - Core Service.
+// @Summary      HealthCheck
+// @Description  Check status of the KPTM Tools - Core Service
+// @Tags         System Status
+// @Produce      json
+// @Success      200  {string}  string  "Healthcheck - OK"
+// @Router       /healthcheck [get]
 func (h *HealthcheckHandlers) Healthcheck(w http.ResponseWriter, req *http.Request) error {
 	status := h.healthcheckService.CheckHealth()
 

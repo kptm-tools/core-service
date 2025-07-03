@@ -47,6 +47,11 @@ run/live:
 		--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, git, png, bmp, wbp, ico" \
 		--misc.clean_on_exit "true"
 
+## swagger: run the swagger generator
+.PHONY: swagger
+swagger:
+	swag init -g pkg/api/api.go
+
 # ==================================================================================== #
 # DATABASE MIGRATIONS
 # ==================================================================================== #
