@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/kptm-tools/core-service/pkg/services"
 	"math/rand"
 	"os"
 	"time"
@@ -28,6 +29,7 @@ type PopulatorDependencies struct {
 	ServiceRepo interfaces.ServiceRepository
 	ScanResRepo interfaces.ScanResultRepository
 	WascRepo    interfaces.WASCRepository
+	ScanService interfaces.IScanService
 }
 
 func Run() {
@@ -41,7 +43,7 @@ func Run() {
 	if err != nil {
 		panic(err)
 	}
-
+	scanService := services.NewScanService(store.Vulnerability, store.Scan, store.Host, store.ScanResult)
 	deps := PopulatorDependencies{
 		HostRepo:    store.Host,
 		ScanRepo:    store.Scan,
@@ -52,6 +54,7 @@ func Run() {
 		ServiceRepo: store.Service,
 		ScanResRepo: store.ScanResult,
 		WascRepo:    store.Wasc,
+		ScanService: scanService,
 	}
 
 	command := os.Args[1]
