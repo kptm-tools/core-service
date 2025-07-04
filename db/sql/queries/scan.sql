@@ -248,3 +248,104 @@ WHERE
 ORDER BY
   started_at ASC
 LIMIT 1;
+
+-- name: GetAssetsByScanID :many
+-- name: GetAssetsWithVulnerabilitiesByScanID :many
+WITH os_assets AS (
+    SELECT
+        'os' AS asset_type,
+        os.id,
+        os.host_id,
+        os.scan_id,
+        os.os_name AS name,
+        NULL::VARCHAR AS version,
+        os.family,
+        os.os_type,
+        NULL::INTEGER AS port,
+        NULL::VARCHAR AS protocol,
+        os.fingerprint,
+        os.cpe,
+        NULL::VARCHAR AS product,
+        os.accuracy,
+        NULL::port_state_enum AS port_state,
+
+        COUNT(v.id) AS total_vulnerabilities_count,
+        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
+        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
+        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
+        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count,
+
+        os.created_at,
+        os.updated_at
+    FROM operating_systems os
+    LEFT JOIN vulnerabilities v ON os.host_id = v.host_id
+                             AND os.scan_id = v.scan_id
+                             AND v.vuln_type = 'NETWORK_OS'
+    WHERE os.scan_id = $1
+    GROUP BY
+        os.id,
+        os.host_id,
+        os.scan_id,
+        os.os_name,
+        os.family,
+        os.os_type,
+        os.fingerprint,
+        os.cpe,
+        os.accuracy,
+        os.created_at,
+        os.updated_at
+),
+service_assets AS (
+    SELECT
+        'service' AS asset_type,
+        s.id,
+        s.host_id,
+        s.scan_id,
+        s.sv_name AS name,
+        s.sv_version AS version,
+        NULL::VARCHAR AS family,
+        NULL::VARCHAR AS os_type,
+        s.port,
+        s.protocol,
+        NULL::TEXT AS fingerprint,
+        s.cpe,
+        s.product,
+        s.confidence AS accuracy,
+        s.port_state,
+
+        COUNT(v.id) AS total_vulnerabilities_count,
+        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
+        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
+        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
+        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count,
+
+        s.created_at,
+        s.updated_at
+    FROM services s
+    LEFT JOIN vulnerabilities v ON s.host_id = v.host_id
+                             AND s.scan_id = v.scan_id
+                             AND v.vuln_type = 'WEB_APPLICATION'
+    WHERE s.scan_id = $1
+    GROUP BY
+        s.id,
+        s.host_id,
+        s.scan_id,
+        s.sv_name,
+        s.sv_version,
+        s.port,
+        s.protocol,
+        s.cpe,
+        s.product,
+        s.confidence,
+        s.port_state,
+        s.created_at,
+        s.updated_at
+)
+SELECT * FROM os_assets
+UNION ALL
+SELECT * FROM service_assets
+ORDER BY host_id, asset_type, created_at;

@@ -16,6 +16,7 @@ type MockScanRepo struct {
 	MockCreateScan                 func(context.Context, domain.Scan) (*domain.Scan, error)
 	MockGetScansForTenant          func(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
 	MockGetScanByID                func(context.Context, uuid.UUID) (*domain.Scan, error)
+	MockGetScanAssetsByID          func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error)
 	MockGetScanInsightsBaseData    func(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
 	MockGetLatestScanByHostID      func(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
 	MockGetOldestScanByHostID      func(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
@@ -48,6 +49,13 @@ func (m *MockScanRepo) GetScanByID(ctx context.Context, id uuid.UUID) (*domain.S
 		return m.MockGetScanByID(ctx, id)
 	}
 	panic(fmt.Sprintf("MockScanRepo: method GetScanByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanRepo) GetScanAssetsByID(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
+	if m.MockGetScanAssetsByID != nil {
+		return m.MockGetScanAssetsByID(ctx, scanID)
+	}
+	panic(fmt.Sprintf("MockScanRepo: method GetScanAssetsByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }
 
 func (m *MockScanRepo) GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error) {

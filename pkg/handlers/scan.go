@@ -142,6 +142,21 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 	return api.WriteJSON(w, http.StatusCreated, scan)
 }
 
+// GetScanAssetsByID returns assets from the OS and Services based on the ScanID of the KPTM Tools - Core Service.
+// @Summary      GetScanAssetsByID
+// @Description  Retrive assets from the OS and Services based on the ScanID KPTM Tools - Core Service
+// @Tags         Scans
+// @Produce      json
+// @Success      200  {object}  dto.ScanAssetsResponse
+// @Failure      404  {object}  api.APIError  "Scan not found"
+// @Failure      409  {object}  api.APIError  "Scan status not completed"
+// @Failure      500  {object}  api.APIError  "Internal server error"
+// @Router       /api/scans/{id}/assets [get]
+func (h *ScanHandlers) GetScanAssetsByID(w http.ResponseWriter, req *http.Request) error {
+	response := dto.ScanAssetsResponse{}
+	return api.WriteJSON(w, http.StatusOK, response)
+}
+
 func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
 	ctx := req.Context()
 	scanID, err := GetUUID(req)

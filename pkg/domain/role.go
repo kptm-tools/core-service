@@ -24,6 +24,7 @@ const (
 	// Scan Actions
 	ActionScanCreate                      Action = "scan:create"
 	ActionScanCancelByID                  Action = "scan:cancel_by_id"
+	ActionScanGetAssetsByID               Action = "scan:get_assets_by_id"
 	ActionScanGetInsightsByID             Action = "scan:get_insights_by_id"
 	ActionScanGetVulnerabilitiesByID      Action = "scan:get_vulnerabilities_by_id"
 	ActionScanGetVulnerabilitySummaryByID Action = "scan:get_vulnerability_summary_by_id"

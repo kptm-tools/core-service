@@ -111,13 +111,18 @@ type DataPoint struct {
 	Y float64 `json:"y"`
 }
 
+type ScanAssetsResponse struct {
+	OperatingSystem domain.OperatingSystem `json:"operating_system"`
+	Services        []domain.Service       `json:"services"`
+}
+
 // ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
 // associated to a scan.
 type ScanVulnerabilityItemsResponse struct {
 	ScanDate             time.Time               `json:"scan_date"`
 	Alias                string                  `json:"alias"`
 	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
-	SeverityCounts       tools.SeverityCounts    `json:"severity_counts,omitempty"`
+	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
 	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
 }
 

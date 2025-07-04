@@ -111,6 +111,7 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("PATCH /api/hosts/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.hostHandlers.PatchHostByID), domain.ActionHostPatchByID))
 
 	router.HandleFunc("POST /api/scans", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CreateScan), domain.ActionScanCreate))
+	router.HandleFunc("GET /api/scans/{id}/assets", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanAssetsByID), domain.ActionScanGetAssetsByID))
 	router.HandleFunc("POST /api/scans/{id}/cancel", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.CancelScanByID), domain.ActionScanCancelByID))
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), domain.ActionScanGetInsightsByID))
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilities), domain.ActionScanGetVulnerabilitiesByID))
