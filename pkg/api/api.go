@@ -66,9 +66,10 @@ func NewAPIServer(
 }
 
 // Init configures and returns the HTTP server with all routes, middleware, and Swagger metadata.
-// @securityDefinitions.apikey ApiKeyAuth
+// @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+// @description Type “Bearer” followed by a space and your JWT token.
 func (s *APIServer) Init() http.Server {
 	c := config.LoadConfig()
 

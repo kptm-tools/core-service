@@ -144,13 +144,16 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 
 // GetScanAssetsByID returns assets from the OS and Services based on the ScanID of the KPTM Tools - Core Service.
 // @Summary      GetScanAssetsByID
-// @Description  Retrive assets from the OS and Services based on the ScanID KPTM Tools - Core Service
+// @Description  Retrieve assets from the OS and Services based on the ScanID of KPTM Tools - Core Service
 // @Tags         Scans
 // @Produce      json
-// @Success      200  {object}  dto.ScanAssetsResponse
-// @Failure      404  {object}  api.APIError  "Scan not found"
-// @Failure      409  {object}  api.APIError  "Scan status not completed"
-// @Failure      500  {object}  api.APIError  "Internal server error"
+// @Param        id             path      string  true  "Scan ID"
+// @Success      200            {object}  dto.ScanAssetsResponse
+// @Failure      401            {object}  api.APIError         "Unauthorized"
+// @Failure      404            {object}  api.APIError         "Scan not found"
+// @Failure      409            {object}  api.APIError         "Scan status not completed"
+// @Failure      500            {object}  api.APIError         "Internal server error"
+// @Security     BearerAuth
 // @Router       /api/scans/{id}/assets [get]
 func (h *ScanHandlers) GetScanAssetsByID(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()

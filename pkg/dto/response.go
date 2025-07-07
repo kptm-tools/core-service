@@ -111,49 +111,133 @@ type DataPoint struct {
 	Y float64 `json:"y"`
 }
 
+// ScanAssetsOperatingSystem store system data detected on a host.
+// @name ScanAssetsOperatingSystem
 type ScanAssetsOperatingSystem struct {
-	ID                   int32  `json:"id"`
-	HostID               string `json:"host_id"`
-	ScanID               string `json:"scan_id"`
-	Name                 string `json:"name"`
-	Version              string `json:"version"`
-	Family               string `json:"family"`
-	OSType               string `json:"os_type"`
-	Fingerprint          string `json:"fingerprint"`
-	CPE                  string `json:"cpe"`
-	Accuracy             int    `json:"accuracy"`
-	TotalVulnerabilities int    `json:"total_vulnerabilities_count"`
-	CriticalCount        int    `json:"critical_count"`
-	HighCount            int    `json:"high_count"`
-	MediumCount          int    `json:"medium_count"`
-	LowCount             int    `json:"low_count"`
-	NoneCount            int    `json:"none_count"`
-	UnknownCount         int    `json:"unknown_count"`
+	// id is the unique identifier for the OS record.
+	// required: true
+	ID int32 `json:"id"`
+
+	// host_id is the identifier of the scanned host.
+	// required: true
+	HostID string `json:"host_id"`
+
+	// scan_id is the identifier of the scan this record belongs to.
+	// required: true
+	ScanID string `json:"scan_id"`
+
+	// name of the operating system (e.g. "Ubuntu").
+	// required: true
+	Name string `json:"name"`
+
+	// version of the operating system (e.g. "20.04").
+	Version string `json:"version"`
+
+	// family groups this OS into a family (e.g. "Linux").
+	Family string `json:"family"`
+
+	// os_type indicates the OS type (e.g. "unix", "windows").
+	OSType string `json:"os_type"`
+
+	// fingerprint used to identify the OS.
+	// Fingerprint string `json:"fingerprint"`
+
+	// cpe is the Common Platform Enumeration string.
+	CPE string `json:"cpe"`
+
+	// accuracy is the confidence percentage of the detection.
+	Accuracy int `json:"accuracy"`
+
+	// total_vulnerabilities_count total number of detected vulnerabilities.
+	TotalVulnerabilities int `json:"total_vulnerabilities_count"`
+
+	// critical_count count of critical vulnerabilities.
+	CriticalCount int `json:"critical_count"`
+
+	// high_count count of high-severity vulnerabilities.
+	HighCount int `json:"high_count"`
+
+	// medium_count count of medium-severity vulnerabilities.
+	MediumCount int `json:"medium_count"`
+
+	// low_count count of low-severity vulnerabilities.
+	LowCount int `json:"low_count"`
+
+	// none_count count of items without severity classification.
+	NoneCount int `json:"none_count"`
+
+	// unknown_count count of vulnerabilities with unknown severity.
+	UnknownCount int `json:"unknown_count"`
 }
 
+// ScanAssetsService store service data detected on a host.
+// @name ScanAssetsService
 type ScanAssetsService struct {
-	ID                   int32  `json:"id"`
-	HostID               string `json:"host_id"`
-	ScanID               string `json:"scan_id"`
-	Name                 string `json:"name"`
-	Version              string `json:"version"`
-	Port                 int    `json:"port"`
-	Protocol             string `json:"protocol"`
-	CPE                  string `json:"cpe"`
-	Product              string `json:"product"`
-	PortState            string `json:"port_state"`
-	TotalVulnerabilities int    `json:"total_vulnerabilities_count"`
-	CriticalCount        int    `json:"critical_count"`
-	HighCount            int    `json:"high_count"`
-	MediumCount          int    `json:"medium_count"`
-	LowCount             int    `json:"low_count"`
-	NoneCount            int    `json:"none_count"`
-	UnknownCount         int    `json:"unknown_count"`
+	// id is the unique identifier for the service record.
+	// required: true
+	ID int32 `json:"id"`
+
+	// host_id is the identifier of the scanned host.
+	// required: true
+	HostID string `json:"host_id"`
+
+	// scan_id is the identifier of the scan this record belongs to.
+	// required: true
+	ScanID string `json:"scan_id"`
+
+	// name of the service (e.g. "ssh").
+	Name string `json:"name"`
+
+	// version of the service or product.
+	Version string `json:"version"`
+
+	// port number where the service is running.
+	Port int `json:"port"`
+
+	// protocol used by the service (e.g. "tcp", "udp").
+	Protocol string `json:"protocol"`
+
+	// cpe is the Common Platform Enumeration string.
+	CPE string `json:"cpe"`
+
+	// product name (e.g. "OpenSSH").
+	Product string `json:"product"`
+
+	// port_state indicates the port state (e.g. "open", "closed").
+	PortState string `json:"port_state"`
+
+	// total_vulnerabilities_count total number of detected vulnerabilities.
+	TotalVulnerabilities int `json:"total_vulnerabilities_count"`
+
+	// critical_count count of critical vulnerabilities.
+	CriticalCount int `json:"critical_count"`
+
+	// high_count count of high-severity vulnerabilities.
+	HighCount int `json:"high_count"`
+
+	// medium_count count of medium-severity vulnerabilities.
+	MediumCount int `json:"medium_count"`
+
+	// low_count count of low-severity vulnerabilities.
+	LowCount int `json:"low_count"`
+
+	// none_count count of items without severity classification.
+	NoneCount int `json:"none_count"`
+
+	// unknown_count count of vulnerabilities with unknown severity.
+	UnknownCount int `json:"unknown_count"`
 }
 
+// ScanAssetsResponse Contains operating system and service asset information for a scan.
+// @name ScanAssetsResponse
 type ScanAssetsResponse struct {
-	ScanAssetsOperatingSystem ScanAssetsOperatingSystem `json:"operating_system"`
-	ScanAssetsServices        []ScanAssetsService       `json:"services"`
+	// operating_system holds the data of the detected operating system.
+	// required: true
+	OperatingSystem ScanAssetsOperatingSystem `json:"operating_system"`
+
+	// services is the list of services detected on the host.
+	// required: true
+	Services []ScanAssetsService `json:"services"`
 }
 
 // ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
@@ -553,7 +637,7 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 		switch r.AssetType {
 		case "os":
 			// Map OS
-			response.ScanAssetsOperatingSystem = ScanAssetsOperatingSystem{
+			response.OperatingSystem = ScanAssetsOperatingSystem{
 				ID:                   r.ID,
 				HostID:               r.HostID.String(),
 				ScanID:               r.ScanID.String(),
@@ -561,7 +645,7 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 				Version:              r.Version,
 				Family:               r.Family,
 				OSType:               r.OsType,
-				Fingerprint:          r.Fingerprint,
+				// Fingerprint:          r.Fingerprint,
 				CPE:                  r.Cpe,
 				Accuracy:             int(r.Accuracy),
 				TotalVulnerabilities: int(r.TotalVulnerabilitiesCount),
@@ -592,7 +676,7 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 				NoneCount:            int(r.NoneCount),
 				UnknownCount:         int(r.UnknownCount),
 			}
-			response.ScanAssetsServices = append(response.ScanAssetsServices, service)
+			response.Services = append(response.Services, service)
 		}
 	}
 

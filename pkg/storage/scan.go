@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -85,7 +86,17 @@ func (r *ScanRepo) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.S
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("Data from DB")
+	fmt.Println(dbScan)
+	fmt.Println(dbScan.Status)
+
 	domScan := toDomainScan(dbScan)
+	fmt.Println("")
+	fmt.Println("Dat from domain")
+	fmt.Println(domScan)
+	fmt.Println(domScan.Status)
+
 	return &domScan, nil
 }
 
@@ -332,13 +343,15 @@ func (r *ScanRepo) GetLatestScanByHostID(
 
 func toDomainScan(dbScan repository.Scan) domain.Scan {
 	return domain.Scan{
-		ID:         dbScan.ID,
-		HostID:     dbScan.HostID,
-		TenantID:   dbScan.TenantID,
-		OperatorID: dbScan.OperatorID,
-		CreatedAt:  dbScan.CreatedAt.Time,
-		UpdatedAt:  dbScan.UpdatedAt.Time,
-		StartedAt:  dbScan.StartedAt.Time,
-		EndedAt:    &dbScan.EndedAt.Time,
+		ID:              dbScan.ID,
+		HostID:          dbScan.HostID,
+		TenantID:        dbScan.TenantID,
+		Status:          string(dbScan.Status),
+		ProtectionScore: &dbScan.ProtectionScore,
+		OperatorID:      dbScan.OperatorID,
+		CreatedAt:       dbScan.CreatedAt.Time,
+		UpdatedAt:       dbScan.UpdatedAt.Time,
+		StartedAt:       dbScan.StartedAt.Time,
+		EndedAt:         &dbScan.EndedAt.Time,
 	}
 }

@@ -15,9 +15,66 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/login": {
+            "post": {
+                "description": "Authenticate a user by login ID, password and application ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "loginRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/scans/{id}/assets": {
             "get": {
-                "description": "Retrive assets from the OS and Services based on the ScanID KPTM Tools - Core Service",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve assets from the OS and Services based on the ScanID of KPTM Tools - Core Service",
                 "produces": [
                     "application/json"
                 ],
@@ -25,29 +82,44 @@ const docTemplate = `{
                     "Scans"
                 ],
                 "summary": "GetScanAssetsByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ScanAssetsResponse"
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanAssetsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
                         }
                     },
                     "404": {
                         "description": "Scan not found",
                         "schema": {
-                            "$ref": "#/definitions/api.APIError"
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
                         }
                     },
                     "409": {
                         "description": "Scan status not completed",
                         "schema": {
-                            "$ref": "#/definitions/api.APIError"
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.APIError"
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
                         }
                     }
                 }
@@ -75,7 +147,338 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.APIError": {
+        "fusionauth.AuthenticatorConfiguration": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "$ref": "#/definitions/fusionauth.TOTPAlgorithm"
+                },
+                "codeLength": {
+                    "type": "integer"
+                },
+                "timeStep": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fusionauth.BreachedPasswordStatus": {
+            "type": "string",
+            "enum": [
+                "None",
+                "ExactMatch",
+                "SubAddressMatch",
+                "PasswordOnly",
+                "CommonPassword"
+            ],
+            "x-enum-varnames": [
+                "BreachedPasswordStatus_None",
+                "BreachedPasswordStatus_ExactMatch",
+                "BreachedPasswordStatus_SubAddressMatch",
+                "BreachedPasswordStatus_PasswordOnly",
+                "BreachedPasswordStatus_CommonPassword"
+            ]
+        },
+        "fusionauth.ChangePasswordReason": {
+            "type": "string",
+            "enum": [
+                "Administrative",
+                "Breached",
+                "Expired",
+                "Validation"
+            ],
+            "x-enum-varnames": [
+                "ChangePasswordReason_Administrative",
+                "ChangePasswordReason_Breached",
+                "ChangePasswordReason_Expired",
+                "ChangePasswordReason_Validation"
+            ]
+        },
+        "fusionauth.ContentStatus": {
+            "type": "string",
+            "enum": [
+                "ACTIVE",
+                "PENDING",
+                "REJECTED"
+            ],
+            "x-enum-varnames": [
+                "ContentStatus_ACTIVE",
+                "ContentStatus_PENDING",
+                "ContentStatus_REJECTED"
+            ]
+        },
+        "fusionauth.GroupMember": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "groupId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "insertInstant": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/fusionauth.User"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "fusionauth.TOTPAlgorithm": {
+            "type": "string",
+            "enum": [
+                "HmacSHA1",
+                "HmacSHA256",
+                "HmacSHA512"
+            ],
+            "x-enum-varnames": [
+                "TOTPAlgorithm_HmacSHA1",
+                "TOTPAlgorithm_HmacSHA256",
+                "TOTPAlgorithm_HmacSHA512"
+            ]
+        },
+        "fusionauth.TwoFactorMethod": {
+            "type": "object",
+            "properties": {
+                "authenticator": {
+                    "$ref": "#/definitions/fusionauth.AuthenticatorConfiguration"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastUsed": {
+                    "type": "boolean"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "mobilePhone": {
+                    "type": "string"
+                },
+                "secret": {
+                    "type": "string"
+                }
+            }
+        },
+        "fusionauth.User": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "birthDate": {
+                    "type": "string"
+                },
+                "breachedPasswordLastCheckedInstant": {
+                    "type": "integer"
+                },
+                "breachedPasswordStatus": {
+                    "$ref": "#/definitions/fusionauth.BreachedPasswordStatus"
+                },
+                "cleanSpeakId": {
+                    "type": "string"
+                },
+                "connectorId": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "email": {
+                    "type": "string"
+                },
+                "encryptionScheme": {
+                    "type": "string"
+                },
+                "expiry": {
+                    "type": "integer"
+                },
+                "factor": {
+                    "type": "integer"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "insertInstant": {
+                    "type": "integer"
+                },
+                "lastLoginInstant": {
+                    "type": "integer"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "lastUpdateInstant": {
+                    "type": "integer"
+                },
+                "memberships": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fusionauth.GroupMember"
+                    }
+                },
+                "middleName": {
+                    "type": "string"
+                },
+                "mobilePhone": {
+                    "type": "string"
+                },
+                "parentEmail": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "passwordChangeReason": {
+                    "$ref": "#/definitions/fusionauth.ChangePasswordReason"
+                },
+                "passwordChangeRequired": {
+                    "type": "boolean"
+                },
+                "passwordLastUpdateInstant": {
+                    "type": "integer"
+                },
+                "preferredLanguages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "registrations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fusionauth.UserRegistration"
+                    }
+                },
+                "salt": {
+                    "type": "string"
+                },
+                "tenantId": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "twoFactor": {
+                    "$ref": "#/definitions/fusionauth.UserTwoFactorConfiguration"
+                },
+                "uniqueUsername": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "usernameStatus": {
+                    "$ref": "#/definitions/fusionauth.ContentStatus"
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "verifiedInstant": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fusionauth.UserRegistration": {
+            "type": "object",
+            "properties": {
+                "applicationId": {
+                    "type": "string"
+                },
+                "authenticationToken": {
+                    "type": "string"
+                },
+                "cleanSpeakId": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "id": {
+                    "type": "string"
+                },
+                "insertInstant": {
+                    "type": "integer"
+                },
+                "lastLoginInstant": {
+                    "type": "integer"
+                },
+                "lastUpdateInstant": {
+                    "type": "integer"
+                },
+                "preferredLanguages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "tokens": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "username": {
+                    "type": "string"
+                },
+                "usernameStatus": {
+                    "$ref": "#/definitions/fusionauth.ContentStatus"
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "verifiedInstant": {
+                    "type": "integer"
+                }
+            }
+        },
+        "fusionauth.UserTwoFactorConfiguration": {
+            "type": "object",
+            "properties": {
+                "methods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fusionauth.TwoFactorMethod"
+                    }
+                },
+                "recoveryCodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_api.APIError": {
             "type": "object",
             "properties": {
                 "error": {
@@ -83,135 +486,223 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ScanAssetsOperatingSystem": {
+        "github_com_kptm-tools_core-service_pkg_auth.LoginResponse": {
             "type": "object",
             "properties": {
-                "accuracy": {
-                    "type": "integer"
-                },
-                "cpe": {
+                "otp": {
+                    "description": "OTPKey is the secret key used to generate the one‑time password.\nexample: JBSWY3DPEHPK3PXP",
                     "type": "string"
                 },
-                "critical_count": {
-                    "type": "integer"
-                },
-                "family": {
+                "tenantId": {
+                    "description": "TenantID identifies the tenant to which the user belongs.\nexample: 123e4567-e89b-12d3-a456-426614174000",
                     "type": "string"
                 },
-                "fingerprint": {
+                "token": {
+                    "description": "Token is the JWT to be used for subsequent requests.\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                     "type": "string"
                 },
-                "high_count": {
+                "tokenExpirationInstant": {
+                    "description": "TokenExpirationInstant is the RFC3339 timestamp when the token expires.\nexample: 2025-07-07T20:15:30Z",
                     "type": "integer"
                 },
-                "host_id": {
+                "user": {
+                    "description": "User contains basic information about the authenticated user.\nUses our local wrapper so swag can generate a schema for it.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/fusionauth.User"
+                        }
+                    ]
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.LoginRequest": {
+            "type": "object",
+            "required": [
+                "application_id",
+                "loginId",
+                "password"
+            ],
+            "properties": {
+                "application_id": {
+                    "description": "ApplicationID is the UUID of the application requesting authentication.\nexample: 00000000-1111-0000-0000-000000000000",
                     "type": "string"
                 },
-                "id": {
-                    "type": "integer"
-                },
-                "low_count": {
-                    "type": "integer"
-                },
-                "medium_count": {
-                    "type": "integer"
-                },
-                "name": {
+                "loginId": {
+                    "description": "LoginID is the user's identifier, usually their email.\nexample: admin@example.com",
                     "type": "string"
                 },
-                "none_count": {
-                    "type": "integer"
-                },
-                "os_type": {
-                    "type": "string"
-                },
-                "scan_id": {
-                    "type": "string"
-                },
-                "total_vulnerabilities_count": {
-                    "type": "integer"
-                },
-                "unknown_count": {
-                    "type": "integer"
-                },
-                "version": {
+                "password": {
+                    "description": "Password is the user's plaintext password.\nexample: password",
                     "type": "string"
                 }
             }
         },
-        "dto.ScanAssetsResponse": {
+        "github_com_kptm-tools_core-service_pkg_dto.ScanAssetsOperatingSystem": {
+            "type": "object",
+            "properties": {
+                "accuracy": {
+                    "description": "accuracy is the confidence percentage of the detection.",
+                    "type": "integer"
+                },
+                "cpe": {
+                    "description": "cpe is the Common Platform Enumeration string.",
+                    "type": "string"
+                },
+                "critical_count": {
+                    "description": "critical_count count of critical vulnerabilities.",
+                    "type": "integer"
+                },
+                "family": {
+                    "description": "family groups this OS into a family (e.g. \"Linux\").",
+                    "type": "string"
+                },
+                "high_count": {
+                    "description": "high_count count of high-severity vulnerabilities.",
+                    "type": "integer"
+                },
+                "host_id": {
+                    "description": "host_id is the identifier of the scanned host.\nrequired: true",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "id is the unique identifier for the OS record.\nrequired: true",
+                    "type": "integer"
+                },
+                "low_count": {
+                    "description": "low_count count of low-severity vulnerabilities.",
+                    "type": "integer"
+                },
+                "medium_count": {
+                    "description": "medium_count count of medium-severity vulnerabilities.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "name of the operating system (e.g. \"Ubuntu\").\nrequired: true",
+                    "type": "string"
+                },
+                "none_count": {
+                    "description": "none_count count of items without severity classification.",
+                    "type": "integer"
+                },
+                "os_type": {
+                    "description": "os_type indicates the OS type (e.g. \"unix\", \"windows\").",
+                    "type": "string"
+                },
+                "scan_id": {
+                    "description": "scan_id is the identifier of the scan this record belongs to.\nrequired: true",
+                    "type": "string"
+                },
+                "total_vulnerabilities_count": {
+                    "description": "total_vulnerabilities_count total number of detected vulnerabilities.",
+                    "type": "integer"
+                },
+                "unknown_count": {
+                    "description": "unknown_count count of vulnerabilities with unknown severity.",
+                    "type": "integer"
+                },
+                "version": {
+                    "description": "version of the operating system (e.g. \"20.04\").",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanAssetsResponse": {
             "type": "object",
             "properties": {
                 "operating_system": {
-                    "$ref": "#/definitions/dto.ScanAssetsOperatingSystem"
+                    "description": "operating_system holds the data of the detected operating system.\nrequired: true",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanAssetsOperatingSystem"
+                        }
+                    ]
                 },
                 "services": {
+                    "description": "services is the list of services detected on the host.\nrequired: true",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ScanAssetsService"
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanAssetsService"
                     }
                 }
             }
         },
-        "dto.ScanAssetsService": {
+        "github_com_kptm-tools_core-service_pkg_dto.ScanAssetsService": {
             "type": "object",
             "properties": {
                 "cpe": {
+                    "description": "cpe is the Common Platform Enumeration string.",
                     "type": "string"
                 },
                 "critical_count": {
+                    "description": "critical_count count of critical vulnerabilities.",
                     "type": "integer"
                 },
                 "high_count": {
+                    "description": "high_count count of high-severity vulnerabilities.",
                     "type": "integer"
                 },
                 "host_id": {
+                    "description": "host_id is the identifier of the scanned host.\nrequired: true",
                     "type": "string"
                 },
                 "id": {
+                    "description": "id is the unique identifier for the service record.\nrequired: true",
                     "type": "integer"
                 },
                 "low_count": {
+                    "description": "low_count count of low-severity vulnerabilities.",
                     "type": "integer"
                 },
                 "medium_count": {
+                    "description": "medium_count count of medium-severity vulnerabilities.",
                     "type": "integer"
                 },
                 "name": {
+                    "description": "name of the service (e.g. \"ssh\").",
                     "type": "string"
                 },
                 "none_count": {
+                    "description": "none_count count of items without severity classification.",
                     "type": "integer"
                 },
                 "port": {
+                    "description": "port number where the service is running.",
                     "type": "integer"
                 },
                 "port_state": {
+                    "description": "port_state indicates the port state (e.g. \"open\", \"closed\").",
                     "type": "string"
                 },
                 "product": {
+                    "description": "product name (e.g. \"OpenSSH\").",
                     "type": "string"
                 },
                 "protocol": {
+                    "description": "protocol used by the service (e.g. \"tcp\", \"udp\").",
                     "type": "string"
                 },
                 "scan_id": {
+                    "description": "scan_id is the identifier of the scan this record belongs to.\nrequired: true",
                     "type": "string"
                 },
                 "total_vulnerabilities_count": {
+                    "description": "total_vulnerabilities_count total number of detected vulnerabilities.",
                     "type": "integer"
                 },
                 "unknown_count": {
+                    "description": "unknown_count count of vulnerabilities with unknown severity.",
                     "type": "integer"
                 },
                 "version": {
+                    "description": "version of the service or product.",
                     "type": "string"
                 }
             }
         }
     },
     "securityDefinitions": {
-        "ApiKeyAuth": {
+        "BearerAuth": {
+            "description": "Type “Bearer” followed by a space and your JWT token.",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

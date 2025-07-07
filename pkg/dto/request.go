@@ -48,10 +48,20 @@ type GetHostByTenantIDRequest struct {
 	TenantID string `json:"tenant_id"`
 }
 
+// LoginRequest holds the data required for user authentication.
+// @name LoginRequest
 type LoginRequest struct {
-	LoginID       string `json:"loginId"`
-	Password      string `json:"password"`
-	ApplicationID string `json:"application_id"`
+	// LoginID is the user's identifier, usually their email.
+	// example: admin@example.com
+	LoginID string `json:"loginId" binding:"required"`
+
+	// Password is the user's plaintext password.
+	// example: password
+	Password string `json:"password" binding:"required"`
+
+	// ApplicationID is the UUID of the application requesting authentication.
+	// example: 00000000-1111-0000-0000-000000000000
+	ApplicationID string `json:"application_id" binding:"required"`
 }
 
 type RegisterTenantRequest struct {
