@@ -111,9 +111,49 @@ type DataPoint struct {
 	Y float64 `json:"y"`
 }
 
+type ScanAssetsOperatingSystem struct {
+	ID                   int32  `json:"id"`
+	HostID               string `json:"host_id"`
+	ScanID               string `json:"scan_id"`
+	Name                 string `json:"name"`
+	Version              string `json:"version"`
+	Family               string `json:"family"`
+	OSType               string `json:"os_type"`
+	Fingerprint          string `json:"fingerprint"`
+	CPE                  string `json:"cpe"`
+	Accuracy             int    `json:"accuracy"`
+	TotalVulnerabilities int    `json:"total_vulnerabilities_count"`
+	CriticalCount        int    `json:"critical_count"`
+	HighCount            int    `json:"high_count"`
+	MediumCount          int    `json:"medium_count"`
+	LowCount             int    `json:"low_count"`
+	NoneCount            int    `json:"none_count"`
+	UnknownCount         int    `json:"unknown_count"`
+}
+
+type ScanAssetsService struct {
+	ID                   int32  `json:"id"`
+	HostID               string `json:"host_id"`
+	ScanID               string `json:"scan_id"`
+	Name                 string `json:"name"`
+	Version              string `json:"version"`
+	Port                 int    `json:"port"`
+	Protocol             string `json:"protocol"`
+	CPE                  string `json:"cpe"`
+	Product              string `json:"product"`
+	PortState            string `json:"port_state"`
+	TotalVulnerabilities int    `json:"total_vulnerabilities_count"`
+	CriticalCount        int    `json:"critical_count"`
+	HighCount            int    `json:"high_count"`
+	MediumCount          int    `json:"medium_count"`
+	LowCount             int    `json:"low_count"`
+	NoneCount            int    `json:"none_count"`
+	UnknownCount         int    `json:"unknown_count"`
+}
+
 type ScanAssetsResponse struct {
-	OperatingSystem domain.OperatingSystem `json:"operating_system"`
-	Services        []domain.Service       `json:"services"`
+	ScanAssetsOperatingSystem ScanAssetsOperatingSystem `json:"operating_system"`
+	ScanAssetsServices        []ScanAssetsService       `json:"services"`
 }
 
 // ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
@@ -502,4 +542,59 @@ func ToCWERemediation(cweRemediations []tools.CWERemediation) []CWERemediation {
 		result = append(result, r)
 	}
 	return result
+}
+
+// ConvertScanOSandServicesResultToResponse takes a slice of ScanOSandServicesResult,
+// separates and converts them into a structured ScanAssetsResponse.
+func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServicesResult) ScanAssetsResponse {
+	var response ScanAssetsResponse
+
+	for _, r := range results {
+		switch r.AssetType {
+		case "os":
+			// Map OS
+			response.ScanAssetsOperatingSystem = ScanAssetsOperatingSystem{
+				ID:                   r.ID,
+				HostID:               r.HostID.String(),
+				ScanID:               r.ScanID.String(),
+				Name:                 r.Name,
+				Version:              r.Version,
+				Family:               r.Family,
+				OSType:               r.OsType,
+				Fingerprint:          r.Fingerprint,
+				CPE:                  r.Cpe,
+				Accuracy:             int(r.Accuracy),
+				TotalVulnerabilities: int(r.TotalVulnerabilitiesCount),
+				CriticalCount:        int(r.CriticalCount),
+				HighCount:            int(r.HighCount),
+				MediumCount:          int(r.MediumCount),
+				LowCount:             int(r.LowCount),
+				NoneCount:            int(r.NoneCount),
+				UnknownCount:         int(r.UnknownCount),
+			}
+		case "service":
+			service := ScanAssetsService{
+				ID:                   r.ID,
+				HostID:               r.HostID.String(),
+				ScanID:               r.ScanID.String(),
+				Name:                 r.Name,
+				Version:              r.Version,
+				Port:                 int(r.Port),
+				Protocol:             r.Protocol,
+				CPE:                  r.Cpe,
+				Product:              r.Product,
+				PortState:            r.PortState,
+				TotalVulnerabilities: int(r.TotalVulnerabilitiesCount),
+				CriticalCount:        int(r.CriticalCount),
+				HighCount:            int(r.HighCount),
+				MediumCount:          int(r.MediumCount),
+				LowCount:             int(r.LowCount),
+				NoneCount:            int(r.NoneCount),
+				UnknownCount:         int(r.UnknownCount),
+			}
+			response.ScanAssetsServices = append(response.ScanAssetsServices, service)
+		}
+	}
+
+	return response
 }

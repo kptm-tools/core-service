@@ -4,9 +4,47 @@
         "contact": {}
     },
     "paths": {
+        "/api/scans/{id}/assets": {
+            "get": {
+                "description": "Retrive assets from the OS and Services based on the ScanID KPTM Tools - Core Service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scans"
+                ],
+                "summary": "GetScanAssetsByID",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ScanAssetsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Scan not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.APIError"
+                        }
+                    },
+                    "409": {
+                        "description": "Scan status not completed",
+                        "schema": {
+                            "$ref": "#/definitions/api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/healthcheck": {
             "get": {
-                "description": "Check status of the UW Auth service",
+                "description": "Check status of the KPTM Tools - Core Service",
                 "produces": [
                     "application/json"
                 ],
@@ -21,6 +59,142 @@
                             "type": "string"
                         }
                     }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.APIError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ScanAssetsOperatingSystem": {
+            "type": "object",
+            "properties": {
+                "accuracy": {
+                    "type": "integer"
+                },
+                "cpe": {
+                    "type": "string"
+                },
+                "critical_count": {
+                    "type": "integer"
+                },
+                "family": {
+                    "type": "string"
+                },
+                "fingerprint": {
+                    "type": "string"
+                },
+                "high_count": {
+                    "type": "integer"
+                },
+                "host_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "low_count": {
+                    "type": "integer"
+                },
+                "medium_count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "none_count": {
+                    "type": "integer"
+                },
+                "os_type": {
+                    "type": "string"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "total_vulnerabilities_count": {
+                    "type": "integer"
+                },
+                "unknown_count": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ScanAssetsResponse": {
+            "type": "object",
+            "properties": {
+                "operating_system": {
+                    "$ref": "#/definitions/dto.ScanAssetsOperatingSystem"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ScanAssetsService"
+                    }
+                }
+            }
+        },
+        "dto.ScanAssetsService": {
+            "type": "object",
+            "properties": {
+                "cpe": {
+                    "type": "string"
+                },
+                "critical_count": {
+                    "type": "integer"
+                },
+                "high_count": {
+                    "type": "integer"
+                },
+                "host_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "low_count": {
+                    "type": "integer"
+                },
+                "medium_count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "none_count": {
+                    "type": "integer"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "port_state": {
+                    "type": "string"
+                },
+                "product": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "total_vulnerabilities_count": {
+                    "type": "integer"
+                },
+                "unknown_count": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         }

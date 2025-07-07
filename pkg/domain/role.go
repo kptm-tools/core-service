@@ -82,6 +82,7 @@ var actionRoles = map[Action][]Role{
 
 	ActionScanCreate:                      {RoleAdmin, RoleOperator},
 	ActionScanCancelByID:                  {RoleAdmin, RoleOperator},
+	ActionScanGetAssetsByID:               {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanGetInsightsByID:             {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanGetVulnerabilitySummaryByID: {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanGetVulnerabilitiesByID:      {RoleAdmin, RoleOperator, RoleAnalyst},
