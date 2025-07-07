@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
-	repository "github.com/kptm-tools/core-service/db"
 	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -170,74 +169,9 @@ func populateNetworkOSVulnerabilities(
 ) error {
 	for _, scan := range scans {
 		sampleNmapResult := samples.SampleNmapScanResults(scan, cweDetails)
-		// Store OS (if OS data is present in nmapResult)
-		os, err := deps.OSRepo.CreateOS(ctx, scan.HostID, scan.ID, sampleNmapResult.MostLikelyOS)
+		err := deps.VulnerabilityService.CreateNetworkOSVulnerabilities(ctx, scan.ID, sampleNmapResult)
 		if err != nil {
-			return fmt.Errorf("failed to insert Operating System in DB: %w", err)
-		}
-		for _, vuln := range sampleNmapResult.MostLikelyOS.Vulnerabilities {
-			_, err := deps.CVERepo.CreateOrUpdateCVE(ctx, vuln)
-			if err != nil {
-				return fmt.Errorf("failed to insert os vulnerability CVE detail: %w", err)
-			}
-			for _, rem := range vuln.CWERemediation {
-				// rem es un struct, confiamos que viene correctamente lleno
-				if _, err := deps.CWERepo.CreateOrUpdateCWE(ctx, rem); err != nil {
-					return fmt.Errorf("failed to insert os vulnerability CWE detail: %w", err)
-				}
-
-				if _, err := deps.CWERepo.CreateCWERemediation(ctx, &rem); err != nil {
-					return fmt.Errorf("failed to insert os vulnerability CWE remediation: %w", err)
-				}
-			}
-			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD", "")
-			if err != nil {
-				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
-			}
-			err = deps.VulnRepo.CreateNetworkOSVulnerabilityForOS(ctx, dbVuln.ID, scan.ID, scan.HostID, os.ID)
-			if err != nil {
-				return fmt.Errorf("failed to create networkOSVulnerability record for OS: %w", err)
-			}
-		}
-
-		// Store Service data
-
-		// Loop through each portItem
-		for _, portItem := range sampleNmapResult.ScannedPorts {
-			// 3.1 Store the service
-			service, err := deps.ServiceRepo.CreateOrUpdateService(ctx, scan.HostID, scan.ID, portItem)
-			if err != nil {
-				return fmt.Errorf("failed to create or update service: %w", err)
-			}
-			// Loop through each Vulnerability in each Port
-			for _, vuln := range portItem.Vulnerabilities {
-				// 3.2.1 Store the cve detail of the vulnerability
-				_, err := deps.CVERepo.CreateOrUpdateCVE(ctx, vuln)
-				if err != nil {
-					return fmt.Errorf("failed to insert port vulnerability CVE detail: %w", err)
-				}
-				// 3.2.2 Storage CWE detail of the vuln
-				for _, rem := range vuln.CWERemediation {
-					if _, err := deps.CWERepo.CreateOrUpdateCWE(ctx, rem); err != nil {
-						return fmt.Errorf("failed to insert service vulnerability CWE detail: %w", err)
-					}
-
-					if _, err := deps.CWERepo.CreateCWERemediation(ctx, &rem); err != nil {
-						return fmt.Errorf("failed to insert service vulnerability CWE remediation: %w", err)
-					}
-				}
-
-				// 3.2.3 Create a Vulnerability record
-				dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vuln, repository.VulnerabilityTypeEnumNETWORKOS, "NVD", "")
-				if err != nil {
-					return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
-				}
-				// 3.2.4 Create a NetworkOS VulnerabilityRecord
-				err = deps.VulnRepo.CreateNetworkOSVulnerabilityForService(ctx, dbVuln.ID, scan.ID, scan.HostID, service.ID)
-				if err != nil {
-					return fmt.Errorf("failed to create networkOSVulnerability record for service: %w", err)
-				}
-			}
+			return fmt.Errorf("failed to create networkOSVulnerability: %w", err)
 		}
 	}
 	return nil
