@@ -638,13 +638,13 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 		case "os":
 			// Map OS
 			response.OperatingSystem = ScanAssetsOperatingSystem{
-				ID:                   r.ID,
-				HostID:               r.HostID.String(),
-				ScanID:               r.ScanID.String(),
-				Name:                 r.Name,
-				Version:              r.Version,
-				Family:               r.Family,
-				OSType:               r.OsType,
+				ID:      r.ID,
+				HostID:  r.HostID.String(),
+				ScanID:  r.ScanID.String(),
+				Name:    r.Name,
+				Version: r.Version,
+				Family:  r.Family,
+				OSType:  r.OsType,
 				// Fingerprint:          r.Fingerprint,
 				CPE:                  r.Cpe,
 				Accuracy:             int(r.Accuracy),
