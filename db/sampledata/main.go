@@ -3,11 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/kptm-tools/core-service/pkg/services"
-	"math/rand"
-	"os"
-	"time"
-
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
@@ -16,20 +11,24 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/samples"
+	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"math/rand"
+	"os"
 )
 
 type PopulatorDependencies struct {
-	HostRepo    interfaces.HostRepository
-	ScanRepo    interfaces.ScanRepository
-	CWERepo     interfaces.CWERepository
-	CVERepo     interfaces.CVERepository
-	VulnRepo    interfaces.VulnerabilityRepository
-	OSRepo      interfaces.OSRepository
-	ServiceRepo interfaces.ServiceRepository
-	ScanResRepo interfaces.ScanResultRepository
-	WascRepo    interfaces.WASCRepository
-	ScanService interfaces.IScanService
+	HostRepo             interfaces.HostRepository
+	ScanRepo             interfaces.ScanRepository
+	CWERepo              interfaces.CWERepository
+	CVERepo              interfaces.CVERepository
+	VulnRepo             interfaces.VulnerabilityRepository
+	OSRepo               interfaces.OSRepository
+	ServiceRepo          interfaces.ServiceRepository
+	ScanResRepo          interfaces.ScanResultRepository
+	WascRepo             interfaces.WASCRepository
+	ScanService          interfaces.IScanService
+	VulnerabilityService interfaces.IVulnerabilityService
 }
 
 func Run() {
@@ -44,17 +43,19 @@ func Run() {
 		panic(err)
 	}
 	scanService := services.NewScanService(store.Vulnerability, store.Scan, store.Host, store.ScanResult)
+	vulnService := services.NewVulnerabilityService(store, store.OS, store.Service, store.Vulnerability, store.Scan, store.Host, store.Cve, store.Cwe, store.Wasc)
 	deps := PopulatorDependencies{
-		HostRepo:    store.Host,
-		ScanRepo:    store.Scan,
-		CWERepo:     store.Cwe,
-		CVERepo:     store.Cve,
-		VulnRepo:    store.Vulnerability,
-		OSRepo:      store.OS,
-		ServiceRepo: store.Service,
-		ScanResRepo: store.ScanResult,
-		WascRepo:    store.Wasc,
-		ScanService: scanService,
+		HostRepo:             store.Host,
+		ScanRepo:             store.Scan,
+		CWERepo:              store.Cwe,
+		CVERepo:              store.Cve,
+		VulnRepo:             store.Vulnerability,
+		OSRepo:               store.OS,
+		ServiceRepo:          store.Service,
+		ScanResRepo:          store.ScanResult,
+		WascRepo:             store.Wasc,
+		ScanService:          scanService,
+		VulnerabilityService: vulnService,
 	}
 
 	command := os.Args[1]
@@ -122,7 +123,7 @@ func populateScans(
 	sampleScans := samples.SampleScans(10, tenants, hosts)
 
 	for i, scan := range sampleScans {
-		createdScan, err := deps.ScanRepo.CreateScan(ctx, scan)
+		createdScan, err := deps.ScanService.CreateScan(ctx, scan.HostID, scan.TenantID, scan.OperatorID, &scan.StartedAt)
 		if err != nil {
 			return fmt.Errorf("error populating scans: %w", err)
 		}
@@ -249,87 +250,9 @@ func populateWebScanVulnerabilities(
 ) error {
 	for _, scan := range scans {
 		sampleWebScanResult := samples.SampleWebScanResults()
-		for _, vuln := range sampleWebScanResult.WebVulnerabilities {
-
-			portData := tools.PortData{
-				Protocol: "http",
-				Service: tools.Service{
-					Name:       "",
-					Version:    "",
-					Confidence: 0,
-					CPE:        "",
-				},
-				Product:         "",
-				State:           "closed",
-				Vulnerabilities: nil,
-			}
-			if vuln.WascID == "45" {
-				portData.Protocol = "nginx"
-			}
-
-			service, err := deps.ServiceRepo.CreateOrUpdateService(ctx, scan.HostID, scan.ID, portData)
-			if err != nil {
-				return fmt.Errorf("failed to create or update service: %w", err)
-			}
-			// 2.1.1 Store CWE detail of the vuln
-			_, err = deps.CWERepo.CreateOrUpdateCWEFromWebVulnerability(ctx, vuln)
-			if err != nil {
-				return fmt.Errorf("failed to insert web scan vulnerability CWE detail: %w", err)
-			}
-
-			// 2.1.2 Store WASC detail of the vuln
-			_, err = deps.WascRepo.CreateOrUpdateWASC(ctx, vuln)
-			if err != nil {
-				return fmt.Errorf("failed to insert web scan vulnerability WASC detail: %w", err)
-			}
-
-			vulnData := tools.Vulnerability{
-				HostID:             scan.HostID,
-				ScanID:             scan.ID,
-				CveID:              "",
-				CweID:              vuln.CweID,
-				Type:               "",
-				BaseCVSSScore:      0,
-				References:         []string{vuln.Reference},
-				Metrics:            nil,
-				CWERemediation:     nil,
-				Description:        vuln.Name,
-				Access:             "",
-				Complexity:         "",
-				PrivilegesRequired: "",
-				Likelihood:         "",
-				RiskScore:          0,
-				ImpactScore:        0,
-				Exploit:            tools.Exploit{},
-				IntegrityImpact:    "",
-				AvailabilityImpact: "",
-				BaseSeverity:       "",
-				AnalystComment:     "",
-				VendorComments:     nil,
-				Published:          time.Time{},
-				LastUpdated:        time.Time{},
-				EPSSScore:          0,
-				EPSSPercentile:     0,
-				EPSSDate:           time.Time{},
-			}
-			// 3.2.3 Create a Vulnerability record
-			dbVuln, err := deps.VulnRepo.CreateVulnerability(ctx, scan.HostID, scan.ID, vulnData, repository.VulnerabilityTypeEnumWEBAPPLICATION, "OWASP ZAP", vuln.WascID)
-			if err != nil {
-				return fmt.Errorf("failed to create vulnerability record for os vulnerability: %w", err)
-			}
-			// 3.2.4 Create a NetworkOS VulnerabilityRecord
-			err = deps.VulnRepo.CreateWebVulnerability(ctx, dbVuln.ID, scan.ID, scan.HostID, service.ID, vuln.Solution, vuln.Reference)
-			if err != nil {
-				return fmt.Errorf("failed to create networkOSVUlnerability record for OS: %w", err)
-			}
-
-			// 2.1.5 Create a WebScan Detail VulnerabilityRecord
-			for _, vulnDetail := range vuln.Instances {
-				err = deps.VulnRepo.CreateWebVulnerabilityDetail(ctx, dbVuln.ID, vulnDetail.URI, string(vulnDetail.Method), vulnDetail.Param, vulnDetail.Attack, vulnDetail.Evidence, vulnDetail.OtherInfo)
-				if err != nil {
-					return fmt.Errorf("failed to create networkOSVUlnerability record for OS: %w", err)
-				}
-			}
+		err := deps.VulnerabilityService.InsertWebScanVulnerabilities(ctx, scan.ID, sampleWebScanResult)
+		if err != nil {
+			return fmt.Errorf("failed to create webScanVulnerability: %w", err)
 		}
 	}
 	return nil
