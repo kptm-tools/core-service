@@ -37,8 +37,15 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 		wantData       []dto.ScanAssetsResponse // para 200 OK
 	}{
 		{
-			name:                "Scan no completado → 409",
-			scanService:         &mock_services.MockScanService{},
+			name: "Scan no completado → 409",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error) {
+					return nil, fmt.Errorf("Scan status not completed")
+				},
+				MockGetScanAssetsByID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
+					return []domain.ScanOSandServicesResult{}, fmt.Errorf("Scan status not completed")
+				},
+			},
 			scanScheduleService: &mock_services.MockScanScheduleService{},
 			hostService:         &mock_services.MockHostService{},
 			emailService:        &mock_services.MockEmailService{},
@@ -46,6 +53,7 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 			r:                   httptest.NewRequest("GET", fmt.Sprintf("/api/scans/%s/assets", scanID), nil).WithContext(context.WithValue(context.Background(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin})),
 			wantStatus:          http.StatusConflict,
 			wantErrorField:      "Scan status not completed",
+			wantData:            []dto.ScanAssetsResponse{},
 		},
 		{
 			name:                "Completado sin assets → 404",
