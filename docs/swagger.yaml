@@ -1,9 +1,500 @@
+definitions:
+  fusionauth.AuthenticatorConfiguration:
+    properties:
+      algorithm:
+        $ref: '#/definitions/fusionauth.TOTPAlgorithm'
+      codeLength:
+        type: integer
+      timeStep:
+        type: integer
+    type: object
+  fusionauth.BreachedPasswordStatus:
+    enum:
+    - None
+    - ExactMatch
+    - SubAddressMatch
+    - PasswordOnly
+    - CommonPassword
+    type: string
+    x-enum-varnames:
+    - BreachedPasswordStatus_None
+    - BreachedPasswordStatus_ExactMatch
+    - BreachedPasswordStatus_SubAddressMatch
+    - BreachedPasswordStatus_PasswordOnly
+    - BreachedPasswordStatus_CommonPassword
+  fusionauth.ChangePasswordReason:
+    enum:
+    - Administrative
+    - Breached
+    - Expired
+    - Validation
+    type: string
+    x-enum-varnames:
+    - ChangePasswordReason_Administrative
+    - ChangePasswordReason_Breached
+    - ChangePasswordReason_Expired
+    - ChangePasswordReason_Validation
+  fusionauth.ContentStatus:
+    enum:
+    - ACTIVE
+    - PENDING
+    - REJECTED
+    type: string
+    x-enum-varnames:
+    - ContentStatus_ACTIVE
+    - ContentStatus_PENDING
+    - ContentStatus_REJECTED
+  fusionauth.GroupMember:
+    properties:
+      data:
+        additionalProperties: true
+        type: object
+      groupId:
+        type: string
+      id:
+        type: string
+      insertInstant:
+        type: integer
+      user:
+        $ref: '#/definitions/fusionauth.User'
+      userId:
+        type: string
+    type: object
+  fusionauth.TOTPAlgorithm:
+    enum:
+    - HmacSHA1
+    - HmacSHA256
+    - HmacSHA512
+    type: string
+    x-enum-varnames:
+    - TOTPAlgorithm_HmacSHA1
+    - TOTPAlgorithm_HmacSHA256
+    - TOTPAlgorithm_HmacSHA512
+  fusionauth.TwoFactorMethod:
+    properties:
+      authenticator:
+        $ref: '#/definitions/fusionauth.AuthenticatorConfiguration'
+      email:
+        type: string
+      id:
+        type: string
+      lastUsed:
+        type: boolean
+      method:
+        type: string
+      mobilePhone:
+        type: string
+      secret:
+        type: string
+    type: object
+  fusionauth.User:
+    properties:
+      active:
+        type: boolean
+      birthDate:
+        type: string
+      breachedPasswordLastCheckedInstant:
+        type: integer
+      breachedPasswordStatus:
+        $ref: '#/definitions/fusionauth.BreachedPasswordStatus'
+      cleanSpeakId:
+        type: string
+      connectorId:
+        type: string
+      data:
+        additionalProperties: true
+        type: object
+      email:
+        type: string
+      encryptionScheme:
+        type: string
+      expiry:
+        type: integer
+      factor:
+        type: integer
+      firstName:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+      insertInstant:
+        type: integer
+      lastLoginInstant:
+        type: integer
+      lastName:
+        type: string
+      lastUpdateInstant:
+        type: integer
+      memberships:
+        items:
+          $ref: '#/definitions/fusionauth.GroupMember'
+        type: array
+      middleName:
+        type: string
+      mobilePhone:
+        type: string
+      parentEmail:
+        type: string
+      password:
+        type: string
+      passwordChangeReason:
+        $ref: '#/definitions/fusionauth.ChangePasswordReason'
+      passwordChangeRequired:
+        type: boolean
+      passwordLastUpdateInstant:
+        type: integer
+      preferredLanguages:
+        items:
+          type: string
+        type: array
+      registrations:
+        items:
+          $ref: '#/definitions/fusionauth.UserRegistration'
+        type: array
+      salt:
+        type: string
+      tenantId:
+        type: string
+      timezone:
+        type: string
+      twoFactor:
+        $ref: '#/definitions/fusionauth.UserTwoFactorConfiguration'
+      uniqueUsername:
+        type: string
+      username:
+        type: string
+      usernameStatus:
+        $ref: '#/definitions/fusionauth.ContentStatus'
+      verified:
+        type: boolean
+      verifiedInstant:
+        type: integer
+    type: object
+  fusionauth.UserRegistration:
+    properties:
+      applicationId:
+        type: string
+      authenticationToken:
+        type: string
+      cleanSpeakId:
+        type: string
+      data:
+        additionalProperties: true
+        type: object
+      id:
+        type: string
+      insertInstant:
+        type: integer
+      lastLoginInstant:
+        type: integer
+      lastUpdateInstant:
+        type: integer
+      preferredLanguages:
+        items:
+          type: string
+        type: array
+      roles:
+        items:
+          type: string
+        type: array
+      timezone:
+        type: string
+      tokens:
+        additionalProperties:
+          type: string
+        type: object
+      username:
+        type: string
+      usernameStatus:
+        $ref: '#/definitions/fusionauth.ContentStatus'
+      verified:
+        type: boolean
+      verifiedInstant:
+        type: integer
+    type: object
+  fusionauth.UserTwoFactorConfiguration:
+    properties:
+      methods:
+        items:
+          $ref: '#/definitions/fusionauth.TwoFactorMethod'
+        type: array
+      recoveryCodes:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_api.APIError:
+    properties:
+      error:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_auth.LoginResponse:
+    properties:
+      otp:
+        description: |-
+          OTPKey is the secret key used to generate the one‑time password.
+          example: JBSWY3DPEHPK3PXP
+        type: string
+      tenantId:
+        description: |-
+          TenantID identifies the tenant to which the user belongs.
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      token:
+        description: |-
+          Token is the JWT to be used for subsequent requests.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      tokenExpirationInstant:
+        description: |-
+          TokenExpirationInstant is the RFC3339 timestamp when the token expires.
+          example: 2025-07-07T20:15:30Z
+        type: integer
+      user:
+        allOf:
+        - $ref: '#/definitions/fusionauth.User'
+        description: |-
+          User contains basic information about the authenticated user.
+          Uses our local wrapper so swag can generate a schema for it.
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.LoginRequest:
+    properties:
+      application_id:
+        description: |-
+          ApplicationID is the UUID of the application requesting authentication.
+          example: 00000000-1111-0000-0000-000000000000
+        type: string
+      loginId:
+        description: |-
+          LoginID is the user's identifier, usually their email.
+          example: admin@example.com
+        type: string
+      password:
+        description: |-
+          Password is the user's plaintext password.
+          example: password
+        type: string
+    required:
+    - application_id
+    - loginId
+    - password
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanAssetsOperatingSystem:
+    properties:
+      accuracy:
+        description: accuracy is the confidence percentage of the detection.
+        type: integer
+      cpe:
+        description: cpe is the Common Platform Enumeration string.
+        type: string
+      critical_count:
+        description: critical_count count of critical vulnerabilities.
+        type: integer
+      family:
+        description: family groups this OS into a family (e.g. "Linux").
+        type: string
+      high_count:
+        description: high_count count of high-severity vulnerabilities.
+        type: integer
+      host_id:
+        description: |-
+          host_id is the identifier of the scanned host.
+          required: true
+        type: string
+      id:
+        description: |-
+          id is the unique identifier for the OS record.
+          required: true
+        type: integer
+      low_count:
+        description: low_count count of low-severity vulnerabilities.
+        type: integer
+      medium_count:
+        description: medium_count count of medium-severity vulnerabilities.
+        type: integer
+      name:
+        description: |-
+          name of the operating system (e.g. "Ubuntu").
+          required: true
+        type: string
+      none_count:
+        description: none_count count of items without severity classification.
+        type: integer
+      os_type:
+        description: os_type indicates the OS type (e.g. "unix", "windows").
+        type: string
+      scan_id:
+        description: |-
+          scan_id is the identifier of the scan this record belongs to.
+          required: true
+        type: string
+      total_vulnerabilities_count:
+        description: total_vulnerabilities_count total number of detected vulnerabilities.
+        type: integer
+      unknown_count:
+        description: unknown_count count of vulnerabilities with unknown severity.
+        type: integer
+      version:
+        description: version of the operating system (e.g. "20.04").
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanAssetsResponse:
+    properties:
+      operating_system:
+        allOf:
+        - $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanAssetsOperatingSystem'
+        description: |-
+          operating_system holds the data of the detected operating system.
+          required: true
+      services:
+        description: |-
+          services is the list of services detected on the host.
+          required: true
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanAssetsService'
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanAssetsService:
+    properties:
+      cpe:
+        description: cpe is the Common Platform Enumeration string.
+        type: string
+      critical_count:
+        description: critical_count count of critical vulnerabilities.
+        type: integer
+      high_count:
+        description: high_count count of high-severity vulnerabilities.
+        type: integer
+      host_id:
+        description: |-
+          host_id is the identifier of the scanned host.
+          required: true
+        type: string
+      id:
+        description: |-
+          id is the unique identifier for the service record.
+          required: true
+        type: integer
+      low_count:
+        description: low_count count of low-severity vulnerabilities.
+        type: integer
+      medium_count:
+        description: medium_count count of medium-severity vulnerabilities.
+        type: integer
+      name:
+        description: name of the service (e.g. "ssh").
+        type: string
+      none_count:
+        description: none_count count of items without severity classification.
+        type: integer
+      port:
+        description: port number where the service is running.
+        type: integer
+      port_state:
+        description: port_state indicates the port state (e.g. "open", "closed").
+        type: string
+      product:
+        description: product name (e.g. "OpenSSH").
+        type: string
+      protocol:
+        description: protocol used by the service (e.g. "tcp", "udp").
+        type: string
+      scan_id:
+        description: |-
+          scan_id is the identifier of the scan this record belongs to.
+          required: true
+        type: string
+      total_vulnerabilities_count:
+        description: total_vulnerabilities_count total number of detected vulnerabilities.
+        type: integer
+      unknown_count:
+        description: unknown_count count of vulnerabilities with unknown severity.
+        type: integer
+      version:
+        description: version of the service or product.
+        type: string
+    type: object
 info:
   contact: {}
 paths:
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user by login ID, password and application ID.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_auth.LoginResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      summary: Login
+      tags:
+      - Auth
+  /api/scans/{id}/assets:
+    get:
+      description: Retrieve assets from the OS and Services based on the ScanID of
+        KPTM Tools - Core Service
+      parameters:
+      - description: Scan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanAssetsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "404":
+          description: Scan not found
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "409":
+          description: Scan status not completed
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      security:
+      - BearerAuth: []
+      summary: GetScanAssetsByID
+      tags:
+      - Scans
   /healthcheck:
     get:
-      description: Check status of the UW Auth service
+      description: Check status of the KPTM Tools - Core Service
       produces:
       - application/json
       responses:
@@ -15,7 +506,8 @@ paths:
       tags:
       - System Status
 securityDefinitions:
-  ApiKeyAuth:
+  BearerAuth:
+    description: Type “Bearer” followed by a space and your JWT token.
     in: header
     name: Authorization
     type: apiKey

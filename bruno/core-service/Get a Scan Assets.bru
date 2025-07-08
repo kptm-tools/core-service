@@ -1,0 +1,15 @@
+meta {
+  name: Get a Scan Assets
+  type: http
+  seq: 28
+}
+
+get {
+  url: http://localhost:8000/api/scans/bed5b9a6-df93-4e0d-9282-9696fd5ea15e/assets
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

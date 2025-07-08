@@ -24,6 +24,7 @@ type MockScanService struct {
 	MockGetScanInsights                 func(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
 	MockCalculateProtectionScore        func(ctx context.Context, scanID uuid.UUID) (float64, error)
 	MockGetScanByID                     func(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	MockGetScanAssetsByID               func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error)
 	MockHandleScanCompletion            func(ctx context.Context, scanID uuid.UUID) error
 	MockGetScanVulnerabilitySummaryByID func(ctx context.Context, scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	MockGetAllReportsForTenant          func(context.Context, uuid.UUID) ([]domain.ReportItem, error)
@@ -98,6 +99,13 @@ func (m *MockScanService) GetScanByID(ctx context.Context, scanID uuid.UUID) (*d
 		return m.MockGetScanByID(ctx, scanID)
 	}
 	panic(fmt.Sprintf("MockScanService: method GetScanByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanService) GetScanAssetsByID(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
+	if m.MockGetScanAssetsByID != nil {
+		return m.MockGetScanAssetsByID(ctx, scanID)
+	}
+	panic(fmt.Sprintf("MockScanService: method GetScanAssetsByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }
 
 func (m *MockScanService) HandleScanCompletion(ctx context.Context, scanID uuid.UUID) error {

@@ -23,6 +23,7 @@ type IScanService interface {
 	GetScanInsights(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
 	CalculateProtectionScore(ctx context.Context, scanID uuid.UUID) (float64, error)
 	GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	GetScanAssetsByID(context.Context, uuid.UUID) ([]domain.ScanOSandServicesResult, error)
 	HandleScanCompletion(ctx context.Context, scanID uuid.UUID) error
 	GetScanVulnerabilitySummaryByID(ctx context.Context, scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
 	GetAllReportsForTenant(context.Context, uuid.UUID) ([]domain.ReportItem, error)
@@ -35,6 +36,7 @@ type IScanService interface {
 
 type IScanHandlers interface {
 	CreateScan(writer http.ResponseWriter, request *http.Request) error
+	GetScanAssetsByID(writer http.ResponseWriter, request *http.Request) error
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error
@@ -48,6 +50,7 @@ type ScanRepository interface {
 	CreateScan(context.Context, domain.Scan) (*domain.Scan, error)
 	GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
 	GetScanByID(context.Context, uuid.UUID) (*domain.Scan, error)
+	GetScanAssetsByID(context.Context, uuid.UUID) ([]domain.ScanOSandServicesResult, error)
 	GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error)
 	GetLatestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)
 	GetOldestScanByHostID(ctx context.Context, hostID uuid.UUID, fromDate *time.Time, toDate *time.Time) (*domain.Scan, error)

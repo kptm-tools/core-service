@@ -85,8 +85,48 @@ func (r *ScanRepo) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.S
 	if err != nil {
 		return nil, err
 	}
+
 	domScan := toDomainScan(dbScan)
 	return &domScan, nil
+}
+
+func (r *ScanRepo) GetScanAssetsByID(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
+	queries := r.getQueries(ctx)
+	dbScan, err := queries.GetAssetsByScanID(ctx, scanID)
+	if err != nil {
+		return nil, err
+	}
+
+	scanOSandServicesResults := make([]domain.ScanOSandServicesResult, len(dbScan))
+	for i, scan := range dbScan {
+		scanOSandServicesResults[i] = domain.ScanOSandServicesResult{
+			AssetType:                 scan.AssetType,
+			ID:                        scan.ID,
+			HostID:                    scan.HostID,
+			ScanID:                    scan.ScanID,
+			Name:                      scan.Name.String,
+			Version:                   scan.Version.String,
+			Family:                    scan.Family.String,
+			OsType:                    scan.OsType.String,
+			Port:                      scan.Port.Int32,
+			Protocol:                  scan.Protocol.String,
+			Fingerprint:               scan.Fingerprint.String,
+			Cpe:                       scan.Cpe.String,
+			Product:                   scan.Product.String,
+			Accuracy:                  scan.Accuracy.Int32,
+			PortState:                 string(scan.PortState.PortStateEnum),
+			TotalVulnerabilitiesCount: scan.TotalVulnerabilitiesCount,
+			CriticalCount:             scan.CriticalCount,
+			HighCount:                 scan.HighCount,
+			MediumCount:               scan.MediumCount,
+			LowCount:                  scan.LowCount,
+			NoneCount:                 scan.NoneCount,
+			UnknownCount:              scan.UnknownCount,
+			CreatedAt:                 scan.CreatedAt.Time,
+			UpdatedAt:                 scan.UpdatedAt.Time,
+		}
+	}
+	return scanOSandServicesResults, nil
 }
 
 func (r *ScanRepo) GetScanInsightsBaseData(ctx context.Context, scanID uuid.UUID) (domain.ScanInsightsBaseData, error) {
@@ -293,13 +333,15 @@ func (r *ScanRepo) GetLatestScanByHostID(
 
 func toDomainScan(dbScan repository.Scan) domain.Scan {
 	return domain.Scan{
-		ID:         dbScan.ID,
-		HostID:     dbScan.HostID,
-		TenantID:   dbScan.TenantID,
-		OperatorID: dbScan.OperatorID,
-		CreatedAt:  dbScan.CreatedAt.Time,
-		UpdatedAt:  dbScan.UpdatedAt.Time,
-		StartedAt:  dbScan.StartedAt.Time,
-		EndedAt:    &dbScan.EndedAt.Time,
+		ID:              dbScan.ID,
+		HostID:          dbScan.HostID,
+		TenantID:        dbScan.TenantID,
+		Status:          string(dbScan.Status),
+		ProtectionScore: &dbScan.ProtectionScore,
+		OperatorID:      dbScan.OperatorID,
+		CreatedAt:       dbScan.CreatedAt.Time,
+		UpdatedAt:       dbScan.UpdatedAt.Time,
+		StartedAt:       dbScan.StartedAt.Time,
+		EndedAt:         &dbScan.EndedAt.Time,
 	}
 }

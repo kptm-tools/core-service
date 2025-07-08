@@ -50,7 +50,11 @@ run/live:
 ## swagger: run the swagger generator
 .PHONY: swagger
 swagger:
-	swag init -g pkg/api/api.go
+	swag init \
+		--parseDependency \
+		--parseDepth 1 \
+		-g pkg/api/api.go \
+		-d .
 
 # ==================================================================================== #
 # DATABASE MIGRATIONS

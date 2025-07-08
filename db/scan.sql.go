@@ -56,6 +56,182 @@ func (q *Queries) CreateScan(ctx context.Context, arg CreateScanParams) (Scan, e
 	return i, err
 }
 
+const getAssetsByScanID = `-- name: GetAssetsByScanID :many
+WITH os_assets AS (
+    SELECT
+        'os' AS asset_type,
+        os.id,
+        os.host_id,
+        os.scan_id,
+        os.os_name AS name,
+        NULL::VARCHAR AS version,
+        os.family,
+        os.os_type,
+        NULL::INTEGER AS port,
+        NULL::VARCHAR AS protocol,
+        os.fingerprint,
+        os.cpe,
+        NULL::VARCHAR AS product,
+        os.accuracy,
+        NULL::port_state_enum AS port_state,
+
+        COUNT(v.id) AS total_vulnerabilities_count,
+        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
+        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
+        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
+        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count,
+
+        os.created_at,
+        os.updated_at
+    FROM operating_systems os
+    LEFT JOIN vulnerabilities v ON os.host_id = v.host_id
+                             AND os.scan_id = v.scan_id
+                             AND v.vuln_type = 'NETWORK_OS'
+    WHERE os.scan_id = $1
+    GROUP BY
+        os.id,
+        os.host_id,
+        os.scan_id,
+        os.os_name,
+        os.family,
+        os.os_type,
+        os.fingerprint,
+        os.cpe,
+        os.accuracy,
+        os.created_at,
+        os.updated_at
+),
+service_assets AS (
+    SELECT
+        'service' AS asset_type,
+        s.id,
+        s.host_id,
+        s.scan_id,
+        s.sv_name AS name,
+        s.sv_version AS version,
+        NULL::VARCHAR AS family,
+        NULL::VARCHAR AS os_type,
+        s.port,
+        s.protocol,
+        NULL::TEXT AS fingerprint,
+        s.cpe,
+        s.product,
+        s.confidence AS accuracy,
+        s.port_state,
+
+        COUNT(v.id) AS total_vulnerabilities_count,
+        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
+        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
+        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
+        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count,
+
+        s.created_at,
+        s.updated_at
+    FROM services s
+    LEFT JOIN vulnerabilities v ON s.host_id = v.host_id
+                             AND s.scan_id = v.scan_id
+                             AND v.vuln_type = 'WEB_APPLICATION'
+    WHERE s.scan_id = $1
+    GROUP BY
+        s.id,
+        s.host_id,
+        s.scan_id,
+        s.sv_name,
+        s.sv_version,
+        s.port,
+        s.protocol,
+        s.cpe,
+        s.product,
+        s.confidence,
+        s.port_state,
+        s.created_at,
+        s.updated_at
+)
+SELECT asset_type, id, host_id, scan_id, name, version, family, os_type, port, protocol, fingerprint, cpe, product, accuracy, port_state, total_vulnerabilities_count, critical_count, high_count, medium_count, low_count, none_count, unknown_count, created_at, updated_at FROM os_assets
+UNION ALL
+SELECT asset_type, id, host_id, scan_id, name, version, family, os_type, port, protocol, fingerprint, cpe, product, accuracy, port_state, total_vulnerabilities_count, critical_count, high_count, medium_count, low_count, none_count, unknown_count, created_at, updated_at FROM service_assets
+ORDER BY host_id, asset_type, created_at
+`
+
+type GetAssetsByScanIDRow struct {
+	AssetType                 string            `json:"asset_type"`
+	ID                        int32             `json:"id"`
+	HostID                    uuid.UUID         `json:"host_id"`
+	ScanID                    uuid.UUID         `json:"scan_id"`
+	Name                      sql.NullString    `json:"name"`
+	Version                   sql.NullString    `json:"version"`
+	Family                    sql.NullString    `json:"family"`
+	OsType                    sql.NullString    `json:"os_type"`
+	Port                      sql.NullInt32     `json:"port"`
+	Protocol                  sql.NullString    `json:"protocol"`
+	Fingerprint               sql.NullString    `json:"fingerprint"`
+	Cpe                       sql.NullString    `json:"cpe"`
+	Product                   sql.NullString    `json:"product"`
+	Accuracy                  sql.NullInt32     `json:"accuracy"`
+	PortState                 NullPortStateEnum `json:"port_state"`
+	TotalVulnerabilitiesCount int64             `json:"total_vulnerabilities_count"`
+	CriticalCount             int64             `json:"critical_count"`
+	HighCount                 int64             `json:"high_count"`
+	MediumCount               int64             `json:"medium_count"`
+	LowCount                  int64             `json:"low_count"`
+	NoneCount                 int64             `json:"none_count"`
+	UnknownCount              int64             `json:"unknown_count"`
+	CreatedAt                 sql.NullTime      `json:"created_at"`
+	UpdatedAt                 sql.NullTime      `json:"updated_at"`
+}
+
+func (q *Queries) GetAssetsByScanID(ctx context.Context, scanID uuid.UUID) ([]GetAssetsByScanIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAssetsByScanID, scanID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAssetsByScanIDRow
+	for rows.Next() {
+		var i GetAssetsByScanIDRow
+		if err := rows.Scan(
+			&i.AssetType,
+			&i.ID,
+			&i.HostID,
+			&i.ScanID,
+			&i.Name,
+			&i.Version,
+			&i.Family,
+			&i.OsType,
+			&i.Port,
+			&i.Protocol,
+			&i.Fingerprint,
+			&i.Cpe,
+			&i.Product,
+			&i.Accuracy,
+			&i.PortState,
+			&i.TotalVulnerabilitiesCount,
+			&i.CriticalCount,
+			&i.HighCount,
+			&i.MediumCount,
+			&i.LowCount,
+			&i.NoneCount,
+			&i.UnknownCount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLatestScanByHostID = `-- name: GetLatestScanByHostID :one
 SELECT id, tenant_id, operator_id, host_id, status, started_at, ended_at, created_at, updated_at, protection_score
 FROM scans

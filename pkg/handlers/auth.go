@@ -37,6 +37,18 @@ func NewAuthHandlers(authService interfaces.IAuthService) *AuthHandlers {
 	}
 }
 
+// Login handles user authentication and returns a JWT token along with OTP information.
+// @Summary      Login
+// @Description  Authenticate a user by login ID, password and application ID.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        loginRequest  body      dto.LoginRequest     true  "Login credentials"
+// @Success      200           {object}  auth.LoginResponse
+// @Failure      400           {object}  api.APIError         "Bad request"
+// @Failure      401           {object}  api.APIError         "Unauthorized"
+// @Failure      500           {object}  api.APIError         "Internal server error"
+// @Router       /api/login [post]
 func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) error {
 	// Fetch parameters
 	loginRequest := new(dto.LoginRequest)

@@ -238,6 +238,10 @@ func (s *ScanService) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domai
 	return scan, nil
 }
 
+func (s *ScanService) GetScanAssetsByID(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
+	return s.scanRepo.GetScanAssetsByID(ctx, scanID)
+}
+
 func (s *ScanService) HandleScanCompletion(ctx context.Context, scanID uuid.UUID) error {
 	slog.Info("Scan Service handling scan completion...")
 

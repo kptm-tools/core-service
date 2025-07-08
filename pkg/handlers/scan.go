@@ -142,9 +142,64 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 	return api.WriteJSON(w, http.StatusCreated, scan)
 }
 
-func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, req *http.Request) error {
-	ctx := req.Context()
-	scanID, err := GetUUID(req)
+// GetScanAssetsByID returns assets from the OS and Services based on the ScanID of the KPTM Tools - Core Service.
+// @Summary      GetScanAssetsByID
+// @Description  Retrieve assets from the OS and Services based on the ScanID of KPTM Tools - Core Service
+// @Tags         Scans
+// @Produce      json
+// @Param        id             path      string  true  "Scan ID"
+// @Success      200            {object}  dto.ScanAssetsResponse
+// @Failure      401            {object}  api.APIError         "Unauthorized"
+// @Failure      404            {object}  api.APIError         "Scan not found"
+// @Failure      409            {object}  api.APIError         "Scan status not completed"
+// @Failure      500            {object}  api.APIError         "Internal server error"
+// @Security     BearerAuth
+// @Router       /api/scans/{id}/assets [get]
+func (h *ScanHandlers) GetScanAssetsByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	scanID, err := GetUUID(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid scan ID"})
+	}
+
+	scan, err := h.scanService.GetScanByID(ctx, scanID)
+	if err != nil {
+		slog.Error("Failed to get scan by ID",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err))
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	if scan.Status != "Completed" {
+		return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: "Scan status not completed"})
+	}
+
+	rawResults, err := h.scanService.GetScanAssetsByID(ctx, scanID)
+	if err != nil {
+		slog.Error("Failed to get scan assets",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: "Internal server error"})
+	}
+
+	if len(rawResults) == 0 {
+		slog.Warn("No assets found for scan",
+			slog.String("scan_id", scanID.String()))
+		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan Assets for the ID %s not found", scanID.String())})
+	}
+
+	response := dto.ConvertScanOSandServicesResultToResponse(rawResults)
+
+	return api.WriteJSON(w, http.StatusOK, response)
+}
+
+func (h *ScanHandlers) CancelScanByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("failed to extract scanID", slog.Any("error", err))
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: http.StatusText(http.StatusBadRequest)})

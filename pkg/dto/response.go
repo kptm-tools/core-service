@@ -111,13 +111,142 @@ type DataPoint struct {
 	Y float64 `json:"y"`
 }
 
+// ScanAssetsOperatingSystem store system data detected on a host.
+// @name ScanAssetsOperatingSystem
+type ScanAssetsOperatingSystem struct {
+	// id is the unique identifier for the OS record.
+	// required: true
+	ID int32 `json:"id"`
+
+	// host_id is the identifier of the scanned host.
+	// required: true
+	HostID string `json:"host_id"`
+
+	// scan_id is the identifier of the scan this record belongs to.
+	// required: true
+	ScanID string `json:"scan_id"`
+
+	// name of the operating system (e.g. "Ubuntu").
+	// required: true
+	Name string `json:"name"`
+
+	// version of the operating system (e.g. "20.04").
+	Version string `json:"version"`
+
+	// family groups this OS into a family (e.g. "Linux").
+	Family string `json:"family"`
+
+	// os_type indicates the OS type (e.g. "unix", "windows").
+	OSType string `json:"os_type"`
+
+	// fingerprint used to identify the OS.
+	// Fingerprint string `json:"fingerprint"`
+
+	// cpe is the Common Platform Enumeration string.
+	CPE string `json:"cpe"`
+
+	// accuracy is the confidence percentage of the detection.
+	Accuracy int `json:"accuracy"`
+
+	// total_vulnerabilities_count total number of detected vulnerabilities.
+	TotalVulnerabilities int `json:"total_vulnerabilities_count"`
+
+	// critical_count count of critical vulnerabilities.
+	CriticalCount int `json:"critical_count"`
+
+	// high_count count of high-severity vulnerabilities.
+	HighCount int `json:"high_count"`
+
+	// medium_count count of medium-severity vulnerabilities.
+	MediumCount int `json:"medium_count"`
+
+	// low_count count of low-severity vulnerabilities.
+	LowCount int `json:"low_count"`
+
+	// none_count count of items without severity classification.
+	NoneCount int `json:"none_count"`
+
+	// unknown_count count of vulnerabilities with unknown severity.
+	UnknownCount int `json:"unknown_count"`
+}
+
+// ScanAssetsService store service data detected on a host.
+// @name ScanAssetsService
+type ScanAssetsService struct {
+	// id is the unique identifier for the service record.
+	// required: true
+	ID int32 `json:"id"`
+
+	// host_id is the identifier of the scanned host.
+	// required: true
+	HostID string `json:"host_id"`
+
+	// scan_id is the identifier of the scan this record belongs to.
+	// required: true
+	ScanID string `json:"scan_id"`
+
+	// name of the service (e.g. "ssh").
+	Name string `json:"name"`
+
+	// version of the service or product.
+	Version string `json:"version"`
+
+	// port number where the service is running.
+	Port int `json:"port"`
+
+	// protocol used by the service (e.g. "tcp", "udp").
+	Protocol string `json:"protocol"`
+
+	// cpe is the Common Platform Enumeration string.
+	CPE string `json:"cpe"`
+
+	// product name (e.g. "OpenSSH").
+	Product string `json:"product"`
+
+	// port_state indicates the port state (e.g. "open", "closed").
+	PortState string `json:"port_state"`
+
+	// total_vulnerabilities_count total number of detected vulnerabilities.
+	TotalVulnerabilities int `json:"total_vulnerabilities_count"`
+
+	// critical_count count of critical vulnerabilities.
+	CriticalCount int `json:"critical_count"`
+
+	// high_count count of high-severity vulnerabilities.
+	HighCount int `json:"high_count"`
+
+	// medium_count count of medium-severity vulnerabilities.
+	MediumCount int `json:"medium_count"`
+
+	// low_count count of low-severity vulnerabilities.
+	LowCount int `json:"low_count"`
+
+	// none_count count of items without severity classification.
+	NoneCount int `json:"none_count"`
+
+	// unknown_count count of vulnerabilities with unknown severity.
+	UnknownCount int `json:"unknown_count"`
+}
+
+// ScanAssetsResponse Contains operating system and service asset information for a scan.
+// @name ScanAssetsResponse
+type ScanAssetsResponse struct {
+	// operating_system holds the data of the detected operating system.
+	// required: true
+	OperatingSystem ScanAssetsOperatingSystem `json:"operating_system"`
+
+	// services is the list of services detected on the host.
+	// required: true
+	Services []ScanAssetsService `json:"services"`
+}
+
 // ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
 // associated to a scan.
 type ScanVulnerabilityItemsResponse struct {
 	ScanDate             time.Time               `json:"scan_date"`
 	Alias                string                  `json:"alias"`
 	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
-	SeverityCounts       tools.SeverityCounts    `json:"severity_counts,omitempty"`
+	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
 	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
 }
 
@@ -497,4 +626,59 @@ func ToCWERemediation(cweRemediations []tools.CWERemediation) []CWERemediation {
 		result = append(result, r)
 	}
 	return result
+}
+
+// ConvertScanOSandServicesResultToResponse takes a slice of ScanOSandServicesResult,
+// separates and converts them into a structured ScanAssetsResponse.
+func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServicesResult) ScanAssetsResponse {
+	var response ScanAssetsResponse
+
+	for _, r := range results {
+		switch r.AssetType {
+		case "os":
+			// Map OS
+			response.OperatingSystem = ScanAssetsOperatingSystem{
+				ID:      r.ID,
+				HostID:  r.HostID.String(),
+				ScanID:  r.ScanID.String(),
+				Name:    r.Name,
+				Version: r.Version,
+				Family:  r.Family,
+				OSType:  r.OsType,
+				// Fingerprint:          r.Fingerprint,
+				CPE:                  r.Cpe,
+				Accuracy:             int(r.Accuracy),
+				TotalVulnerabilities: int(r.TotalVulnerabilitiesCount),
+				CriticalCount:        int(r.CriticalCount),
+				HighCount:            int(r.HighCount),
+				MediumCount:          int(r.MediumCount),
+				LowCount:             int(r.LowCount),
+				NoneCount:            int(r.NoneCount),
+				UnknownCount:         int(r.UnknownCount),
+			}
+		case "service":
+			service := ScanAssetsService{
+				ID:                   r.ID,
+				HostID:               r.HostID.String(),
+				ScanID:               r.ScanID.String(),
+				Name:                 r.Name,
+				Version:              r.Version,
+				Port:                 int(r.Port),
+				Protocol:             r.Protocol,
+				CPE:                  r.Cpe,
+				Product:              r.Product,
+				PortState:            r.PortState,
+				TotalVulnerabilities: int(r.TotalVulnerabilitiesCount),
+				CriticalCount:        int(r.CriticalCount),
+				HighCount:            int(r.HighCount),
+				MediumCount:          int(r.MediumCount),
+				LowCount:             int(r.LowCount),
+				NoneCount:            int(r.NoneCount),
+				UnknownCount:         int(r.UnknownCount),
+			}
+			response.Services = append(response.Services, service)
+		}
+	}
+
+	return response
 }
