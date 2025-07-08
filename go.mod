@@ -11,6 +11,7 @@ require (
 	github.com/FusionAuth/go-client v1.57.1
 	github.com/brianvoe/gofakeit/v7 v7.2.1
 	github.com/cockroachdb/apd/v3 v3.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3

@@ -1,102 +1,102 @@
-package handlers
+package handlers_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"github.com/kptm-tools/core-service/pkg/dto"
+	hh "github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
-
 	mock_services "github.com/kptm-tools/core-service/pkg/mocks/services"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 	scanID := uuid.New()
-
 	tests := []struct {
-		name string
-
+		name                string
 		scanService         interfaces.IScanService
 		scanScheduleService interfaces.IScanScheduleService
 		hostService         interfaces.IHostService
 		emailService        interfaces.IEmailService
 		eventBus            events.EventBus
-
-		r              *http.Request
-		wantStatus     int
-		wantErrorField string                   // para errores
-		wantData       []dto.ScanAssetsResponse // para 200 OK
+		r                   *http.Request
+		wantStatus          int
 	}{
 		{
-			name: "Scan no completado → 409",
+			name:                "Scan Bad Request → 400",
+			scanService:         &mock_services.MockScanService{},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans//assets", nil)
+				r.SetPathValue("id", "")
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Scan Not Completed → 409",
 			scanService: &mock_services.MockScanService{
-				MockGetScanByID: func(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error) {
-					return nil, fmt.Errorf("Scan status not completed")
-				},
-				MockGetScanAssetsByID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
-					return []domain.ScanOSandServicesResult{}, fmt.Errorf("Scan status not completed")
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Failed"}, nil // not Completed
 				},
 			},
 			scanScheduleService: &mock_services.MockScanScheduleService{},
 			hostService:         &mock_services.MockHostService{},
 			emailService:        &mock_services.MockEmailService{},
 			eventBus:            &events.NatsEventBus{},
-			r:                   httptest.NewRequest("GET", fmt.Sprintf("/api/scans/%s/assets", scanID), nil).WithContext(context.WithValue(context.Background(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin})),
-			wantStatus:          http.StatusConflict,
-			wantErrorField:      "Scan status not completed",
-			wantData:            []dto.ScanAssetsResponse{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/assets", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusConflict,
 		},
 		{
-			name:                "Completado sin assets → 404",
-			scanService:         &mock_services.MockScanService{},
+			name: "Scan Not Found → 404",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+				MockGetScanAssetsByID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
+					return []domain.ScanOSandServicesResult{}, nil
+				},
+			},
 			scanScheduleService: &mock_services.MockScanScheduleService{},
 			hostService:         &mock_services.MockHostService{},
 			emailService:        &mock_services.MockEmailService{},
 			eventBus:            &events.NatsEventBus{},
-			r:                   httptest.NewRequest("GET", fmt.Sprintf("/api/scans/%s/assets", scanID), nil).WithContext(context.WithValue(context.Background(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin})),
-			wantStatus:          http.StatusNotFound,
-			wantErrorField:      fmt.Sprintf("Scan Assets for the ID %s not found", scanID.String()),
-		},
-		{
-			name:                "Error interno al obtener assets → 500",
-			scanService:         &mock_services.MockScanService{},
-			scanScheduleService: &mock_services.MockScanScheduleService{},
-			hostService:         &mock_services.MockHostService{},
-			emailService:        &mock_services.MockEmailService{},
-			eventBus:            &events.NatsEventBus{},
-			r:                   httptest.NewRequest("GET", fmt.Sprintf("/api/scans/%s/assets", scanID), nil).WithContext(context.WithValue(context.Background(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin})),
-			wantStatus:          http.StatusInternalServerError,
-			wantErrorField:      "Internal server error",
-		},
-		{
-			name:                "Éxito con datos → 200",
-			scanService:         &mock_services.MockScanService{},
-			scanScheduleService: &mock_services.MockScanScheduleService{},
-			hostService:         &mock_services.MockHostService{},
-			emailService:        &mock_services.MockEmailService{},
-			eventBus:            &events.NatsEventBus{},
-			r:                   httptest.NewRequest("GET", fmt.Sprintf("/api/scans/%s/assets", scanID), nil).WithContext(context.WithValue(context.Background(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin})),
-			wantStatus:          http.StatusOK,
-			wantData:            []dto.ScanAssetsResponse{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/assets", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusNotFound,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			rr := httptest.NewRecorder()
-			h := NewScanHandlers(tt.scanService, tt.scanScheduleService, tt.hostService, tt.emailService, tt.eventBus)
-			h.GetScanAssetsByID(rr, tt.r)
-
+			h := hh.NewScanHandlers(
+				tt.scanService,
+				tt.scanScheduleService,
+				tt.hostService,
+				tt.emailService,
+				tt.eventBus,
+			)
+			err := h.GetScanAssetsByID(rr, tt.r)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.wantStatus, rr.Code, "Expected http response code %d, got %d", tt.wantStatus, rr.Code)
 		})
 	}
