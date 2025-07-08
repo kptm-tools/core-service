@@ -1,4 +1,4 @@
--- Migration: 000027_create_web_vulnerabilities_table.up.sql
+-- Migration: 000026_create_web_vulnerabilities_table.up.sql
 CREATE TABLE IF NOT EXISTS web_vulnerabilities (
     vulnerability_id UUID PRIMARY KEY,
     scan_id UUID NOT NULL, -- The specific scan run that found this instance
@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS web_vulnerabilities (
     service_id INTEGER, -- The specific service this instance is related to
     solution_advice text,
     reference varchar(255),
-    other_info text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 

@@ -10,10 +10,11 @@ import (
 )
 
 type MockCWERepo struct {
-	MockCreateOrUpdateCWE         func(ctx context.Context, vuln tools.CWERemediation) (*tools.CWERemediation, error)
-	MockCreateCWERemediation      func(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error)
-	MockGetCWERemediationByID     func(ctx context.Context, mitigationID string) (*tools.CWERemediation, error)
-	MockGetCWERemediationsByCWEID func(ctx context.Context, cweID string) ([]tools.CWERemediation, error)
+	MockCreateOrUpdateCWE                     func(ctx context.Context, vuln tools.CWERemediation) (*tools.CWERemediation, error)
+	MockCreateCWERemediation                  func(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error)
+	MockGetCWERemediationByID                 func(ctx context.Context, mitigationID string) (*tools.CWERemediation, error)
+	MockGetCWERemediationsByCWEID             func(ctx context.Context, cweID string) ([]tools.CWERemediation, error)
+	MockCreateOrUpdateCWEFromWebVulnerability func(ctx context.Context, vuln tools.WebVulnerability) (*tools.CWERemediation, error)
 }
 
 var _ interfaces.CWERepository = (*MockCWERepo)(nil)
@@ -44,4 +45,11 @@ func (m *MockCWERepo) GetCWERemediationsByCWEID(ctx context.Context, cweID strin
 		return m.MockGetCWERemediationsByCWEID(ctx, cweID)
 	}
 	panic(fmt.Sprintf("MockCWERepo: method GetCWERemediationsByCWEID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockCWERepo) CreateOrUpdateCWEFromWebVulnerability(ctx context.Context, vuln tools.WebVulnerability) (*tools.CWERemediation, error) {
+	if m.MockCreateOrUpdateCWEFromWebVulnerability != nil {
+		return m.MockCreateOrUpdateCWEFromWebVulnerability(ctx, vuln)
+	}
+	panic(fmt.Sprintf("MockCWERepo: method CreateOrUpdateCWEFromWebVulnerability called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

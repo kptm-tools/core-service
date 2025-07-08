@@ -250,7 +250,6 @@ ORDER BY
 LIMIT 1;
 
 -- name: GetAssetsByScanID :many
--- name: GetAssetsWithVulnerabilitiesByScanID :many
 WITH os_assets AS (
     SELECT
         'os' AS asset_type,

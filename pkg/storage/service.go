@@ -102,3 +102,22 @@ func toDomainService(dbService repository.Service) domain.Service {
 		UpdatedAt:  dbService.UpdatedAt.Time,
 	}
 }
+
+func (r *ServiceRepo) GetServiceByScanHostPortProtocol(ctx context.Context, hostID uuid.UUID, scanID uuid.UUID, port int32, protocol string) (*domain.Service, error) {
+	queries := r.getQueries(ctx)
+	params := repository.GetServiceByScanIDAndHostIDAndPortAndProtocolParams{
+		ScanID:   scanID,
+		HostID:   hostID,
+		Port:     port,
+		Protocol: sql.NullString{String: protocol, Valid: true},
+	}
+	dbService, err := queries.GetServiceByScanIDAndHostIDAndPortAndProtocol(ctx, params)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrServiceNotFound
+		}
+		return nil, fmt.Errorf("failed to query service: %w", err)
+	}
+	domService := toDomainService(dbService)
+	return &domService, nil
+}

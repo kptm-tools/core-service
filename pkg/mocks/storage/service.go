@@ -12,8 +12,9 @@ import (
 )
 
 type MockServiceRepo struct {
-	MockCreateOrUpdateService func(ctx context.Context, hostID uuid.UUID, scanID uuid.UUID, portData tools.PortData) (*domain.Service, error)
-	MockGetServiceByID        func(context.Context, int32) (*domain.Service, error)
+	MockCreateOrUpdateService            func(ctx context.Context, hostID uuid.UUID, scanID uuid.UUID, portData tools.PortData) (*domain.Service, error)
+	MockGetServiceByID                   func(context.Context, int32) (*domain.Service, error)
+	MockGetServiceByScanHostPortProtocol func(ctx context.Context, hostID uuid.UUID, scanID uuid.UUID, port int32, protocol string) (*domain.Service, error)
 }
 
 var _ interfaces.ServiceRepository = (*MockServiceRepo)(nil)
@@ -30,4 +31,11 @@ func (m *MockServiceRepo) GetServiceByID(ctx context.Context, id int32) (*domain
 		return m.MockGetServiceByID(ctx, id)
 	}
 	panic(fmt.Sprintf("MockServiceRepo: method GetServiceByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockServiceRepo) GetServiceByScanHostPortProtocol(ctx context.Context, hostID uuid.UUID, scanID uuid.UUID, port int32, protocol string) (*domain.Service, error) {
+	if m.MockGetServiceByScanHostPortProtocol != nil {
+		return m.MockGetServiceByScanHostPortProtocol(ctx, hostID, scanID, port, protocol)
+	}
+	panic(fmt.Sprintf("MockServiceRepo: method GetServiceByScanHostPortProtocol called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

@@ -37,3 +37,11 @@ RETURNING *;
 SELECT *
 FROM services
 WHERE id = $1;
+
+-- name: GetServiceByScanIDAndHostIDAndPortAndProtocol :one
+SELECT *
+FROM services
+WHERE scan_id = $1
+  AND host_id = $2
+  AND port = $3
+  AND protocol = $4;
