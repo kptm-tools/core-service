@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -87,16 +86,7 @@ func (r *ScanRepo) GetScanByID(ctx context.Context, scanID uuid.UUID) (*domain.S
 		return nil, err
 	}
 
-	fmt.Println("Data from DB")
-	fmt.Println(dbScan)
-	fmt.Println(dbScan.Status)
-
 	domScan := toDomainScan(dbScan)
-	fmt.Println("")
-	fmt.Println("Dat from domain")
-	fmt.Println(domScan)
-	fmt.Println(domScan.Status)
-
 	return &domScan, nil
 }
 
