@@ -225,8 +225,8 @@ type ScoreCardTrendResponse struct {
 // ScanVulnerabilityDetailResponse is the DTO with the details for a particular
 // scan's vulenrability.
 type ScanVulnerabilityDetailResponse struct {
-	ID       string    `json:"id"`
-	ScanDate time.Time `json:"scan_date"`
+	ID       string `json:"id"`
+	ScanDate string `json:"scan_date"`
 
 	Host HostItem  `json:"host"`
 	Port *PortItem `json:"port,omitempty"`
@@ -303,8 +303,8 @@ type OSItem struct {
 }
 
 type DateInfo struct {
-	Published   time.Time `json:"published"`
-	LastUpdated time.Time `json:"last_updated"`
+	Published   string `json:"published"`
+	LastUpdated string `json:"last_updated"`
 }
 
 // PluginInfo refers to info about the service/operating system
@@ -380,8 +380,8 @@ func AdaptDomainOSItem(domainOSItem *domain.OSItem) *OSItem {
 
 func AdaptDomainDateInfo(domainDateInfo domain.DateInfo) DateInfo {
 	return DateInfo{
-		Published:   domainDateInfo.Published,
-		LastUpdated: domainDateInfo.LastUpdated,
+		Published:   domainDateInfo.Published.Format(time.DateOnly),
+		LastUpdated: domainDateInfo.LastUpdated.Format(time.DateOnly),
 	}
 }
 
