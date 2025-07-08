@@ -51,6 +51,5 @@ func (m *MockCWERepo) CreateOrUpdateCWEFromWebVulnerability(ctx context.Context,
 	if m.MockCreateOrUpdateCWEFromWebVulnerability != nil {
 		return m.MockCreateOrUpdateCWEFromWebVulnerability(ctx, vuln)
 	}
-	return nil, nil
-	//panic(fmt.Sprintf("MockCWERepo: method CreateOrUpdateCWEFromWebVulnerability called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+	panic(fmt.Sprintf("MockCWERepo: method CreateOrUpdateCWEFromWebVulnerability called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }
