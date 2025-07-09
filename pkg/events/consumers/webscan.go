@@ -16,31 +16,31 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type NmapHandler struct {
+type WebScanHandler struct {
 	scanService interfaces.IScanService
 	vulnService interfaces.IVulnerabilityService
 }
 
-func NewNmapHandler(
+func NewWebScanHandler(
 	scanService interfaces.IScanService,
 	vulnerabilityService interfaces.IVulnerabilityService,
-) *NmapHandler {
-	return &NmapHandler{
+) *WebScanHandler {
+	return &WebScanHandler{
 		scanService: scanService,
 		vulnService: vulnerabilityService,
 	}
 }
 
-var _ interfaces.EventConsumer = (*NmapHandler)(nil)
+var _ interfaces.EventConsumer = (*WebScanHandler)(nil)
 
-func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
+func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
 	go func(msg *nats.Msg) {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error("Panic recovered in NmapHandler", "panic", r, "stack", string(debug.Stack()))
+				slog.Error("Panic recovered in WebScanHandler", "panic", r, "stack", string(debug.Stack()))
 			}
 		}()
-		slog.Info("Received NmapEvent")
+		slog.Info("Received WebScanEvent")
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
@@ -52,8 +52,8 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		}
 
 		// 2. Validate contents
-		if evt.ToolResult.Tool != enums.ToolNmap {
-			slog.Error("Invalid toolName for NmapEvent",
+		if evt.ToolResult.Tool != enums.ToolWebScan {
+			slog.Error("Invalid toolName for WebScanEvent",
 				slog.String("tool_name", string(evt.ToolResult.Tool)))
 			return
 		}
@@ -91,7 +91,6 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 
 			return
 		}
-		slog.Debug("Nmap ToolResult saved successfully")
 
 		// 2.1 Check for errors in the result
 		if evt.ToolResult.Err != nil {
@@ -112,24 +111,23 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 
 		// 3.1 Parse the vulnerabilities from the result
 		// 3.1.1 Unmarshal the result to a tools.NmapResult variable
-		var nr tools.NmapResult
-		resultPtr, ok := scanResult.Result.Result.(*tools.NmapResult)
+		var nr tools.WebScanResult
+		resultPtr, ok := scanResult.Result.Result.(*tools.WebScanResult)
 		if !ok || resultPtr == nil {
 			slog.Error(
-				"Failed to assert nmap result type", // Static, searchable message
-				"scan_id", scan.ID.String(),         // Structured context
-				"expected_type", "*tools.NmapResult",
+				"Failed to assert webScan result type", // Static, searchable message
+				"scan_id", scan.ID.String(),            // Structured context
+				"expected_type", "*tools.WebScanResult",
 				"actual_type", fmt.Sprintf("%T", scanResult.Result.Result),
 			)
 		}
 		nr = *resultPtr
 
-		// 3.2 Pass the nmap result to the VulnService InsertNetworkOSVulnerability method
+		// 3.2 Pass the webScan result to the VulnService InsertWebScanVulnerabilities method
 
-		// 3.2 Begin DB transaction to store ToolResult and Vulnerabilities
-		if err := h.vulnService.CreateNetworkOSVulnerabilities(ctx, scan.ID, nr); err != nil {
+		if err := h.vulnService.InsertWebScanVulnerabilities(ctx, scan.ID, nr); err != nil {
 			slog.Error(
-				"Error inserting VulnerabilityResult to DB",
+				"Error inserting VulnerabilityResult to DB (WebVulnerabillities)",
 				slog.String("scan_id", evt.ScanID.String()),
 				slog.String("tool_name", string(evt.ToolResult.Tool)),
 				slog.Any("error", err))
@@ -144,6 +142,6 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 			return
 		}
 
-		slog.Debug("NmapEvent handled successfully")
+		slog.Debug("WebScanEvent handled successfully")
 	}(msg)
 }
