@@ -1,0 +1,15 @@
+meta {
+  name: GetScanOperatingSystemVulnerabilities
+  type: http
+  seq: 29
+}
+
+get {
+  url: http://localhost:8000/api/scans/{{scanID}}/operating-system/vulnerabilities
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

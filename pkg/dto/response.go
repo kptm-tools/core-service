@@ -243,11 +243,17 @@ type ScanAssetsResponse struct {
 // ScanVulnerabilityItemsResponse is the DTO for the list of Vulnerabilities
 // associated to a scan.
 type ScanVulnerabilityItemsResponse struct {
-	ScanDate             time.Time               `json:"scan_date"`
+	ScanID               string                  `json:"scan_date"`
+	ScanDate             time.Time               `json:"scan_id"`
 	Alias                string                  `json:"alias"`
+	IPAddress            string                  `json:"ip_address"`
+	OSName               string                  `json:"os_name"`
+	OSType               string                  `json:"os_type"`
 	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
 	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
 	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
+	CWERemediations      []CWERemediation        `json:"remediation"`
+	References           []string                `json:"references"`
 }
 
 type ScanVulnerabilityItem struct {

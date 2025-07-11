@@ -70,6 +70,7 @@ func main() {
 	dashboardHandlers := handlers.NewDashboardHandlers(dashboardService)
 	scanHandlers := handlers.NewScanHandlers(
 		scanService,
+		vulnService,
 		scanScheduleService,
 		hostService,
 		emailService,

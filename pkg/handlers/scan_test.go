@@ -22,6 +22,7 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 		name                string
 		scanService         interfaces.IScanService
 		scanScheduleService interfaces.IScanScheduleService
+		vulnerability       interfaces.IVulnerabilityService
 		hostService         interfaces.IHostService
 		emailService        interfaces.IEmailService
 		eventBus            events.EventBus
@@ -90,6 +91,7 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 			rr := httptest.NewRecorder()
 			h := hh.NewScanHandlers(
 				tt.scanService,
+				tt.vulnerability,
 				tt.scanScheduleService,
 				tt.hostService,
 				tt.emailService,

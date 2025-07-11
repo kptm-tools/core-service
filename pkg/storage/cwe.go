@@ -165,22 +165,17 @@ func (r *CWERepo) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID str
 
 	remediationDetails := make([]domain.CWEDetailWithMitigations, len(dbCWEs))
 	for i, dbCWE := range dbCWEs {
-		var mitigationIDPtr *int32
-		if dbCWE.MitigationID.Valid {
-			mitigationIDPtr = &dbCWE.MitigationID.Int32
-		} else {
-			mitigationIDPtr = nil
-		}
+
 		remediationDetails[i] = domain.CWEDetailWithMitigations{
 			CweID:                 dbCWE.CweID,
 			Title:                 dbCWE.Title,
 			Description:           dbCWE.Description,
-			MitigationID:          mitigationIDPtr,
-			MitigationCode:        dbCWE.MitigationCode.String,
+			MitigationID:          dbCWE.MitigationID.String,
 			Phase:                 dbCWE.Phase.String,
 			MitigationDescription: dbCWE.MitigationDescription.String,
 			Effectiveness:         dbCWE.Effectiveness.String,
 			EffectivenessNotes:    dbCWE.EffectivenessNotes.String,
+			MigrationCreatedAt:    dbCWE.MitigationCreatedAt.Time,
 		}
 	}
 	return remediationDetails, nil

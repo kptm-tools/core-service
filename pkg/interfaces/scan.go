@@ -40,6 +40,7 @@ type IScanHandlers interface {
 	CancelScanByID(w http.ResponseWriter, r *http.Request) error
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error
+	GetScanOperatingSystemVulnerabilitiesByID(w http.ResponseWriter, r *http.Request) error
 	GetReports(w http.ResponseWriter, r *http.Request) error
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error

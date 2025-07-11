@@ -22,13 +22,14 @@ const (
 	ActionTenantGetAll Action = "tenant:get_all"
 
 	// Scan Actions
-	ActionScanCreate                      Action = "scan:create"
-	ActionScanCancelByID                  Action = "scan:cancel_by_id"
-	ActionScanGetAssetsByID               Action = "scan:get_assets_by_id"
-	ActionScanGetInsightsByID             Action = "scan:get_insights_by_id"
-	ActionScanGetVulnerabilitiesByID      Action = "scan:get_vulnerabilities_by_id"
-	ActionScanGetVulnerabilitySummaryByID Action = "scan:get_vulnerability_summary_by_id"
-	ActionScanGetScorecardTrends          Action = "scan:get_scorecard_trends"
+	ActionScanCreate                                Action = "scan:create"
+	ActionScanCancelByID                            Action = "scan:cancel_by_id"
+	ActionScanGetAssetsByID                         Action = "scan:get_assets_by_id"
+	ActionScanGetInsightsByID                       Action = "scan:get_insights_by_id"
+	ActionScanGetVulnerabilitiesByID                Action = "scan:get_vulnerabilities_by_id"
+	ActionScanGetVulnerabilitySummaryByID           Action = "scan:get_vulnerability_summary_by_id"
+	ActionGetScanOperatingSystemVulnerabilitiesByID Action = "scan:get_scan_os_vulnerability_by_id"
+	ActionScanGetScorecardTrends                    Action = "scan:get_scorecard_trends"
 
 	// Scan Schedule Actions
 	ActionScanScheduleDeleteByID Action = "scan_schedule:delete_by_id"
@@ -80,13 +81,14 @@ var actionRoles = map[Action][]Role{
 
 	ActionTenantGetAll: {RoleAdmin, RoleAnalyst},
 
-	ActionScanCreate:                      {RoleAdmin, RoleOperator},
-	ActionScanCancelByID:                  {RoleAdmin, RoleOperator},
-	ActionScanGetAssetsByID:               {RoleAdmin, RoleOperator, RoleAnalyst},
-	ActionScanGetInsightsByID:             {RoleAdmin, RoleOperator, RoleAnalyst},
-	ActionScanGetVulnerabilitySummaryByID: {RoleAdmin, RoleOperator, RoleAnalyst},
-	ActionScanGetVulnerabilitiesByID:      {RoleAdmin, RoleOperator, RoleAnalyst},
-	ActionScanGetScorecardTrends:          {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanCreate:                                {RoleAdmin, RoleOperator},
+	ActionScanCancelByID:                            {RoleAdmin, RoleOperator},
+	ActionScanGetAssetsByID:                         {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetInsightsByID:                       {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetVulnerabilitySummaryByID:           {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionGetScanOperatingSystemVulnerabilitiesByID: {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetVulnerabilitiesByID:                {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionScanGetScorecardTrends:                    {RoleAdmin, RoleOperator, RoleAnalyst},
 
 	ActionScanScheduleDeleteByID: {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanSchedulePatchByID:  {RoleAdmin, RoleOperator, RoleAnalyst},

@@ -56,12 +56,12 @@ SELECT
   cd.cwe_id,
   cd.title,
   cd.description,
-  cm.id AS mitigation_id,
-  cm.mitigation_id AS mitigation_code,
+  cm.mitigation_id,
   cm.phase,
   cm.description AS mitigation_description,
   cm.effectiveness,
-  cm.effectiveness_notes
+  cm.effectiveness_notes,
+  cm.created_at AS mitigation_created_at
 FROM cwe_details cd
 LEFT JOIN cwe_mitigations cm ON cd.cwe_id = cm.cwe_id
 WHERE cd.cwe_id = $1
@@ -71,12 +71,12 @@ type GetCWEDetailWithMitigationsByIDRow struct {
 	CweID                 string         `json:"cwe_id"`
 	Title                 string         `json:"title"`
 	Description           string         `json:"description"`
-	MitigationID          sql.NullInt32  `json:"mitigation_id"`
-	MitigationCode        sql.NullString `json:"mitigation_code"`
+	MitigationID          sql.NullString `json:"mitigation_id"`
 	Phase                 sql.NullString `json:"phase"`
 	MitigationDescription sql.NullString `json:"mitigation_description"`
 	Effectiveness         sql.NullString `json:"effectiveness"`
 	EffectivenessNotes    sql.NullString `json:"effectiveness_notes"`
+	MitigationCreatedAt   sql.NullTime   `json:"mitigation_created_at"`
 }
 
 func (q *Queries) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID string) ([]GetCWEDetailWithMitigationsByIDRow, error) {
@@ -93,11 +93,11 @@ func (q *Queries) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID str
 			&i.Title,
 			&i.Description,
 			&i.MitigationID,
-			&i.MitigationCode,
 			&i.Phase,
 			&i.MitigationDescription,
 			&i.Effectiveness,
 			&i.EffectivenessNotes,
+			&i.MitigationCreatedAt,
 		); err != nil {
 			return nil, err
 		}
