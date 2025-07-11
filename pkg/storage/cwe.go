@@ -8,6 +8,7 @@ import (
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
@@ -152,6 +153,37 @@ func (r *CWERepo) GetCWERemediationsByCWEID(ctx context.Context, cweID string) (
 	}
 
 	return remediations, nil
+}
+
+func (r *CWERepo) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID string) ([]domain.CWEDetailWithMitigations, error) {
+	queries := r.getQueries(ctx)
+
+	dbCWEs, err := queries.GetCWEDetailWithMitigationsByID(ctx, cweID)
+	if err != nil {
+		return nil, err
+	}
+
+	remediationDetails := make([]domain.CWEDetailWithMitigations, len(dbCWEs))
+	for i, dbCWE := range dbCWEs {
+		var mitigationIDPtr *int32
+		if dbCWE.MitigationID.Valid {
+			mitigationIDPtr = &dbCWE.MitigationID.Int32
+		} else {
+			mitigationIDPtr = nil
+		}
+		remediationDetails[i] = domain.CWEDetailWithMitigations{
+			CweID:                 dbCWE.CweID,
+			Title:                 dbCWE.Title,
+			Description:           dbCWE.Description,
+			MitigationID:          mitigationIDPtr,
+			MitigationCode:        dbCWE.MitigationCode.String,
+			Phase:                 dbCWE.Phase.String,
+			MitigationDescription: dbCWE.MitigationDescription.String,
+			Effectiveness:         dbCWE.Effectiveness.String,
+			EffectivenessNotes:    dbCWE.EffectivenessNotes.String,
+		}
+	}
+	return remediationDetails, nil
 }
 
 func (r *CWERepo) CreateOrUpdateCWEFromWebVulnerability(ctx context.Context, vuln tools.WebVulnerability) (*tools.CWERemediation, error) {
