@@ -35,21 +35,28 @@ func NewWebScanHandler(
 var _ interfaces.EventConsumer = (*WebScanHandler)(nil)
 
 func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
-	go func(msg *nats.Msg) {
-		defer func() {
-			if r := recover(); r != nil {
-				slog.Error("Panic recovered in WebScanHandler", "panic", r, "stack", string(debug.Stack()))
-			}
-		}()
-		slog.Info("Received WebScanEvent")
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancel()
-		err := h.processWebScanEvent(ctx, msg.Data)
-		if err != nil {
-			slog.Error("Error processing WebScanEvent", "error", err)
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Panic recovered in NmapHandler", "panic", r, "stack", string(debug.Stack()))
 		}
-		slog.Debug("WebScanEvent handled successfully")
-	}(msg)
+	}()
+	slog.Info("Received NmapEvent")
+	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	defer cancel()
+	go h.processWebScanEventRoutine(ctx, msg.Data)
+	<-ctx.Done()
+}
+
+func (h *WebScanHandler) processWebScanEventRoutine(ctx context.Context, data []byte) {
+	select {
+	case <-ctx.Done():
+		slog.Debug("NmapHandler context cancelled or timed out", slog.Any("error", ctx.Err()))
+	default:
+		err := h.processWebScanEvent(ctx, data)
+		if err != nil {
+			slog.Debug("Error processing WebScanEvent", "error", err)
+		}
+	}
 }
 
 func (h *WebScanHandler) processWebScanEvent(ctx context.Context, data []byte) error {

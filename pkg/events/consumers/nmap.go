@@ -50,7 +50,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 func (h *NmapHandler) processNmapEventRoutine(ctx context.Context, data []byte) {
 	select {
 	case <-ctx.Done():
-		slog.Debug("NmapHandler context cancelled or timed out")
+		slog.Debug("NmapHandler context cancelled or timed out", slog.Any("error", ctx.Err()))
 	default:
 		err := h.processNmapEvent(ctx, data)
 		if err != nil {
