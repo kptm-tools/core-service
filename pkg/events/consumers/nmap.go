@@ -35,24 +35,28 @@ func NewNmapHandler(
 var _ interfaces.EventConsumer = (*NmapHandler)(nil)
 
 func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
-	go func(msg *nats.Msg) {
-		defer func() {
-			if r := recover(); r != nil {
-				slog.Error("Panic recovered in NmapHandler", "panic", r, "stack", string(debug.Stack()))
-			}
-		}()
-		slog.Info("Received NmapEvent")
-
-		ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
-		defer cancel()
-
-		err := h.processNmapEvent(ctx, msg.Data)
-		if err != nil {
-			slog.Error("Error processing NmapEvent", "error", err)
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Panic recovered in NmapHandler", "panic", r, "stack", string(debug.Stack()))
 		}
+	}()
+	slog.Info("Received NmapEvent")
+	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	defer cancel()
+	go h.processNmapEventRoutine(ctx, msg.Data)
+	<-ctx.Done()
+}
 
-		slog.Debug("NmapEvent handled successfully")
-	}(msg)
+func (h *NmapHandler) processNmapEventRoutine(ctx context.Context, data []byte) {
+	select {
+	case <-ctx.Done():
+		slog.Debug("NmapHandler context cancelled or timed out")
+	default:
+		err := h.processNmapEvent(ctx, data)
+		if err != nil {
+			slog.Debug("Error processing NmapEvent", "error", err)
+		}
+	}
 }
 
 func (h *NmapHandler) processNmapEvent(ctx context.Context, data []byte) error {
@@ -155,5 +159,6 @@ func (h *NmapHandler) processNmapEvent(ctx context.Context, data []byte) error {
 		}
 		return err
 	}
+	slog.Debug("NmapEvent handled successfully")
 	return nil
 }
