@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS web_vulnerabilities (
     host_id UUID NOT NULL, -- The specific host this instance was found on
     service_id INTEGER, -- The specific service this instance is related to
     solution_advice text,
-    reference varchar(255),
+    reference text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
