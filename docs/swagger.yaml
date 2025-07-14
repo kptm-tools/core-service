@@ -260,6 +260,25 @@ definitions:
           User contains basic information about the authenticated user.
           Uses our local wrapper so swag can generate a schema for it.
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.CWERemediation:
+    properties:
+      cwe_id:
+        type: string
+      description:
+        type: string
+      effectiveness:
+        type: string
+      effectiveness_notes:
+        type: string
+      last_updated:
+        type: string
+      mitigation_id:
+        type: string
+      phase:
+        type: string
+      title:
+        type: string
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.LoginRequest:
     properties:
       application_id:
@@ -417,6 +436,100 @@ definitions:
         description: version of the service or product.
         type: string
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem:
+    properties:
+      access:
+        type: string
+      comment:
+        type: string
+      complexity:
+        type: string
+      description:
+        type: string
+      exploitability:
+        type: string
+      id:
+        type: string
+      impact_score:
+        type: number
+      likelihood:
+        type: string
+      max_cvss:
+        type: number
+      name:
+        type: string
+      privileges:
+        type: string
+      references:
+        items:
+          type: string
+        type: array
+      risk_score:
+        type: number
+      severity:
+        type: string
+      type:
+        type: string
+      vendor_comments:
+        items:
+          $ref: '#/definitions/tools.VendorComment'
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse:
+    properties:
+      alias:
+        type: string
+      ip_address:
+        type: string
+      os_name:
+        type: string
+      os_type:
+        type: string
+      references:
+        items:
+          type: string
+        type: array
+      remediation:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
+        type: array
+      scan_date:
+        type: string
+      scan_id:
+        type: string
+      severity_counts:
+        $ref: '#/definitions/tools.SeverityCounts'
+      total_vulnerabilities:
+        type: integer
+      vulnerabilities:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem'
+        type: array
+    type: object
+  tools.SeverityCounts:
+    properties:
+      critical:
+        type: integer
+      high:
+        type: integer
+      low:
+        type: integer
+      medium:
+        type: integer
+      none:
+        type: integer
+      unknown:
+        type: integer
+    type: object
+  tools.VendorComment:
+    properties:
+      comment:
+        type: string
+      last_modified:
+        type: string
+      organization:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
@@ -490,6 +603,40 @@ paths:
       security:
       - BearerAuth: []
       summary: GetScanAssetsByID
+      tags:
+      - Scans
+  /api/scans/{id}/operating-system/vulnerabilities:
+    get:
+      description: Retrieve operating system vulnerabilities along with severity counts
+        and remediation details for a given scan ID.
+      parameters:
+      - description: ScanID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse'
+        "400":
+          description: Invalid UUID format for ScanID
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "404":
+          description: Scan not found
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      security:
+      - BearerAuth: []
+      summary: GetScanOperatingSystemVulnerabilitiesByID
       tags:
       - Scans
   /healthcheck:

@@ -125,6 +125,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/scans/{id}/operating-system/vulnerabilities": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve operating system vulnerabilities along with severity counts and remediation details for a given scan ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scans"
+                ],
+                "summary": "GetScanOperatingSystemVulnerabilitiesByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ScanID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format for ScanID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Scan not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/healthcheck": {
             "get": {
                 "description": "Check status of the KPTM Tools - Core Service",
@@ -515,6 +567,35 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_dto.CWERemediation": {
+            "type": "object",
+            "properties": {
+                "cwe_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "effectiveness": {
+                    "type": "string"
+                },
+                "effectiveness_notes": {
+                    "type": "string"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "mitigation_id": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.LoginRequest": {
             "type": "object",
             "required": [
@@ -695,6 +776,149 @@ const docTemplate = `{
                 },
                 "version": {
                     "description": "version of the service or product.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "complexity": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "exploitability": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "impact_score": {
+                    "type": "number"
+                },
+                "likelihood": {
+                    "type": "string"
+                },
+                "max_cvss": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "privileges": {
+                    "type": "string"
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "risk_score": {
+                    "type": "number"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "vendor_comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tools.VendorComment"
+                    }
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse": {
+            "type": "object",
+            "properties": {
+                "alias": {
+                    "type": "string"
+                },
+                "ip_address": {
+                    "type": "string"
+                },
+                "os_name": {
+                    "type": "string"
+                },
+                "os_type": {
+                    "type": "string"
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "remediation": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
+                    }
+                },
+                "scan_date": {
+                    "type": "string"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "severity_counts": {
+                    "$ref": "#/definitions/tools.SeverityCounts"
+                },
+                "total_vulnerabilities": {
+                    "type": "integer"
+                },
+                "vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem"
+                    }
+                }
+            }
+        },
+        "tools.SeverityCounts": {
+            "type": "object",
+            "properties": {
+                "critical": {
+                    "type": "integer"
+                },
+                "high": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "integer"
+                },
+                "medium": {
+                    "type": "integer"
+                },
+                "none": {
+                    "type": "integer"
+                },
+                "unknown": {
+                    "type": "integer"
+                }
+            }
+        },
+        "tools.VendorComment": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "last_modified": {
+                    "type": "string"
+                },
+                "organization": {
                     "type": "string"
                 }
             }
