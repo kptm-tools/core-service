@@ -547,6 +547,10 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		})
 	}
 
+	if scan.Status != "Completed" {
+		return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: "Scan status not completed"})
+	}
+
 	vulnerabilities, err := h.vulnService.GetScanVulnerabilityDetailByScanID(ctx, scanID)
 	if err != nil {
 		slog.Error("Failed to fetch scan vulnerabilities",
@@ -556,6 +560,12 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
 			Error: http.StatusText(http.StatusInternalServerError),
 		})
+	}
+
+	if len(vulnerabilities) == 0 {
+		slog.Warn("No vulnerabilities found for scan",
+			slog.String("scan_id", scanID.String()))
+		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan Vulnerabilities for the ScanID %s not found", scanID.String())})
 	}
 
 	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
@@ -617,13 +627,6 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 				totalRemediations = append(totalRemediations, cweRemediation)
 			}
 		}
-	}
-
-	if len(vulnerabilities) == 0 {
-		slog.Warn("No vulnerabilities found for scan",
-			slog.String("scan_id", scanID.String()),
-		)
-		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityItemsResponse{})
 	}
 
 	// Aggregate response object
