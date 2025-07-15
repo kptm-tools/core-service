@@ -155,6 +155,7 @@ const (
 	ToolEnumWhoIs     ToolEnum = "WhoIs"
 	ToolEnumHarvester ToolEnum = "Harvester"
 	ToolEnumNmap      ToolEnum = "Nmap"
+	ToolEnumWebScan   ToolEnum = "WebScan"
 )
 
 func (e *ToolEnum) Scan(src interface{}) error {
