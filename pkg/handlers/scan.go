@@ -551,7 +551,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: "Scan status not completed"})
 	}
 
-	vulnerabilities, err := h.vulnService.GetScanVulnerabilityDetailByScanID(ctx, scanID)
+	vulnerabilities, err := h.vulnService.GetOSVulnerabilityDetailByScanID(ctx, scanID)
 	if err != nil {
 		slog.Error("Failed to fetch scan vulnerabilities",
 			slog.String("scan_id", scanID.String()),
@@ -630,7 +630,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 	}
 
 	// Aggregate response object
-	resp := dto.ScanVulnerabilityItemsResponse{
+	resp := dto.ScanVulnerabilityDetectedOSResponse{
 		ScanDate:             scan.StartedAt,
 		ScanID:               scanID.String(),
 		Alias:                "",

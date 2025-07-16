@@ -334,7 +334,7 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 				},
 			},
 			vulnerability: &mock_services.MockVulnerabilityService{
-				MockGetScanVulnerabilityDetailByScanID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanVulnerabilityDetail, error) {
+				MockGetOSVulnerabilityDetailByScanID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanVulnerabilityDetail, error) {
 					return []domain.ScanVulnerabilityDetail{}, nil
 				},
 			},
@@ -368,7 +368,7 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 				},
 			},
 			vulnerability: &mock_services.MockVulnerabilityService{
-				MockGetScanVulnerabilityDetailByScanID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanVulnerabilityDetail, error) {
+				MockGetOSVulnerabilityDetailByScanID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanVulnerabilityDetail, error) {
 					return vulnerabilities, nil
 				},
 			},
