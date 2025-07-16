@@ -105,3 +105,8 @@ ON CONFLICT (cve_id) DO UPDATE SET
     vendor_comments = EXCLUDED.vendor_comments,
     updated_at = NOW()
 RETURNING *;
+
+-- name: GetCVEDetailByID :one
+SELECT *
+FROM cve_details
+WHERE id = $1;

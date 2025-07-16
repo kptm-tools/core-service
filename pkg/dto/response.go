@@ -250,6 +250,20 @@ type ScanVulnerabilityItemsResponse struct {
 	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
 }
 
+type ScanVulnerabilityDetectedOSResponse struct {
+	ScanID               string                  `json:"scan_id"`
+	ScanDate             time.Time               `json:"scan_date"`
+	Alias                string                  `json:"alias"`
+	IPAddress            string                  `json:"ip_address"`
+	OSName               string                  `json:"os_name"`
+	OSType               string                  `json:"os_type"`
+	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
+	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
+	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
+	CWERemediations      []CWERemediation        `json:"remediation"`
+	References           []string                `json:"references"`
+}
+
 type ScanVulnerabilityItem struct {
 	ID             uuid.UUID             `json:"id"`
 	Name           string                `json:"name"`

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
@@ -141,4 +142,14 @@ func (r *CVERepo) CreateOrUpdateCVE(ctx context.Context, vuln tools.Vulnerabilit
 
 	cveDetail, err := queries.CreateCVEDetail(ctx, params)
 	return &cveDetail, err
+}
+
+func (r *CVERepo) GetCVEDetailsByID(ctx context.Context, cveID uuid.UUID) (*repository.CveDetail, error) {
+	queries := r.getQueries(ctx)
+
+	details, err := queries.GetCVEDetailByID(ctx, cveID)
+	if err != nil {
+		return &repository.CveDetail{}, err
+	}
+	return &details, nil
 }

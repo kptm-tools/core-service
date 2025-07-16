@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -48,4 +49,65 @@ func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdat
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getCWEDetailWithMitigationsByID = `-- name: GetCWEDetailWithMitigationsByID :many
+SELECT
+  cd.cwe_id,
+  cd.title,
+  cd.description,
+  cm.mitigation_id,
+  cm.phase,
+  cm.description AS mitigation_description,
+  cm.effectiveness,
+  cm.effectiveness_notes,
+  cm.created_at AS mitigation_created_at
+FROM cwe_details cd
+LEFT JOIN cwe_mitigations cm ON cd.cwe_id = cm.cwe_id
+WHERE cd.cwe_id = $1
+`
+
+type GetCWEDetailWithMitigationsByIDRow struct {
+	CweID                 string         `json:"cwe_id"`
+	Title                 string         `json:"title"`
+	Description           string         `json:"description"`
+	MitigationID          sql.NullString `json:"mitigation_id"`
+	Phase                 sql.NullString `json:"phase"`
+	MitigationDescription sql.NullString `json:"mitigation_description"`
+	Effectiveness         sql.NullString `json:"effectiveness"`
+	EffectivenessNotes    sql.NullString `json:"effectiveness_notes"`
+	MitigationCreatedAt   sql.NullTime   `json:"mitigation_created_at"`
+}
+
+func (q *Queries) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID string) ([]GetCWEDetailWithMitigationsByIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCWEDetailWithMitigationsByID, cweID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCWEDetailWithMitigationsByIDRow
+	for rows.Next() {
+		var i GetCWEDetailWithMitigationsByIDRow
+		if err := rows.Scan(
+			&i.CweID,
+			&i.Title,
+			&i.Description,
+			&i.MitigationID,
+			&i.Phase,
+			&i.MitigationDescription,
+			&i.Effectiveness,
+			&i.EffectivenessNotes,
+			&i.MitigationCreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

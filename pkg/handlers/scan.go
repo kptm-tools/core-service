@@ -24,6 +24,7 @@ type ScanHandlers struct {
 	scanService         interfaces.IScanService
 	hostService         interfaces.IHostService
 	scanScheduleService interfaces.IScanScheduleService
+	vulnService         interfaces.IVulnerabilityService
 	emailService        interfaces.IEmailService
 	eventBus            cmmn.EventBus
 }
@@ -32,6 +33,7 @@ var _ interfaces.IScanHandlers = (*ScanHandlers)(nil)
 
 func NewScanHandlers(
 	scanService interfaces.IScanService,
+	vulnService interfaces.IVulnerabilityService,
 	scanScheduleService interfaces.IScanScheduleService,
 	hostService interfaces.IHostService,
 	emailService interfaces.IEmailService,
@@ -41,6 +43,7 @@ func NewScanHandlers(
 		scanService:         scanService,
 		hostService:         hostService,
 		scanScheduleService: scanScheduleService,
+		vulnService:         vulnService,
 		eventBus:            bus,
 		emailService:        emailService,
 	}
@@ -189,7 +192,7 @@ func (h *ScanHandlers) GetScanAssetsByID(w http.ResponseWriter, r *http.Request)
 	if len(rawResults) == 0 {
 		slog.Warn("No assets found for scan",
 			slog.String("scan_id", scanID.String()))
-		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan Assets for the ID %s not found", scanID.String())})
+		return api.WriteJSON(w, http.StatusOK, dto.ScanAssetsResponse{})
 	}
 
 	response := dto.ConvertScanOSandServicesResultToResponse(rawResults)
@@ -498,6 +501,163 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 	scanVulnersItemsResponse.SeverityCounts = severityCounts
 
 	return api.WriteJSON(w, http.StatusOK, scanVulnersItemsResponse)
+}
+
+// GetScanOperatingSystemVulnerabilitiesByID returns operating system vulnerabilities and related details based on the ScanID.
+// @Summary      GetScanOperatingSystemVulnerabilitiesByID
+// @Description  Retrieve operating system vulnerabilities along with severity counts and remediation details for a given scan ID.
+// @Tags         Scans
+// @Produce      json
+// @Param        id   path      string  true  "ScanID"
+// @Success      200  {object}  dto.ScanVulnerabilityItemsResponse
+// @Failure      400  {object}  api.APIError         "Invalid UUID format for ScanID"
+// @Failure      404  {object}  api.APIError         "Scan not found"
+// @Failure      500  {object}  api.APIError         "Internal server error"
+// @Security     BearerAuth
+// @Router       /api/scans/{id}/operating-system/vulnerabilities [get]
+func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("Failed to parse ScanID from request",
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+			Error: "Invalid UUID format for ScanID",
+		})
+	}
+
+	scan, err := h.scanService.GetScanByID(ctx, scanID)
+	if err != nil {
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			slog.Warn("Scan not found",
+				slog.String("scan_id", scanID.String()),
+				slog.Any("error", err),
+			)
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{
+				Error: "Scan not found",
+			})
+		}
+		slog.Error("Error fetching scan by ID",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	if scan.Status != "Completed" {
+		return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: "Scan status not completed"})
+	}
+
+	vulnerabilities, err := h.vulnService.GetOSVulnerabilityDetailByScanID(ctx, scanID)
+	if err != nil {
+		slog.Error("Failed to fetch scan vulnerabilities",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	if len(vulnerabilities) == 0 {
+		slog.Warn("No vulnerabilities found for scan",
+			slog.String("scan_id", scanID.String()))
+		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityItemsResponse{})
+	}
+
+	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
+	if err != nil {
+		slog.Error("Failed to fetch severity counts",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	// Prepare total collections
+	totalRemediations := make([]dto.CWERemediation, 0)
+	totalReferences := make([]string, 0)
+
+	// Prepare vulnerability items slice
+	scanVulnerabilityItems := make([]dto.ScanVulnerabilityItem, len(vulnerabilities))
+
+	// Parse vulners
+	for i, vuln := range vulnerabilities {
+		// Populate ScanVulnerabilityItem
+		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
+			ID:             vuln.ID,
+			Name:           vuln.Name,
+			Type:           vuln.OS.Type,
+			Severity:       vuln.Severity,
+			MaxCVSS:        vuln.MaxCVSS,
+			RiskScore:      vuln.RiskScore,
+			ImpactScore:    vuln.ImpactScore,
+			Likelihood:     vuln.Likelihood,
+			Access:         vuln.Likelihood, // Consider if this is intentional or a mistake
+			Complexity:     vuln.Complexity,
+			Privileges:     vuln.Privileges,
+			Exploitability: vuln.Exploitability,
+			Description:    vuln.Description,
+			Comment:        vuln.Comment,
+			VendorComments: vuln.VendorComments,
+			References:     vuln.References,
+		}
+
+		// Aggregate references
+		totalReferences = append(totalReferences, vuln.References...)
+
+		// Aggregate valid remediations
+		for _, remediation := range vuln.CWERemediation {
+			if remediation.Description != "" {
+				cweRemediation := dto.CWERemediation{
+					ID:                 remediation.ID,
+					MitigationID:       &remediation.MitigationID,
+					Title:              remediation.Title,
+					Phase:              &remediation.Phase[0], // safe if Phase is non-empty - consider adding validation
+					Description:        remediation.Description,
+					Effectiveness:      &remediation.Effectiveness,
+					EffectivenessNotes: &remediation.EffectivenessNotes,
+					LastUpdated:        remediation.LastUpdated,
+				}
+				totalRemediations = append(totalRemediations, cweRemediation)
+			}
+		}
+	}
+
+	// Aggregate response object
+	resp := dto.ScanVulnerabilityDetectedOSResponse{
+		ScanDate:             scan.StartedAt,
+		ScanID:               scanID.String(),
+		Alias:                "",
+		IPAddress:            "",
+		OSName:               "",
+		OSType:               "",
+		Vulnerabilities:      scanVulnerabilityItems,
+		CWERemediations:      totalRemediations,
+		References:           totalReferences,
+		TotalVulnerabilities: len(scanVulnerabilityItems),
+		SeverityCounts:       severityCounts,
+	}
+
+	// Guard access to first vuln fields, only if any vuln exist
+	if len(vulnerabilities) > 0 {
+		resp.Alias = vulnerabilities[0].Host.Alias
+		resp.IPAddress = vulnerabilities[0].Host.IPAddress
+		resp.OSName = vulnerabilities[0].OS.Name
+		resp.OSType = vulnerabilities[0].OS.Type
+	}
+
+	slog.Info("Successfully returned OS vulnerabilities for scan",
+		slog.String("scan_id", scanID.String()),
+		slog.Int("vulnerability_count", len(scanVulnerabilityItems)),
+	)
+
+	return api.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {

@@ -10,6 +10,7 @@ import (
 	"database/sql"
 
 	apd "github.com/cockroachdb/apd/v3"
+	"github.com/google/uuid"
 	"github.com/sqlc-dev/pqtype"
 )
 
@@ -224,6 +225,71 @@ func (q *Queries) CreateCVEDetail(ctx context.Context, arg CreateCVEDetailParams
 		arg.NvdReferences,
 		arg.VendorComments,
 	)
+	var i CveDetail
+	err := row.Scan(
+		&i.ID,
+		&i.CveID,
+		&i.PublishedDate,
+		&i.LastModifiedDate,
+		&i.CvssV2Vector,
+		&i.CvssV2BaseScore,
+		&i.CvssV2BaseSeverity,
+		&i.CvssV2ExploitabilityScore,
+		&i.CvssV2ImpactScore,
+		&i.CvssV2AccessVector,
+		&i.CvssV2AccessComplexity,
+		&i.CvssV2Authentication,
+		&i.CvssV2ConfidentialityImpact,
+		&i.CvssV2IntegrityImpact,
+		&i.CvssV2AvailabilityImpact,
+		&i.CvssV30Vector,
+		&i.CvssV30BaseScore,
+		&i.CvssV30BaseSeverity,
+		&i.CvssV30ExploitabilityScore,
+		&i.CvssV30ImpactScore,
+		&i.CvssV30AttackVector,
+		&i.CvssV30AttackComplexity,
+		&i.CvssV30PrivilegesRequired,
+		&i.CvssV30UserInteraction,
+		&i.CvssV30Scope,
+		&i.CvssV30ConfidentialityImpact,
+		&i.CvssV30IntegrityImpact,
+		&i.CvssV30AvailabilityImpact,
+		&i.CvssV31Vector,
+		&i.CvssV31BaseScore,
+		&i.CvssV31BaseSeverity,
+		&i.CvssV31ExploitabilityScore,
+		&i.CvssV31ExploitCodeMaturity,
+		&i.CvssV31ImpactScore,
+		&i.CvssV31AttackVector,
+		&i.CvssV31AttackComplexity,
+		&i.CvssV31PrivilegesRequired,
+		&i.CvssV31UserInteraction,
+		&i.CvssV31Scope,
+		&i.CvssV31ConfidentialityImpact,
+		&i.CvssV31IntegrityImpact,
+		&i.CvssV31AvailabilityImpact,
+		&i.EpssScore,
+		&i.EpssPercentile,
+		&i.RiskScore,
+		&i.Likelihood,
+		&i.NvdDescription,
+		&i.NvdReferences,
+		&i.VendorComments,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCVEDetailByID = `-- name: GetCVEDetailByID :one
+SELECT id, cve_id, published_date, last_modified_date, cvss_v2_vector, cvss_v2_base_score, cvss_v2_base_severity, cvss_v2_exploitability_score, cvss_v2_impact_score, cvss_v2_access_vector, cvss_v2_access_complexity, cvss_v2_authentication, cvss_v2_confidentiality_impact, cvss_v2_integrity_impact, cvss_v2_availability_impact, cvss_v30_vector, cvss_v30_base_score, cvss_v30_base_severity, cvss_v30_exploitability_score, cvss_v30_impact_score, cvss_v30_attack_vector, cvss_v30_attack_complexity, cvss_v30_privileges_required, cvss_v30_user_interaction, cvss_v30_scope, cvss_v30_confidentiality_impact, cvss_v30_integrity_impact, cvss_v30_availability_impact, cvss_v31_vector, cvss_v31_base_score, cvss_v31_base_severity, cvss_v31_exploitability_score, cvss_v31_exploit_code_maturity, cvss_v31_impact_score, cvss_v31_attack_vector, cvss_v31_attack_complexity, cvss_v31_privileges_required, cvss_v31_user_interaction, cvss_v31_scope, cvss_v31_confidentiality_impact, cvss_v31_integrity_impact, cvss_v31_availability_impact, epss_score, epss_percentile, risk_score, likelihood, nvd_description, nvd_references, vendor_comments, created_at, updated_at
+FROM cve_details
+WHERE id = $1
+`
+
+func (q *Queries) GetCVEDetailByID(ctx context.Context, id uuid.UUID) (CveDetail, error) {
+	row := q.db.QueryRowContext(ctx, getCVEDetailByID, id)
 	var i CveDetail
 	err := row.Scan(
 		&i.ID,
