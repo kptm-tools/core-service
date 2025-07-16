@@ -451,12 +451,12 @@ type WebVulnerability struct {
 }
 
 type WebVulnerabilityInstance struct {
-	ID              uuid.UUID      `json:"id"`
-	VulnerabilityID uuid.UUID      `json:"vulnerability_id"`
-	Uri             sql.NullString `json:"uri"`
-	Method          sql.NullString `json:"method"`
-	Param           sql.NullString `json:"param"`
-	Attack          sql.NullString `json:"attack"`
-	Evidence        sql.NullString `json:"evidence"`
-	OtherInfo       sql.NullString `json:"other_info"`
+	ID                    uuid.UUID      `json:"id"`
+	SourceVulnerabilityID uuid.UUID      `json:"source_vulnerability_id"`
+	Uri                   sql.NullString `json:"uri"`
+	Method                sql.NullString `json:"method"`
+	Param                 sql.NullString `json:"param"`
+	Attack                sql.NullString `json:"attack"`
+	Evidence              sql.NullString `json:"evidence"`
+	OtherInfo             sql.NullString `json:"other_info"`
 }
