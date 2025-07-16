@@ -66,7 +66,7 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 			wantStatus: http.StatusConflict,
 		},
 		{
-			name: "Scan Not Found → 404",
+			name: "Scan Not Found → 200",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
@@ -85,7 +85,7 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
 				return r
 			}(),
-			wantStatus: http.StatusNotFound,
+			wantStatus: http.StatusOK,
 		},
 		{
 			name: "Scan Status Ok → 200",
@@ -327,7 +327,7 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 			wantStatus: http.StatusConflict,
 		},
 		{
-			name: "Scan - Vulnerabilities Not Found → 404",
+			name: "Scan - Vulnerabilities Not Found → 200",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
@@ -348,7 +348,7 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
 				return r
 			}(),
-			wantStatus: http.StatusNotFound,
+			wantStatus: http.StatusOK,
 		},
 		{
 			name: "Scan - Status OK -> 200",

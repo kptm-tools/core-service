@@ -192,7 +192,7 @@ func (h *ScanHandlers) GetScanAssetsByID(w http.ResponseWriter, r *http.Request)
 	if len(rawResults) == 0 {
 		slog.Warn("No assets found for scan",
 			slog.String("scan_id", scanID.String()))
-		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan Assets for the ID %s not found", scanID.String())})
+		return api.WriteJSON(w, http.StatusOK, dto.ScanAssetsResponse{})
 	}
 
 	response := dto.ConvertScanOSandServicesResultToResponse(rawResults)
@@ -565,7 +565,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 	if len(vulnerabilities) == 0 {
 		slog.Warn("No vulnerabilities found for scan",
 			slog.String("scan_id", scanID.String()))
-		return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan Vulnerabilities for the ScanID %s not found", scanID.String())})
+		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityItemsResponse{})
 	}
 
 	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
