@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -251,17 +252,25 @@ type ScanVulnerabilityItemsResponse struct {
 }
 
 type ScanVulnerabilityDetectedOSResponse struct {
-	ScanID               string                  `json:"scan_id"`
-	ScanDate             time.Time               `json:"scan_date"`
-	Alias                string                  `json:"alias"`
-	IPAddress            string                  `json:"ip_address"`
-	OSName               string                  `json:"os_name"`
-	OSType               string                  `json:"os_type"`
-	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
-	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
-	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
-	CWERemediations      []CWERemediation        `json:"remediation"`
-	References           []string                `json:"references"`
+	ScanID               string                         `json:"scan_id"`
+	ScanDate             time.Time                      `json:"scan_date"`
+	Alias                string                         `json:"alias"`
+	IPAddress            string                         `json:"ip_address"`
+	OSName               string                         `json:"os_name"`
+	OSVersion            string                         `json:"os_version"`
+	OSAccuracy           string                         `json:"os_accuracy"`
+	OSType               string                         `json:"os_type"`
+	TotalVulnerabilities int                            `json:"total_vulnerabilities"`
+	ServicesFromOS       []ScanVulnerabilityServiceByOS `json:"services"`
+	SeverityCounts       tools.SeverityCounts           `json:"severity_counts"`
+	Vulnerabilities      []ScanVulnerabilityItem        `json:"vulnerabilities"`
+	CWERemediations      []CWERemediation               `json:"remediation"`
+	References           []string                       `json:"references"`
+}
+
+type ScanVulnerabilityServiceByOS struct {
+	ServiceID   string `json:"service_id"`
+	ServiceName string `json:"service_name"`
 }
 
 type ScanVulnerabilityItem struct {
@@ -650,13 +659,17 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 	for _, r := range results {
 		switch r.AssetType {
 		case "os":
+			cpeSplited := strings.Split(r.Cpe, ":")
+			version := cpeSplited[len(cpeSplited)-1]
+			name := cpeSplited[len(cpeSplited)-2]
+
 			// Map OS
 			response.OperatingSystem = ScanAssetsOperatingSystem{
 				ID:      r.ID,
 				HostID:  r.HostID.String(),
 				ScanID:  r.ScanID.String(),
-				Name:    r.Name,
-				Version: r.Version,
+				Name:    name,
+				Version: version,
 				Family:  r.Family,
 				OSType:  r.OsType,
 				// Fingerprint:          r.Fingerprint,
