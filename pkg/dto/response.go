@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -125,6 +126,10 @@ type ScanAssetsOperatingSystem struct {
 	// scan_id is the identifier of the scan this record belongs to.
 	// required: true
 	ScanID string `json:"scan_id"`
+
+	// Fullname of the operating system with user (e.g. "Ubuntu").
+	// required: true
+	FullName string `json:"full_name"`
 
 	// name of the operating system (e.g. "Ubuntu").
 	// required: true
@@ -650,15 +655,20 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 	for _, r := range results {
 		switch r.AssetType {
 		case "os":
+			cpeSplit := strings.Split(r.Cpe, ":")
+			version := cpeSplit[len(cpeSplit)-1]
+			name := cpeSplit[len(cpeSplit)-2]
+
 			// Map OS
 			response.OperatingSystem = ScanAssetsOperatingSystem{
-				ID:      r.ID,
-				HostID:  r.HostID.String(),
-				ScanID:  r.ScanID.String(),
-				Name:    r.Name,
-				Version: r.Version,
-				Family:  r.Family,
-				OSType:  r.OsType,
+				ID:       r.ID,
+				HostID:   r.HostID.String(),
+				ScanID:   r.ScanID.String(),
+				FullName: r.Name,
+				Name:     name,
+				Version:  version,
+				Family:   r.Family,
+				OSType:   r.OsType,
 				// Fingerprint:          r.Fingerprint,
 				CPE:                  r.Cpe,
 				Accuracy:             int(r.Accuracy),
