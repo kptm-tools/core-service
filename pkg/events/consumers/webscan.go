@@ -40,8 +40,8 @@ func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
 			slog.Error("Panic recovered in NmapHandler", "panic", r, "stack", string(debug.Stack()))
 		}
 	}()
-	slog.Info("Received NmapEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	slog.Info("Received WebScanEvent")
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 	go h.processWebScanEventRoutine(ctx, msg.Data)
 	<-ctx.Done()
@@ -158,5 +158,6 @@ func (h *WebScanHandler) processWebScanEvent(ctx context.Context, data []byte) e
 		}
 		return err
 	}
+	slog.Debug("WebScanEvent handled successfully")
 	return nil
 }

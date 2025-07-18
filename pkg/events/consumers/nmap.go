@@ -41,7 +41,7 @@ func (h *NmapHandler) HandleMessage(msg *nats.Msg) {
 		}
 	}()
 	slog.Info("Received NmapEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 	go h.processNmapEventRoutine(ctx, msg.Data)
 	<-ctx.Done()
