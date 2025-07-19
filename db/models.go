@@ -330,7 +330,7 @@ type Host struct {
 
 type NetworkOsVulnerability struct {
 	ID                uuid.UUID     `json:"id"`
-	VulnerabilityID   uuid.NullUUID `json:"vulnerability_id"`
+	VulnerabilityID   uuid.UUID     `json:"vulnerability_id"`
 	ScanID            uuid.UUID     `json:"scan_id"`
 	HostID            uuid.UUID     `json:"host_id"`
 	OperatingSystemID sql.NullInt32 `json:"operating_system_id"`

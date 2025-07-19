@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS network_os_vulnerabilities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    vulnerability_id UUID,
+    vulnerability_id UUID NOT NULL,
     scan_id UUID NOT NULL, -- The specific scan run that found this instance
     host_id UUID NOT NULL, -- The specific host this instance was found on
     operating_system_id INTEGER, -- The specific operating system this instance is related to
