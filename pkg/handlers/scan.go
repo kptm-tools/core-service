@@ -509,7 +509,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 // @Tags         Scans
 // @Produce      json
 // @Param        id   path      string  true  "ScanID"
-// @Success      200  {object}  dto.ScanVulnerabilityItemsResponse
+// @Success      200  {object}  dto.ScanVulnerabilityDetectedOSResponse
 // @Failure      400  {object}  api.APIError         "Invalid UUID format for ScanID"
 // @Failure      404  {object}  api.APIError         "Scan not found"
 // @Failure      500  {object}  api.APIError         "Internal server error"
@@ -565,7 +565,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 	if len(vulnerabilities) == 0 {
 		slog.Warn("No vulnerabilities found for scan",
 			slog.String("scan_id", scanID.String()))
-		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityItemsResponse{})
+		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedOSResponse{})
 	}
 
 	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
@@ -658,6 +658,48 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 	)
 
 	return api.WriteJSON(w, http.StatusOK, resp)
+}
+
+// GetScanServicesVulnerabilitiesByServiceID returns service vulnerabilities and related details based on the ScanID.
+// @Summary      GetScanServicesVulnerabilitiesByServiceID
+// @Description  Retrieve service vulnerabilities along with severity counts and remediation details for a given scan ID.
+// @Tags         Scans
+// @Produce      json
+// @Param        id   path      string  true  "ScanID"
+// @Success      200  {object}  dto.ScanVulnerabilityDetectedServiceResponse
+// @Failure      400  {object}  api.APIError         "Invalid UUID format for ScanID"
+// @Failure      404  {object}  api.APIError         "Scan not found"
+// @Failure      500  {object}  api.APIError         "Internal server error"
+// @Security     BearerAuth
+// @Router       /api/scans/{id}/services/{service_id}/vulnerabilities [get]
+func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.ResponseWriter, r *http.Request) error {
+	// ctx := r.Context()
+	scanID, err := GetUUID(r)
+	if err != nil {
+		slog.Error("Failed to parse ScanID from request",
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+			Error: "Invalid UUID format for ScanID",
+		})
+	}
+
+	serviceID, err := GetIntCustomPathValue(r, "service_id")
+	if err != nil {
+		slog.Error("Failed to parse serviceID from request",
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
+			Error: "Invalid UUID format for serviceID",
+		})
+	}
+
+	response := dto.ScanVulnerabilityDetectedServiceResponse{
+		ScanID: scanID.String(),
+		ServiceName: "",
+	}
+
+	return api.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {

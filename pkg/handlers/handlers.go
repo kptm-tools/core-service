@@ -91,6 +91,16 @@ func GetUUID(req *http.Request) (uuid.UUID, error) {
 	return u, nil
 }
 
+func GetUUIDCustomPathValue(req *http.Request, pathValue string) (uuid.UUID, error) {
+	reqUUID := req.PathValue(pathValue)
+
+	u, err := uuid.Parse(reqUUID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse uuid: %w", err)
+	}
+	return u, nil
+}
+
 func GetID(req *http.Request) (int, error) {
 	reqID := req.PathValue("id")
 
@@ -99,6 +109,16 @@ func GetID(req *http.Request) (int, error) {
 		return intID, fmt.Errorf("invalid id given: `%s`", reqID)
 	}
 
+	return intID, nil
+}
+
+func GetIntCustomPathValue(req *http.Request, pathValue string) (int, error) {
+	reqID := req.PathValue(pathValue)
+
+	intID, err := strconv.Atoi(reqID)
+	if err != nil {
+		return intID, fmt.Errorf("invalid id given: `%s`", reqID)
+	}
 	return intID, nil
 }
 

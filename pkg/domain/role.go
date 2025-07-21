@@ -29,6 +29,7 @@ const (
 	ActionScanGetVulnerabilitiesByID                Action = "scan:get_vulnerabilities_by_id"
 	ActionScanGetVulnerabilitySummaryByID           Action = "scan:get_vulnerability_summary_by_id"
 	ActionGetScanOperatingSystemVulnerabilitiesByID Action = "scan:get_scan_os_vulnerability_by_id"
+	ActionGetScanServicesVulnerabilitiesByServiceID Action = "scan:get_scan_services_vulnerability_by_service_id"
 	ActionScanGetScorecardTrends                    Action = "scan:get_scorecard_trends"
 
 	// Scan Schedule Actions
@@ -87,6 +88,7 @@ var actionRoles = map[Action][]Role{
 	ActionScanGetInsightsByID:                       {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanGetVulnerabilitySummaryByID:           {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionGetScanOperatingSystemVulnerabilitiesByID: {RoleAdmin, RoleOperator, RoleAnalyst},
+	ActionGetScanServicesVulnerabilitiesByServiceID: {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanGetVulnerabilitiesByID:                {RoleAdmin, RoleOperator, RoleAnalyst},
 	ActionScanGetScorecardTrends:                    {RoleAdmin, RoleOperator, RoleAnalyst},
 
