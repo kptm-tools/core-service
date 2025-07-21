@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS network_os_vulnerabilities (
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(vulnerability_id, scan_id, host_id,created_at,operating_system_id,service_id),
+    UNIQUE(vulnerability_id, scan_id, host_id,operating_system_id,service_id),
     CONSTRAINT fk_netos_vulns_vulnerability_id FOREIGN KEY (vulnerability_id) REFERENCES vulnerabilities (id) ON DELETE CASCADE,
     CONSTRAINT fk_netos_vulns_scan_id FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE,
     CONSTRAINT fk_netos_vulns_host_id FOREIGN KEY (host_id) REFERENCES hosts (id) ON DELETE CASCADE,
