@@ -665,7 +665,8 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 // @Description  Retrieve service vulnerabilities along with severity counts and remediation details for a given scan ID.
 // @Tags         Scans
 // @Produce      json
-// @Param        id   path      string  true  "ScanID"
+// @Param        id   				  path      string  true  "ScanID"
+// @Param        service_id     path      string  true  "ServiceID"
 // @Success      200  {object}  dto.ScanVulnerabilityDetectedServiceResponse
 // @Failure      400  {object}  api.APIError         "Invalid UUID format for ScanID"
 // @Failure      404  {object}  api.APIError         "Scan not found"
@@ -673,7 +674,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 // @Security     BearerAuth
 // @Router       /api/scans/{id}/services/{service_id}/vulnerabilities [get]
 func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.ResponseWriter, r *http.Request) error {
-	// ctx := r.Context()
+	ctx := r.Context()
 	scanID, err := GetUUID(r)
 	if err != nil {
 		slog.Error("Failed to parse ScanID from request",
@@ -682,6 +683,30 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{
 			Error: "Invalid UUID format for ScanID",
 		})
+	}
+
+	scan, err := h.scanService.GetScanByID(ctx, scanID)
+	if err != nil {
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			slog.Warn("Scan not found",
+				slog.String("scan_id", scanID.String()),
+				slog.Any("error", err),
+			)
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{
+				Error: "Scan not found",
+			})
+		}
+		slog.Error("Error fetching scan by ID",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	if scan.Status != "Completed" {
+		return api.WriteJSON(w, http.StatusConflict, api.APIError{Error: "Scan status not completed"})
 	}
 
 	serviceID, err := GetIntCustomPathValue(r, "service_id")
@@ -695,8 +720,9 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 	}
 
 	response := dto.ScanVulnerabilityDetectedServiceResponse{
-		ScanID: scanID.String(),
-		ServiceName: "",
+		ScanID:               scanID.String(),
+		ServiceName:          "",
+		TotalVulnerabilities: serviceID,
 	}
 
 	return api.WriteJSON(w, http.StatusOK, response)
