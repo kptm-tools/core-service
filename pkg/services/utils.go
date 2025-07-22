@@ -1,10 +1,8 @@
-package helpers
+package services
 
 import (
-	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	"log/slog"
 	"time"
 )
 
@@ -25,37 +23,6 @@ func GeneratePortDataFromWebVuln(vuln tools.WebVulnerability) tools.PortData {
 		portData.Service.Name = "nginx"
 	}
 	return portData
-}
-
-// WebScanToVulnerability creates a tools.Vulnerability from WebVulnerability and Scan data
-func WebScanToVulnerability(scan *domain.Scan, webVuln *tools.WebVulnerability) *tools.Vulnerability {
-	today := time.Now()
-	if webVuln == nil || scan == nil {
-		slog.Debug("scan or webVuln is invalid", slog.Any("scan", scan), slog.Any("webVuln", webVuln))
-		return nil
-	}
-	return &tools.Vulnerability{
-		HostID:             scan.HostID,
-		ScanID:             scan.ID,
-		CveID:              webVuln.Name,
-		CweID:              webVuln.CweID,
-		Type:               enums.GetOwaspCategoryForCWE(webVuln.CweID),
-		BaseCVSSScore:      0,
-		References:         []string{webVuln.Reference},
-		Description:        webVuln.Name,
-		Access:             enums.AccessTypeUnknown,
-		Complexity:         enums.ComplexityTypeUnknown,
-		PrivilegesRequired: enums.PrivilegesRequiredUnknown,
-		Likelihood:         enums.LikelyhoodTypeUnknown,
-		RiskScore:          0,
-		ImpactScore:        0,
-		Exploit:            tools.Exploit{},
-		IntegrityImpact:    enums.ImpactTypeUnknown,
-		AvailabilityImpact: enums.ImpactTypeUnknown,
-		BaseSeverity:       enums.SeverityTypeUnknown,
-		Published:          today,
-		LastUpdated:        today,
-	}
 }
 
 // GenerateCWEDetailFromVuln creates CWEDetail from tools.Vulnerability
