@@ -452,7 +452,7 @@ type WebVulnerability struct {
 }
 
 type WebVulnerabilityInstance struct {
-	ID                    uuid.UUID      `json:"id"`
+	ID                    int32          `json:"id"`
 	SourceVulnerabilityID uuid.UUID      `json:"source_vulnerability_id"`
 	Uri                   sql.NullString `json:"uri"`
 	Method                sql.NullString `json:"method"`
