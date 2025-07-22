@@ -29,12 +29,13 @@ func GeneratePortDataFromWebVuln(vuln tools.WebVulnerability) tools.PortData {
 func GenerateCWEDetailFromVuln(vuln tools.Vulnerability) domain.CWEDetail {
 	// Extract title from first CWERemediation record
 	title := ExtractCWETitleFromRemediation(vuln.CWERemediation)
+	lastUpdate := ExtractCWELastUpdatedAtFromRemediation(vuln.CWERemediation)
 	now := time.Now()
 	return domain.CWEDetail{
 		ID:          vuln.CweID,
 		Title:       title,
 		CreatedAt:   &now,
-		LastUpdated: &now,
+		LastUpdated: lastUpdate,
 	}
 }
 
@@ -54,4 +55,12 @@ func ExtractCWETitleFromRemediation(remediations []tools.CWERemediation) string 
 		return remediations[0].Title
 	}
 	return ""
+}
+
+// ExtractCWELastUpdatedAtFromRemediation extracts title from CWE remediation data
+func ExtractCWELastUpdatedAtFromRemediation(remediations []tools.CWERemediation) *time.Time {
+	if len(remediations) > 0 {
+		return &remediations[0].LastUpdated
+	}
+	return nil
 }
