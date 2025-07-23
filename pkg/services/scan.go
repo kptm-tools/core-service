@@ -426,6 +426,14 @@ func (s *ScanService) GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (
 	return s.vulnRepo.GetSeverityCountsByScanID(ctx, scanID)
 }
 
+func (s *ScanService) GetSeverityOSCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+	return s.vulnRepo.GetSeverityOSCountsByScanID(ctx, scanID)
+}
+
+func (s *ScanService) GetSeverityServiceCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+	return s.vulnRepo.GetSeverityServiceCountsByScanID(ctx, scanID)
+}
+
 func (s *ScanService) GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error) {
 	scan, err := s.scanRepo.GetScanByID(ctx, scanID)
 	if err != nil {

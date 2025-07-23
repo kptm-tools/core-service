@@ -568,7 +568,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedOSResponse{})
 	}
 
-	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
+	severityCounts, err := h.scanService.GetSeverityOSCountsByScanID(ctx, scanID)
 	if err != nil {
 		slog.Error("Failed to fetch severity counts",
 			slog.String("scan_id", scanID.String()),
@@ -640,7 +640,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		Vulnerabilities:      scanVulnerabilityItems,
 		CWERemediations:      totalRemediations,
 		References:           totalReferences,
-		TotalVulnerabilities: len(scanVulnerabilityItems),
+		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low,
 		SeverityCounts:       severityCounts,
 	}
 

@@ -365,15 +365,25 @@ func generateWebVulnerabilities() []tools.WebVulnerability {
 		"Security Misconfiguration",
 		"Broken Authentication",
 	}
+
+	webVulnSeverity := []string{
+		"HIGH",
+		"CRITICAL",
+		"NONE",
+		"LOW",
+		"MEDIUM",
+		"UNKNOWN",
+	}
+
 	sizeWebVulns := gofakeit.Number(1, len(webVulnNames))
 	webVulns := make([]tools.WebVulnerability, 0, sizeWebVulns)
 	gofakeit.ShuffleAnySlice(webVulnNames)
 	for i := 0; i < sizeWebVulns; i++ {
 		webVuln := tools.WebVulnerability{
 			Name:       webVulnNames[i],
-			Risk:       enums.RiskCodeType(gofakeit.RandomString([]string{"Low", "Medium", "High", "Informational"})),
+			Risk:       enums.RiskCodeType(gofakeit.RandomString(webVulnSeverity)),
 			Instances:  generateInstancesWebVuln(gofakeit.Number(1, 50)),
-			Confidence: enums.ConfidenceWebScanType(gofakeit.RandomString([]string{"Low", "Medium", "High", "FalsePositive"})),
+			Confidence: enums.ConfidenceWebScanType(gofakeit.RandomString(webVulnSeverity)),
 			Solution:   gofakeit.LoremIpsumWord(),
 			Reference:  gofakeit.URL(),
 			CweID:      "CWE-" + strconv.Itoa(gofakeit.Number(1, 1000)),

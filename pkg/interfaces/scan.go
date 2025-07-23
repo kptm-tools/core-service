@@ -30,6 +30,8 @@ type IScanService interface {
 	GetScoreCardTrendsForTenant(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
 	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetSeverityOSCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetSeverityServiceCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
 	GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 }

@@ -15,24 +15,26 @@ import (
 )
 
 type MockScanService struct {
-	MockCreateScan                      func(ctx context.Context, hostID uuid.UUID, tenantID, operatorID uuid.UUID, startedAt *time.Time) (*domain.Scan, error)
-	MockGetCurrentScans                 func(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
-	MockInsertScanResult                func(context.Context, domain.ScanResult) error
-	MockUpdateScanStatus                func(ctx context.Context, scanID uuid.UUID, status enums.ScanStatus) error
-	MockMarkScanAsFailed                func(ctx context.Context, scanID uuid.UUID) error
-	MockMarkScanAsCancelled             func(ctx context.Context, scanID uuid.UUID) error
-	MockGetScanInsights                 func(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
-	MockCalculateProtectionScore        func(ctx context.Context, scanID uuid.UUID) (float64, error)
-	MockGetScanByID                     func(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
-	MockGetScanAssetsByID               func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error)
-	MockHandleScanCompletion            func(ctx context.Context, scanID uuid.UUID) error
-	MockGetScanVulnerabilitySummaryByID func(ctx context.Context, scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
-	MockGetAllReportsForTenant          func(context.Context, uuid.UUID) ([]domain.ReportItem, error)
-	MockGetScoreCardTrendsForTenant     func(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
-	MockGetScanVulnerabilities          func(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
-	MockGetSeverityCounts               func(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
-	MockCreateTarget                    func(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
-	MockGetScanRapporteursAndHostAlias  func(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
+	MockCreateScan                       func(ctx context.Context, hostID uuid.UUID, tenantID, operatorID uuid.UUID, startedAt *time.Time) (*domain.Scan, error)
+	MockGetCurrentScans                  func(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanSummary, error)
+	MockInsertScanResult                 func(context.Context, domain.ScanResult) error
+	MockUpdateScanStatus                 func(ctx context.Context, scanID uuid.UUID, status enums.ScanStatus) error
+	MockMarkScanAsFailed                 func(ctx context.Context, scanID uuid.UUID) error
+	MockMarkScanAsCancelled              func(ctx context.Context, scanID uuid.UUID) error
+	MockGetScanInsights                  func(ctx context.Context, scanID uuid.UUID) (*domain.ScanInsights, error)
+	MockCalculateProtectionScore         func(ctx context.Context, scanID uuid.UUID) (float64, error)
+	MockGetScanByID                      func(ctx context.Context, scanID uuid.UUID) (*domain.Scan, error)
+	MockGetScanAssetsByID                func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error)
+	MockHandleScanCompletion             func(ctx context.Context, scanID uuid.UUID) error
+	MockGetScanVulnerabilitySummaryByID  func(ctx context.Context, scanID uuid.UUID, timePeriodFilter domain.TimePeriodFilter, severityFilters []string) (*domain.ScanVulnerabilitySummaryData, error)
+	MockGetAllReportsForTenant           func(context.Context, uuid.UUID) ([]domain.ReportItem, error)
+	MockGetScoreCardTrendsForTenant      func(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
+	MockGetScanVulnerabilities           func(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
+	MockGetSeverityCounts                func(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	MockGetSeverityOSCountsByScanID      func(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	MockGetSeverityServiceCountsByScanID func(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	MockCreateTarget                     func(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
+	MockGetScanRapporteursAndHostAlias   func(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 }
 
 // Ensure MockScanService satisfies the IScanService interface at compile time.
@@ -148,6 +150,20 @@ func (m *MockScanService) GetSeverityCounts(ctx context.Context, scanID uuid.UUI
 		return m.MockGetSeverityCounts(ctx, scanID)
 	}
 	panic(fmt.Sprintf("MockScanService: method GetSeverityCounts called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanService) GetSeverityOSCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+	if m.MockGetSeverityOSCountsByScanID != nil {
+		return m.MockGetSeverityOSCountsByScanID(ctx, scanID)
+	}
+	panic(fmt.Sprintf("MockScanService: method GetSeverityOSCountsByScanID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanService) GetSeverityServiceCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+	if m.MockGetSeverityServiceCountsByScanID != nil {
+		return m.MockGetSeverityServiceCountsByScanID(ctx, scanID)
+	}
+	panic(fmt.Sprintf("MockScanService: method MockGetSeverityServiceCountsByScanID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }
 
 func (m *MockScanService) CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error) {
