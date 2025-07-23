@@ -3,12 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"github.com/kptm-tools/core-service/pkg/domain"
 	"strconv"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
@@ -31,7 +31,7 @@ func (r *CWERepo) getQueries(ctx context.Context) *repository.Queries {
 	return GetQueriesFromContext(ctx, r.defaultQueries)
 }
 
-func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe tools.CWERemediation) (*tools.CWERemediation, error) {
+func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe domain.CWEDetail) (*domain.CWEDetail, error) {
 	if cwe.ID == "" {
 		return nil, nil
 	}
@@ -42,7 +42,7 @@ func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe tools.CWERemediatio
 		CweID:       cwe.ID,
 		Title:       cwe.Title,
 		Description: cwe.Description,
-		LastUpdated: cwe.LastUpdated,
+		LastUpdated: time.Now(),
 	}
 
 	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
@@ -50,11 +50,11 @@ func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe tools.CWERemediatio
 		return nil, err
 	}
 
-	return &tools.CWERemediation{
+	return &domain.CWEDetail{
 		ID:          dbCWE.CweID,
 		Title:       dbCWE.Title,
 		Description: dbCWE.Description,
-		LastUpdated: dbCWE.LastUpdated,
+		LastUpdated: &dbCWE.LastUpdated,
 	}, nil
 }
 

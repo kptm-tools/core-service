@@ -32,9 +32,27 @@ var predefinedServiceProfiles = []serviceProfile{
 
 func generatePortsData(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.PortData {
 	ports := make([]tools.PortData, size)
-	for i := range ports {
+	half := size / 2
+	for i := 0; i < half; i++ {
 		gofakeit.ShuffleAnySlice(predefinedServiceProfiles)
-		selectedService := predefinedServiceProfiles[0]
+		selectedService := predefinedServiceProfiles[gofakeit.IntRange(0, len(predefinedServiceProfiles)-1)]
+		ports[i] = tools.PortData{
+			ID:       selectedService.PortID,
+			Protocol: selectedService.Protocol,
+			State:    gofakeit.RandomString([]string{"open", "filtered", "closed"}),
+			Service: tools.Service{
+				Name:       selectedService.ServiceName,
+				Version:    selectedService.Version,
+				Confidence: gofakeit.Number(1, 100),
+				CPE:        selectedService.CPE,
+			},
+			Product:         selectedService.Product,
+			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate, cweDetails),
+		}
+	}
+	for i := half; i < size; i++ {
+		gofakeit.ShuffleAnySlice(predefinedServiceProfiles)
+		selectedService := predefinedServiceProfiles[gofakeit.IntRange(0, len(predefinedServiceProfiles)-1)]
 
 		ports[i] = tools.PortData{
 			ID:       selectedService.PortID,
