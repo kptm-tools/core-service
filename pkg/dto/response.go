@@ -269,8 +269,6 @@ type ScanVulnerabilityDetectedOSResponse struct {
 	References           []string                `json:"references"`
 }
 
-// Alias                string                  `json:"alias"`
-// IPAddress            string                  `json:"ip_address"`
 type ScanVulnerabilityDetectedServiceResponse struct {
 	ScanID               string                  `json:"scan_id"`
 	ScanDate             time.Time               `json:"scan_date"`
