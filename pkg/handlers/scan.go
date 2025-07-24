@@ -719,7 +719,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		})
 	}
 
-	vulnerabilities, err := h.vulnService.GetServiceVulnerabilityDetailByScanAndServiceID(ctx, scanID, int32(serviceID))
+	vulnerabilities, err := h.vulnService.GetServiceVulnerabilityDetailByScanAndServiceID(ctx, scanID, serviceID)
 	if err != nil {
 		slog.Error("Failed to fetch scan vulnerabilities",
 			slog.String("scan_id", scanID.String()),
@@ -739,7 +739,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{})
 	}
 
-	serviceDetail, err := h.vulnService.GetServiceByID(ctx, int32(serviceID))
+	serviceDetail, err := h.vulnService.GetServiceByID(ctx, serviceID)
 	if err != nil {
 		slog.Error("Failed to fetch severity counts",
 			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
@@ -750,7 +750,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		})
 	}
 
-	severityCounts, err := h.scanService.GetSeverityServiceCountsByScanAndServiceID(ctx, scanID, int32(serviceID))
+	severityCounts, err := h.scanService.GetSeverityServiceCountsByScanAndServiceID(ctx, scanID, serviceID)
 	if err != nil {
 		slog.Error("Failed to fetch severity counts",
 			slog.String("scan_id", scanID.String()),

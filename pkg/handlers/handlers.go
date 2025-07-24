@@ -112,14 +112,14 @@ func GetID(req *http.Request) (int, error) {
 	return intID, nil
 }
 
-func GetIntCustomPathValue(req *http.Request, pathValue string) (int, error) {
+func GetIntCustomPathValue(req *http.Request, pathValue string) (int32, error) {
 	reqID := req.PathValue(pathValue)
 
-	intID, err := strconv.Atoi(reqID)
+	parsedID, err := strconv.ParseInt(reqID, 10, 32)
 	if err != nil {
-		return intID, fmt.Errorf("invalid id given: `%s`", reqID)
+		return 0, fmt.Errorf("invalid id given: `%s`", reqID)
 	}
-	return intID, nil
+	return int32(parsedID), nil
 }
 
 func GetIDInt32(req *http.Request) (int32, error) {
