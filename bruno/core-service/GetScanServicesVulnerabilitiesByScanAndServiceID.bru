@@ -1,0 +1,15 @@
+meta {
+  name: GetScanServicesVulnerabilitiesByScanAndServiceID
+  type: http
+  seq: 30
+}
+
+get {
+  url: http://localhost:8000/api/scans/{{scanID}}/services/{{serviceID}}/vulnerabilities
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}

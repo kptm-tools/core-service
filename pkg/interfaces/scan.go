@@ -32,6 +32,7 @@ type IScanService interface {
 	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 	GetSeverityOSCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
 	GetSeverityServiceCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetSeverityServiceCountsByScanAndServiceID(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error)
 	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
 	GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 }

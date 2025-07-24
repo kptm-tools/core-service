@@ -142,7 +142,66 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse"
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format for ScanID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Scan not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/scans/{id}/services/{service_id}/vulnerabilities": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve service vulnerabilities along with severity counts and remediation details for a given scan ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scans"
+                ],
+                "summary": "GetScanServicesVulnerabilitiesByServiceID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ScanID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ServiceID",
+                        "name": "service_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedServiceResponse"
                         }
                     },
                     "400": {
@@ -626,6 +685,10 @@
                     "description": "family groups this OS into a family (e.g. \"Linux\").",
                     "type": "string"
                 },
+                "full_name": {
+                    "description": "Fullname of the operating system with user (e.g. \"Ubuntu\").\nrequired: true",
+                    "type": "string"
+                },
                 "high_count": {
                     "description": "high_count count of high-severity vulnerabilities.",
                     "type": "integer"
@@ -769,6 +832,112 @@
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse": {
+            "type": "object",
+            "properties": {
+                "alias": {
+                    "type": "string"
+                },
+                "ip_address": {
+                    "type": "string"
+                },
+                "os_name": {
+                    "type": "string"
+                },
+                "os_type": {
+                    "type": "string"
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "remediation": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
+                    }
+                },
+                "scan_date": {
+                    "type": "string"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "severity_counts": {
+                    "$ref": "#/definitions/tools.SeverityCounts"
+                },
+                "total_vulnerabilities": {
+                    "type": "integer"
+                },
+                "vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem"
+                    }
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedServiceResponse": {
+            "type": "object",
+            "properties": {
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "remediation": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
+                    }
+                },
+                "scan_date": {
+                    "type": "string"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "service_confidence": {
+                    "type": "integer"
+                },
+                "service_cpe": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "service_port": {
+                    "type": "integer"
+                },
+                "service_port_state": {
+                    "type": "string"
+                },
+                "service_product": {
+                    "type": "string"
+                },
+                "service_protocol": {
+                    "type": "string"
+                },
+                "service_verion": {
+                    "type": "string"
+                },
+                "severity_counts": {
+                    "$ref": "#/definitions/tools.SeverityCounts"
+                },
+                "total_vulnerabilities": {
+                    "type": "integer"
+                },
+                "vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem"
+                    }
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem": {
             "type": "object",
             "properties": {
@@ -824,53 +993,6 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/tools.VendorComment"
-                    }
-                }
-            }
-        },
-        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse": {
-            "type": "object",
-            "properties": {
-                "alias": {
-                    "type": "string"
-                },
-                "ip_address": {
-                    "type": "string"
-                },
-                "os_name": {
-                    "type": "string"
-                },
-                "os_type": {
-                    "type": "string"
-                },
-                "references": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "remediation": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
-                    }
-                },
-                "scan_date": {
-                    "type": "string"
-                },
-                "scan_id": {
-                    "type": "string"
-                },
-                "severity_counts": {
-                    "$ref": "#/definitions/tools.SeverityCounts"
-                },
-                "total_vulnerabilities": {
-                    "type": "integer"
-                },
-                "vulnerabilities": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem"
                     }
                 }
             }

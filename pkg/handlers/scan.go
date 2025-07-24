@@ -719,11 +719,124 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		})
 	}
 
+	vulnerabilities, err := h.vulnService.GetServiceVulnerabilityDetailByScanAndServiceID(ctx, scanID, int32(serviceID))
+	if err != nil {
+		slog.Error("Failed to fetch scan vulnerabilities",
+			slog.String("scan_id", scanID.String()),
+			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	if len(vulnerabilities) == 0 {
+		slog.Warn("No vulnerabilities found for scan",
+			slog.String("scan_id", scanID.String()),
+			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
+		)
+		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{})
+	}
+
+	serviceDetail, err := h.vulnService.GetServiceByID(ctx, int32(serviceID))
+	if err != nil {
+		slog.Error("Failed to fetch severity counts",
+			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	severityCounts, err := h.scanService.GetSeverityServiceCountsByScanAndServiceID(ctx, scanID, int32(serviceID))
+	if err != nil {
+		slog.Error("Failed to fetch severity counts",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err),
+		)
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	totalRemediations := make([]dto.CWERemediation, 0)
+	totalReferences := make([]string, 0)
+
+	scanVulnerabilityItems := make([]dto.ScanVulnerabilityItem, len(vulnerabilities))
+
+	// Parse vulners
+	for i, vuln := range vulnerabilities {
+		// Populate ScanVulnerabilityItem
+		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
+			ID:             vuln.ID,
+			Name:           vuln.Name,
+			Severity:       vuln.Severity,
+			MaxCVSS:        vuln.MaxCVSS,
+			RiskScore:      vuln.RiskScore,
+			ImpactScore:    vuln.ImpactScore,
+			Likelihood:     vuln.Likelihood,
+			Access:         vuln.Likelihood,
+			Complexity:     vuln.Complexity,
+			Privileges:     vuln.Privileges,
+			Exploitability: vuln.Exploitability,
+			Description:    vuln.Description,
+			Comment:        vuln.Comment,
+			VendorComments: vuln.VendorComments,
+			References:     vuln.References,
+		}
+
+		// Aggregate references
+		totalReferences = append(totalReferences, vuln.References...)
+
+		// Aggregate valid remediations
+		for _, remediation := range vuln.CWERemediation {
+			if remediation.Description != "" {
+				var phasePtr *string
+				if len(remediation.Phase) > 0 {
+					phasePtr = &remediation.Phase[0]
+				}
+
+				cweRemediation := dto.CWERemediation{
+					ID:                 remediation.ID,
+					MitigationID:       &remediation.MitigationID,
+					Title:              remediation.Title,
+					Phase:              phasePtr, // Now validated
+					Description:        remediation.Description,
+					Effectiveness:      &remediation.Effectiveness,
+					EffectivenessNotes: &remediation.EffectivenessNotes,
+					LastUpdated:        remediation.LastUpdated,
+				}
+				totalRemediations = append(totalRemediations, cweRemediation)
+			}
+		}
+	}
+
+	// Aggregate response object
 	response := dto.ScanVulnerabilityDetectedServiceResponse{
 		ScanID:               scanID.String(),
-		ServiceName:          "",
-		TotalVulnerabilities: serviceID,
+		ScanDate:             vulnerabilities[0].ScanDate,
+		ServiceName:          serviceDetail.SvName,
+		ServiceVersion:       serviceDetail.SvVersion,
+		ServiceConfidence:    serviceDetail.Confidence,
+		ServiceCPE:           serviceDetail.CPE,
+		ServiceProduct:       serviceDetail.Product,
+		ServiceProtocol:      serviceDetail.Protocol,
+		ServicePort:          int(serviceDetail.Port),
+		ServicePortState:     serviceDetail.PortState,
+		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low + severityCounts.None + severityCounts.Unknown,
+		SeverityCounts:       severityCounts,
+		Vulnerabilities:      scanVulnerabilityItems,
+		CWERemediations:      totalRemediations,
+		References:           totalReferences,
 	}
+
+	slog.Info("Successfully returned OS vulnerabilities for scan",
+		slog.String("scan_id", scanID.String()),
+		slog.String("service_id", fmt.Sprintf("%d", serviceID)),
+		slog.Int("vulnerability_count", len(scanVulnerabilityItems)),
+	)
 
 	return api.WriteJSON(w, http.StatusOK, response)
 }
