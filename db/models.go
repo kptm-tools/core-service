@@ -155,6 +155,7 @@ const (
 	ToolEnumWhoIs     ToolEnum = "WhoIs"
 	ToolEnumHarvester ToolEnum = "Harvester"
 	ToolEnumNmap      ToolEnum = "Nmap"
+	ToolEnumWebScan   ToolEnum = "WebScan"
 )
 
 func (e *ToolEnum) Scan(src interface{}) error {
@@ -328,6 +329,7 @@ type Host struct {
 }
 
 type NetworkOsVulnerability struct {
+	ID                uuid.UUID     `json:"id"`
 	VulnerabilityID   uuid.UUID     `json:"vulnerability_id"`
 	ScanID            uuid.UUID     `json:"scan_id"`
 	HostID            uuid.UUID     `json:"host_id"`
@@ -450,12 +452,12 @@ type WebVulnerability struct {
 }
 
 type WebVulnerabilityInstance struct {
-	ID              uuid.UUID      `json:"id"`
-	VulnerabilityID uuid.UUID      `json:"vulnerability_id"`
-	Uri             sql.NullString `json:"uri"`
-	Method          sql.NullString `json:"method"`
-	Param           sql.NullString `json:"param"`
-	Attack          sql.NullString `json:"attack"`
-	Evidence        sql.NullString `json:"evidence"`
-	OtherInfo       sql.NullString `json:"other_info"`
+	ID                    int32          `json:"id"`
+	SourceVulnerabilityID uuid.UUID      `json:"source_vulnerability_id"`
+	Uri                   sql.NullString `json:"uri"`
+	Method                sql.NullString `json:"method"`
+	Param                 sql.NullString `json:"param"`
+	Attack                sql.NullString `json:"attack"`
+	Evidence              sql.NullString `json:"evidence"`
+	OtherInfo             sql.NullString `json:"other_info"`
 }

@@ -147,7 +147,7 @@ func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediatio
 		randomCWE := cweDetails[gofakeit.IntRange(0, len(cweDetails)-1)]
 		vulns[i] = tools.Vulnerability{
 			ID:                 uuid.New(),
-			CveID:              "CVE-" + strconv.Itoa(gofakeit.Year()) + "-" + strconv.Itoa(gofakeit.Number(1, 30000)), // Example CVE for nginx
+			CveID:              "CVE-2020" + strconv.Itoa(gofakeit.Number(1, len(cweDetails))),
 			Type:               enums.AllOwaspCategories[gofakeit.IntRange(0, len(enums.AllOwaspCategories)-1)],
 			CWERemediation:     []tools.CWERemediation{randomCWE},
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
@@ -329,6 +329,7 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 }
 
 func generateNmapResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.NmapResult {
+
 	return tools.NmapResult{
 		HostName:     gofakeit.DomainName(),
 		HostAddress:  gofakeit.IPv4Address(),

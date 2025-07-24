@@ -69,10 +69,11 @@ func NewPostgresListener(
 	}
 	slog.Info("PostgresListener started", slog.String("channel", "scan_cron"))
 	postgresListener := &PostgresListener{
-		listener:     listener,
-		scanService:  scanService,
-		emailService: emailService,
-		eventBus:     eventBus,
+		listener:        listener,
+		scanService:     scanService,
+		scheduleService: scheduleService,
+		emailService:    emailService,
+		eventBus:        eventBus,
 	}
 
 	go postgresListener.startListening()

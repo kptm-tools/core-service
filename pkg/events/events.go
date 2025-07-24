@@ -19,6 +19,7 @@ func SetupEventBus(
 	harvesterHandler := consumers.NewHarvesterHandler(scanService)
 
 	nmapHandler := consumers.NewNmapHandler(scanService, vulnService)
+	webScanHandler := consumers.NewWebScanHandler(scanService, vulnService)
 
 	scanFailedHandler := consumers.NewScanFailedHandler(scanService)
 
@@ -36,6 +37,9 @@ func SetupEventBus(
 	}
 
 	if err := eventBus.Subscribe(string(enums.NmapEventSubject), nmapHandler.HandleMessage); err != nil {
+		return err
+	}
+	if err := eventBus.Subscribe(string(enums.WebScanEventSubject), webScanHandler.HandleMessage); err != nil {
 		return err
 	}
 
