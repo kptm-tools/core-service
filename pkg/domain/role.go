@@ -100,7 +100,8 @@ var actionRoles = map[Action][]Role{
 	ActionVulnerabilityCreateComment: {RoleAdmin, RoleAnalyst},
 	ActionVulnerabilityPatchComment:  {RoleAdmin, RoleAnalyst},
 	ActionVulnerabilityDeleteComment: {RoleAdmin, RoleAnalyst},
-	ActionDashboardGet:               {RoleAdmin, RoleOperator, RoleAnalyst},
+
+	ActionDashboardGet: {RoleAdmin, RoleOperator, RoleAnalyst},
 }
 
 // AllActions is a slice containing all defined Action constants.
