@@ -31,7 +31,6 @@ type PostgreSQLStore struct {
 	Vulnerability interfaces.VulnerabilityRepository
 	Cve           interfaces.CVERepository
 	Cwe           interfaces.CWERepository
-	Wasc          interfaces.WASCRepository
 	migrations    fs.FS
 	config        *config.Config
 }
@@ -67,7 +66,6 @@ func NewPostgreSQLStore(cfg *config.Config, migrations fs.FS) (*PostgreSQLStore,
 		ScanResult:    NewScanResultRepository(queries),
 		Cve:           NewCVERepository(queries),
 		Cwe:           NewCWERepository(queries),
-		Wasc:          NewWASCRepository(queries),
 		migrations:    migrations,
 		config:        cfg,
 	}, nil
