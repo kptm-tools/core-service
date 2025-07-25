@@ -25,7 +25,6 @@ type PopulatorDependencies struct {
 	OSRepo               interfaces.OSRepository
 	ServiceRepo          interfaces.ServiceRepository
 	ScanResRepo          interfaces.ScanResultRepository
-	WascRepo             interfaces.WASCRepository
 	ScanService          interfaces.IScanService
 	VulnerabilityService interfaces.IVulnerabilityService
 }
@@ -42,7 +41,7 @@ func Run() {
 		panic(err)
 	}
 	scanService := services.NewScanService(store.Vulnerability, store.Scan, store.Host, store.ScanResult)
-	vulnService := services.NewVulnerabilityService(store, store.OS, store.Service, store.Vulnerability, store.Scan, store.Host, store.Cve, store.Cwe, store.Wasc)
+	vulnService := services.NewVulnerabilityService(store, store.OS, store.Service, store.Vulnerability, store.Scan, store.Host, store.Cve, store.Cwe)
 	deps := PopulatorDependencies{
 		HostRepo:             store.Host,
 		ScanRepo:             store.Scan,
@@ -52,7 +51,6 @@ func Run() {
 		OSRepo:               store.OS,
 		ServiceRepo:          store.Service,
 		ScanResRepo:          store.ScanResult,
-		WascRepo:             store.Wasc,
 		ScanService:          scanService,
 		VulnerabilityService: vulnService,
 	}
