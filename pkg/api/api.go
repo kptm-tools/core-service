@@ -136,7 +136,6 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("DELETE /api/vulnerabilities/{id}/comment", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.DeleteVulnerabilityComment), domain.ActionVulnerabilityDeleteComment))
 
 	// Dashboard routes
-	router.HandleFunc("GET /api/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetWebVulnByService), domain.ActionVulnerabilityGetByService))
 	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), domain.ActionDashboardGet))
 
 	router.HandleFunc("/ws/scan", s.scanHub.Serve)
