@@ -120,13 +120,15 @@ func (s *DashboardService) getHostLatestScanMap(
 	for _, host := range hosts {
 		latestScan, err := s.scanRepo.GetLatestScanByHostID(ctx, host.ID, nil, nil)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get last scan for host %d: %w", host.ID, err)
+			return nil, fmt.Errorf("failed to get last scan for host %s: %w", host.ID, err)
 		}
 		if latestScan == nil {
-			slog.Warn(
-				"LatestScan for host is nil",
+			slog.Debug(
+				"No scans found for host",
 				slog.String("host_id", host.ID.String()),
 			)
+			// Skip hosts without scans - they won't be included in the map
+			continue
 		}
 		hostLatestScanMap[host.ID] = latestScan
 	}
@@ -159,7 +161,12 @@ func (s *DashboardService) GetTenantSecurityPosture(
 			)
 			continue
 		}
-		if latestScan != nil && latestScan.ProtectionScore != nil {
+		if latestScan == nil {
+			// No scans for this host yet, skip
+			continue
+		}
+
+		if latestScan.ProtectionScore != nil {
 			currentScoreSum += *latestScan.ProtectionScore
 			currentHostCount++
 		}

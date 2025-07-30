@@ -289,7 +289,7 @@ func (r *ScanRepo) GetOldestScanByHostID(
 	dbScan, err := queries.GetOldestScanByHostID(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, customerrors.ErrHostNotFound
+			return nil, nil // No scan found for this host, but the host exists
 		}
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (r *ScanRepo) GetLatestScanByHostID(
 	dbScan, err := queries.GetLatestScanByHostID(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, customerrors.ErrHostNotFound
+			return nil, nil // No scan found for this host, but the host exists
 		}
 		return nil, err
 	}
