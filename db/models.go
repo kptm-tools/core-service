@@ -433,13 +433,6 @@ type Vulnerability struct {
 	WascID         sql.NullString        `json:"wasc_id"`
 }
 
-type WascDetail struct {
-	WascID      string    `json:"wasc_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	LastUpdated time.Time `json:"last_updated"`
-}
-
 type WebVulnerability struct {
 	VulnerabilityID uuid.UUID      `json:"vulnerability_id"`
 	ScanID          uuid.UUID      `json:"scan_id"`

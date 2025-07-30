@@ -513,7 +513,7 @@ LEFT JOIN
 	sv.cve_id = cd.cve_id
 LEFT JOIN
   cwe_details cr ON
-  sv.cwe = cr.cwe
+  sv.cwe_id = cr.cwe_id
 WHERE
 	sv.scan_id = $1
 GROUP BY
