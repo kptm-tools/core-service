@@ -389,7 +389,7 @@ type ScoreCardTrendResponse struct {
 }
 
 // ScanVulnerabilityDetailResponse is the DTO with the details for a particular
-// scan's vulenrability.
+// scan's vulnerability.
 type ScanVulnerabilityDetailResponse struct {
 	ID       string `json:"id"`
 	ScanDate string `json:"scan_date"`

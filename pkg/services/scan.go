@@ -455,6 +455,6 @@ func (s *ScanService) GetSeverityCountsFromToolVulns(ctx context.Context, vulns 
 	return domain.CountSeverityOccurrences(domainVulners)
 }
 
-func (s ScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts {
+func (s *ScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts {
 	return domain.CountSeverityOccurrencesFromDomainScanVulnDetail(vulns)
 }
