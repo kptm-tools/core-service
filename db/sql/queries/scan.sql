@@ -126,6 +126,7 @@ LEFT JOIN
   sv.cwe_id = cr.cwe_id
 WHERE
 	sv.scan_id = $1
+	AND cr.title IS NOT NULL  -- Filter out NULL titles to prevent json_object_agg errors
 GROUP BY
 	cr.title
   )
