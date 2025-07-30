@@ -269,6 +269,24 @@ type ScanVulnerabilityDetectedOSResponse struct {
 	References           []string                `json:"references"`
 }
 
+type ScanVulnerabilityDetectedServiceResponse struct {
+	ScanID               string                  `json:"scan_id"`
+	ScanDate             time.Time               `json:"scan_date"`
+	ServiceName          string                  `json:"service_name"`
+	ServiceVersion       string                  `json:"service_verion"`
+	ServiceConfidence    int32                   `json:"service_confidence"`
+	ServiceCPE           string                  `json:"service_cpe"`
+	ServiceProduct       string                  `json:"service_product"`
+	ServiceProtocol      string                  `json:"service_protocol"`
+	ServicePort          int                     `json:"service_port"`
+	ServicePortState     string                  `json:"service_port_state"`
+	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
+	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
+	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
+	CWERemediations      []CWERemediation        `json:"remediation"`
+	References           []string                `json:"references"`
+}
+
 type ScanVulnerabilityItem struct {
 	ID             uuid.UUID             `json:"id"`
 	Name           string                `json:"name"`

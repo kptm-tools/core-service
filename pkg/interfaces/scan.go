@@ -30,6 +30,9 @@ type IScanService interface {
 	GetScoreCardTrendsForTenant(ctx context.Context, tenantID uuid.UUID, fromDate, toDate *time.Time) ([]*domain.ScoreCardTrendItem, error)
 	GetScanVulnerabilities(ctx context.Context, scanID uuid.UUID) ([]tools.Vulnerability, error)
 	GetSeverityCounts(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetSeverityOSCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetSeverityServiceCountsByScanID(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error)
+	GetSeverityServiceCountsByScanAndServiceID(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error)
 	CreateTarget(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
 	GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 }
@@ -41,6 +44,7 @@ type IScanHandlers interface {
 	GetScanInsightsByID(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilitySummaryByID(w http.ResponseWriter, r *http.Request) error
 	GetScanOperatingSystemVulnerabilitiesByID(w http.ResponseWriter, r *http.Request) error
+	GetScanServicesVulnerabilitiesByServiceID(w http.ResponseWriter, r *http.Request) error
 	GetReports(w http.ResponseWriter, r *http.Request) error
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error

@@ -366,6 +366,7 @@ func generateWebVulnerabilities() []tools.WebVulnerability {
 		"Security Misconfiguration",
 		"Broken Authentication",
 	}
+
 	sizeWebVulns := gofakeit.Number(1, len(webVulnNames))
 	webVulns := make([]tools.WebVulnerability, 0, sizeWebVulns)
 	gofakeit.ShuffleAnySlice(webVulnNames)

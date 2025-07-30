@@ -315,6 +315,11 @@ definitions:
       family:
         description: family groups this OS into a family (e.g. "Linux").
         type: string
+      full_name:
+        description: |-
+          Fullname of the operating system with user (e.g. "Ubuntu").
+          required: true
+        type: string
       high_count:
         description: high_count count of high-severity vulnerabilities.
         type: integer
@@ -436,6 +441,76 @@ definitions:
         description: version of the service or product.
         type: string
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse:
+    properties:
+      alias:
+        type: string
+      ip_address:
+        type: string
+      os_name:
+        type: string
+      os_type:
+        type: string
+      references:
+        items:
+          type: string
+        type: array
+      remediation:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
+        type: array
+      scan_date:
+        type: string
+      scan_id:
+        type: string
+      severity_counts:
+        $ref: '#/definitions/tools.SeverityCounts'
+      total_vulnerabilities:
+        type: integer
+      vulnerabilities:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem'
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedServiceResponse:
+    properties:
+      references:
+        items:
+          type: string
+        type: array
+      remediation:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
+        type: array
+      scan_date:
+        type: string
+      scan_id:
+        type: string
+      service_confidence:
+        type: integer
+      service_cpe:
+        type: string
+      service_name:
+        type: string
+      service_port:
+        type: integer
+      service_port_state:
+        type: string
+      service_product:
+        type: string
+      service_protocol:
+        type: string
+      service_verion:
+        type: string
+      severity_counts:
+        $ref: '#/definitions/tools.SeverityCounts'
+      total_vulnerabilities:
+        type: integer
+      vulnerabilities:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem'
+        type: array
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem:
     properties:
       access:
@@ -473,37 +548,6 @@ definitions:
       vendor_comments:
         items:
           $ref: '#/definitions/tools.VendorComment'
-        type: array
-    type: object
-  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse:
-    properties:
-      alias:
-        type: string
-      ip_address:
-        type: string
-      os_name:
-        type: string
-      os_type:
-        type: string
-      references:
-        items:
-          type: string
-        type: array
-      remediation:
-        items:
-          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
-        type: array
-      scan_date:
-        type: string
-      scan_id:
-        type: string
-      severity_counts:
-        $ref: '#/definitions/tools.SeverityCounts'
-      total_vulnerabilities:
-        type: integer
-      vulnerabilities:
-        items:
-          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem'
         type: array
     type: object
   tools.SeverityCounts:
@@ -621,7 +665,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItemsResponse'
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse'
         "400":
           description: Invalid UUID format for ScanID
           schema:
@@ -637,6 +681,45 @@ paths:
       security:
       - BearerAuth: []
       summary: GetScanOperatingSystemVulnerabilitiesByID
+      tags:
+      - Scans
+  /api/scans/{id}/services/{service_id}/vulnerabilities:
+    get:
+      description: Retrieve service vulnerabilities along with severity counts and
+        remediation details for a given scan ID.
+      parameters:
+      - description: ScanID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ServiceID
+        in: path
+        name: service_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedServiceResponse'
+        "400":
+          description: Invalid UUID format for ScanID
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "404":
+          description: Scan not found
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      security:
+      - BearerAuth: []
+      summary: GetScanServicesVulnerabilitiesByServiceID
       tags:
       - Scans
   /healthcheck:

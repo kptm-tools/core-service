@@ -119,9 +119,11 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("GET /api/scans/{id}/insights", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanInsightsByID), domain.ActionScanGetInsightsByID))
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilities), domain.ActionScanGetVulnerabilitiesByID))
 	router.HandleFunc("GET /api/scans/{id}/vulnerabilities/summary", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanVulnerabilitySummaryByID), domain.ActionScanGetVulnerabilitySummaryByID))
-	router.HandleFunc("GET /api/scans/{id}/operating-system/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanOperatingSystemVulnerabilitiesByID), domain.ActionScanGetVulnerabilitySummaryByID))
+	router.HandleFunc("GET /api/scans/{id}/operating-system/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanOperatingSystemVulnerabilitiesByID), domain.ActionGetScanOperatingSystemVulnerabilitiesByID))
+	router.HandleFunc("GET /api/scans/{id}/services/{service_id}/vulnerabilities", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScanServicesVulnerabilitiesByServiceID), domain.ActionGetScanServicesVulnerabilitiesByServiceID))
 	router.HandleFunc("GET /api/scorecard-trends", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanHandlers.GetScoreCardTrends), domain.ActionScanGetScorecardTrends))
 
+	// Scan schedules routes
 	router.HandleFunc("DELETE /api/scan-schedules/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanScheduleHandlers.DeleteScanSchedule), domain.ActionScanScheduleDeleteByID))
 	router.HandleFunc("PATCH /api/scan-schedules/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanScheduleHandlers.PatchScanSchedule), domain.ActionScanSchedulePatchByID))
 	router.HandleFunc("GET /api/scan-schedules", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.scanScheduleHandlers.GetScanSchedules), domain.ActionScanScheduleGetAll))
