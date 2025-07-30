@@ -354,7 +354,7 @@ func (h *AuthHandlers) verifyTokenSignature(token *jwt.Token) (interface{}, erro
 	if err := validateSigningMethod(token); err != nil {
 		return nil, err
 	}
-	if err := validateClaims(token); err != nil {
+	if err := h.validateClaims(token); err != nil {
 		return nil, err
 	}
 
@@ -375,14 +375,20 @@ func validateSigningMethod(token *jwt.Token) error {
 	return nil
 }
 
-func validateClaims(token *jwt.Token) error {
+func (h *AuthHandlers) validateClaims(token *jwt.Token) error {
+	// Use the actual issuer that FusionAuth is configured with
+	expectedIssuer := "https://app.kriptome.com"
+	return validateClaims(token, expectedIssuer)
+}
+
+func validateClaims(token *jwt.Token, expectedIssuer string) error {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || claims == nil || len(claims) == 0 {
 		msg := "Invalid token claims"
 		return fmt.Errorf("%q: %w", msg, middleware.ErrInvalidToken)
 	}
 
-	if err := validateIssuer(claims, "https://app.kriptome.com"); err != nil {
+	if err := validateIssuer(claims, expectedIssuer); err != nil {
 		return err
 	}
 	if err := validateUserAndTenant(claims); err != nil {
