@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS web_vulnerabilities (
     vulnerability_id UUID PRIMARY KEY,
     scan_id UUID NOT NULL, -- The specific scan run that found this instance
     host_id UUID NOT NULL, -- The specific host this instance was found on
-    service_id INTEGER, -- The specific service this instance is related to
+    service_id INTEGER NOT NULL, -- The specific service this instance is related to
     solution_advice text,
     reference text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

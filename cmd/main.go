@@ -54,7 +54,7 @@ func main() {
 	hostService := services.NewHostService(coreStore.Host)
 	dashboardService := services.NewDashboardService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host)
 	scanService := services.NewScanService(coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.ScanResult)
-	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve, coreStore.Cwe, coreStore.Wasc)
+	vulnService := services.NewVulnerabilityService(coreStore, coreStore.OS, coreStore.Service, coreStore.Vulnerability, coreStore.Scan, coreStore.Host, coreStore.Cve, coreStore.Cwe)
 	scanScheduleService := services.NewScanScheduleService(coreStore, coreStore.Scan, coreStore.ScanSchedule)
 	emailService := services.NewEmailService(
 		c.SMTP.Host,
