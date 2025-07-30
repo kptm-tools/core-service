@@ -473,15 +473,7 @@ func (h *ScanHandlers) GetScanVulnerabilities(w http.ResponseWriter, r *http.Req
 		)
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
-
-	severityCounts, err := h.scanService.GetSeverityCounts(ctx, scanID)
-	if err != nil {
-		slog.Error("failed to fetch severity counts",
-			slog.String("scan_id", scanID.String()),
-			slog.Any("error", err),
-		)
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
-	}
+	severityCounts := h.scanService.GetSeverityCountsFromToolVulns(ctx, vulners)
 
 	var scanVulnersItemsResponse dto.ScanVulnerabilityItemsResponse
 
@@ -568,16 +560,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedOSResponse{})
 	}
 
-	severityCounts, err := h.scanService.GetSeverityOSCountsByScanID(ctx, scanID)
-	if err != nil {
-		slog.Error("Failed to fetch severity counts",
-			slog.String("scan_id", scanID.String()),
-			slog.Any("error", err),
-		)
-		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
-			Error: http.StatusText(http.StatusInternalServerError),
-		})
-	}
+	severityCounts := h.scanService.GetSeverityCountsFromDomainVulnDetail(ctx, vulnerabilities)
 
 	// Prepare total collections
 	totalRemediations := make([]dto.CWERemediation, 0)
