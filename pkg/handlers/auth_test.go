@@ -265,7 +265,7 @@ func Test_validateClaims(t *testing.T) {
 				Header: tt.tokenHeaders,
 			}
 
-			err := validateClaims(token)
+			err := validateClaims(token, "https://app.kriptome.com")
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Expected error `%v`, got `%v`", tt.wantErr, err)
 			}
