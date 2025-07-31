@@ -120,10 +120,6 @@ func (c *ReportClient) GetID() string {
 	return c.ID
 }
 
-func (c *ReportClient) GetHub() interfaces.IHub {
-	return c.hub
-}
-
 func (c *ReportClient) Close() error {
 	close(c.outgoing)
 	return c.connection.Close()
