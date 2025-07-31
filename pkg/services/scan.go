@@ -452,9 +452,9 @@ func (s *ScanService) GetScanRapporteursAndHostAlias(ctx context.Context, scanID
 
 func (s *ScanService) GetSeverityCountsFromToolVulns(ctx context.Context, vulns []tools.Vulnerability) tools.SeverityCounts {
 	domainVulners := domain.ConvertToolsToDomainVulnerabilities(vulns)
-	return domain.CountSeverityOccurrences(domainVulners)
+	return domain.CountSeverityOccurrencesGeneric(domainVulners)
 }
 
 func (s *ScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts {
-	return domain.CountSeverityOccurrencesFromDomainScanVulnDetail(vulns)
+	return domain.CountSeverityOccurrencesGeneric(vulns)
 }
