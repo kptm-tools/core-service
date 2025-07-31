@@ -48,7 +48,7 @@ func TestScanHub_Register(t *testing.T) {
 	hub := NewScanHub(cfg, mockScanService, mockAuthService, 5)
 
 	mockClient := &MockScanClient{
-		id: "test-client-1",
+		id:       "test-client-1",
 		tenantID: uuid.New(),
 	}
 
@@ -69,7 +69,7 @@ func TestScanHub_Unregister(t *testing.T) {
 	hub := NewScanHub(cfg, mockScanService, mockAuthService, 5)
 
 	mockClient := &MockScanClient{
-		id: "test-client-1",
+		id:       "test-client-1",
 		tenantID: uuid.New(),
 	}
 
@@ -99,10 +99,10 @@ func TestScanHub_Run_SendsDataPeriodically(t *testing.T) {
 		},
 	}
 	mockAuthService := &mock_services.MockAuthService{}
-	
+
 	// Use a very short interval for testing
 	hub := NewScanHub(cfg, mockScanService, mockAuthService, 1) // 1 second interval
-	
+
 	mockClient := &MockScanClient{
 		id:       "test-client-1",
 		tenantID: uuid.New(),

@@ -28,7 +28,7 @@ func TestReportRoom_ConcurrentAccess(t *testing.T) {
 	// Arrange
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 	room := NewReportRoom(scanID)
-	
+
 	vulnerabilities := []tools.Vulnerability{
 		{
 			ID:            uuid.New(),
@@ -44,7 +44,7 @@ func TestReportRoom_ConcurrentAccess(t *testing.T) {
 
 	// Act - Simulate concurrent operations
 	done := make(chan bool, 2)
-	
+
 	// Goroutine 1: Set vulnerabilities and increment clients
 	go func() {
 		room.mu.Lock()
@@ -53,7 +53,7 @@ func TestReportRoom_ConcurrentAccess(t *testing.T) {
 		room.mu.Unlock()
 		done <- true
 	}()
-	
+
 	// Goroutine 2: Increment client count
 	go func() {
 		room.mu.Lock()
@@ -61,7 +61,7 @@ func TestReportRoom_ConcurrentAccess(t *testing.T) {
 		room.mu.Unlock()
 		done <- true
 	}()
-	
+
 	// Wait for both goroutines to complete
 	<-done
 	<-done
@@ -77,7 +77,7 @@ func TestReportRoom_VulnerabilitiesManagement(t *testing.T) {
 	// Arrange
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 	room := NewReportRoom(scanID)
-	
+
 	initialVulns := []tools.Vulnerability{
 		{
 			ID:            uuid.New(),
@@ -97,7 +97,7 @@ func TestReportRoom_VulnerabilitiesManagement(t *testing.T) {
 		CveID:         "CVE-2023-5678",
 		BaseCVSSScore: 9.0,
 	}
-	
+
 	room.mu.Lock()
 	room.Vulnerabilities = append(room.Vulnerabilities, additionalVuln)
 	room.mu.Unlock()

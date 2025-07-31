@@ -47,10 +47,10 @@ func TestScanWebSocketIntegration(t *testing.T) {
 
 	// Create scan hub
 	hub := scan.NewScanHub(cfg, mockScanService, mockAuthService, 1) // 1 second interval for testing
-	
+
 	// Start the hub in background
 	go hub.Run()
-	
+
 	// We'll let the goroutine run and clean up with server shutdown
 
 	// Create test HTTP server
@@ -96,7 +96,7 @@ func TestScanWebSocketIntegration(t *testing.T) {
 	// For integration test, we mainly verify that the connection was established successfully
 	// The detailed message validation would depend on the actual scan service implementation
 	assert.True(t, true, "WebSocket connection established successfully")
-	
+
 	// Use messageReceived variable to avoid unused variable error
 	if messageReceived {
 		fmt.Println("Successfully received WebSocket message during integration test")

@@ -38,12 +38,12 @@ func TestInitialRequestHandler(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "Invalid data memory",
+			name: "Nil vulnerabilities handled gracefully",
 			message: common.Message{
 				Type:    "",
 				Payload: dataGoodScanID,
 			},
-			expectError: true,
+			expectError: false, // Changed: nil vulnerabilities are now handled gracefully
 		},
 		{
 			name: "Good handler",
