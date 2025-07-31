@@ -27,12 +27,18 @@ func GeneratePortDataFromWebVuln(vuln tools.WebVulnerability) tools.PortData {
 
 // GenerateCWEDetailFromVuln creates CWEDetail from tools.Vulnerability
 func GenerateCWEDetailFromVuln(vuln tools.Vulnerability) domain.CWEDetail {
+	// Extract CWE ID from first CWERemediation record
+	var cweID string
+	if len(vuln.CWERemediation) > 0 {
+		cweID = vuln.CWERemediation[0].ID
+	}
+
 	// Extract title from first CWERemediation record
 	title := ExtractCWETitleFromRemediation(vuln.CWERemediation)
 	lastUpdate := ExtractCWELastUpdatedAtFromRemediation(vuln.CWERemediation)
 	now := time.Now()
 	return domain.CWEDetail{
-		ID:          vuln.CweID,
+		ID:          cweID,
 		Title:       title,
 		CreatedAt:   &now,
 		LastUpdated: lastUpdate,
