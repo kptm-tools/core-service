@@ -14,22 +14,23 @@ import (
 
 type ScanHub struct {
 	cfg          *common.Config
-	clients      map[string]interfaces.IClient
-	register     chan interfaces.IClient
-	unregister   chan interfaces.IClient
+	clients      map[string]interfaces.IScanClient
+	register     chan interfaces.IScanClient
+	unregister   chan interfaces.IScanClient
 	scanService  interfaces.IScanService
 	authService  interfaces.IAuthService
 	scanInterval time.Duration
 }
 
+// Ensure ScanHub implements IHub interface
 var _ interfaces.IHub = (*ScanHub)(nil)
 
 func NewScanHub(config *common.Config, scanService interfaces.IScanService, authService interfaces.IAuthService, scanIntervalSeconds int) *ScanHub {
 	server := &ScanHub{
 		cfg:          config,
-		clients:      make(map[string]interfaces.IClient),
-		register:     make(chan interfaces.IClient),
-		unregister:   make(chan interfaces.IClient),
+		clients:      make(map[string]interfaces.IScanClient),
+		register:     make(chan interfaces.IScanClient),
+		unregister:   make(chan interfaces.IScanClient),
 		scanService:  scanService,
 		authService:  authService,
 		scanInterval: time.Duration(scanIntervalSeconds) * time.Second,
@@ -88,13 +89,11 @@ func (h *ScanHub) Run() {
 			}
 		case <-ticker.C:
 			for _, client := range h.clients {
-				scanClient := client.(*ScanClient) // Assert back to ScanClient struct
-
-				scans, err := h.scanService.GetCurrentScans(ctx, scanClient.tenantID)
+				scans, err := h.scanService.GetCurrentScans(ctx, client.GetTenantID())
 				if err != nil {
 					slog.Error("Failed to get scans",
 						slog.String("client_id", client.GetID()),
-						slog.String("tenant_id", scanClient.tenantID.String()),
+						slog.String("tenant_id", client.GetTenantID().String()),
 						slog.Any("error", err))
 				}
 
@@ -111,13 +110,16 @@ func (h *ScanHub) Run() {
 	}
 }
 
-// Register will add clients to our clientList
+// Register provides IHub interface compatibility by casting to IScanClient
 func (h *ScanHub) Register(client interfaces.IClient) {
-	// Add Client
-	h.register <- client
+	if scanClient, ok := client.(interfaces.IScanClient); ok {
+		h.register <- scanClient
+	}
 }
 
-// Unregister will remove clients from the clientList
+// Unregister provides IHub interface compatibility by casting to IScanClient
 func (h *ScanHub) Unregister(client interfaces.IClient) {
-	h.unregister <- client
+	if scanClient, ok := client.(interfaces.IScanClient); ok {
+		h.unregister <- scanClient
+	}
 }
