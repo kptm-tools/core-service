@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/dto"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -39,8 +40,8 @@ func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IRe
 	client.SetRoomID(scanID.String())
 	vulns := client.GetHubReport().GetRoomVulnerabilities(scanID.String())
 	if vulns == nil {
-		slog.Error("Failed to get vulnerabilities for scan", slog.String("scan_id", scanID.String()), slog.Any("error", err))
-		return customerrors.NewServerSideError("failed to get vulnerabilities for scan")
+		slog.Error("Failed to get vulnerabilities for scan", slog.String("scan_id", scanID.String()))
+		vulns = []tools.Vulnerability{} // Initialize empty slice to prevent nil pointer
 	}
 
 	payload := reportutils.BuildVulnerabilityTypeData(vulns)

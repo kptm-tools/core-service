@@ -39,7 +39,7 @@ func TestNewReportHub(t *testing.T) {
 	assert.NotNil(t, hub.unregister)
 	assert.NotNil(t, hub.handlers)
 	assert.NotNil(t, hub.rooms)
-	
+
 	// Check that handlers are properly registered
 	assert.Len(t, hub.handlers, 4)
 	assert.Contains(t, hub.handlers, "initial_data_request")
@@ -107,7 +107,7 @@ func TestReportHub_AddToRoom(t *testing.T) {
 	}
 	mockAuthService := &mock_services.MockAuthService{}
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
-	
+
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 
 	// Act
@@ -116,7 +116,7 @@ func TestReportHub_AddToRoom(t *testing.T) {
 	// Assert
 	roomInterface, exists := hub.rooms.Load(scanID)
 	require.True(t, exists)
-	
+
 	room, ok := roomInterface.(*ReportRoom)
 	require.True(t, ok)
 	assert.Equal(t, scanID, room.GetScanID())
@@ -130,9 +130,9 @@ func TestReportHub_RemoveFromRoom(t *testing.T) {
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
-	
+
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
-	
+
 	// Pre-populate room
 	room := NewReportRoom(scanID)
 	room.AmountOfClients = 2
@@ -144,7 +144,7 @@ func TestReportHub_RemoveFromRoom(t *testing.T) {
 	// Assert
 	roomInterface, exists := hub.rooms.Load(scanID)
 	require.True(t, exists)
-	
+
 	updatedRoom, ok := roomInterface.(*ReportRoom)
 	require.True(t, ok)
 	assert.Equal(t, 1, updatedRoom.AmountOfClients)
@@ -156,9 +156,9 @@ func TestReportHub_RemoveFromRoom_LastClient(t *testing.T) {
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
-	
+
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
-	
+
 	// Pre-populate room with 1 client
 	room := NewReportRoom(scanID)
 	room.AmountOfClients = 1
@@ -173,7 +173,7 @@ func TestReportHub_RemoveFromRoom_LastClient(t *testing.T) {
 	// Assert
 	roomInterface, exists := hub.rooms.Load(scanID)
 	require.True(t, exists)
-	
+
 	updatedRoom, ok := roomInterface.(*ReportRoom)
 	require.True(t, ok)
 	assert.Equal(t, 0, updatedRoom.AmountOfClients)
@@ -185,7 +185,7 @@ func TestReportHub_GetRoomVulnerabilities(t *testing.T) {
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
-	
+
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 	expectedVulns := []tools.Vulnerability{
 		{
@@ -194,7 +194,7 @@ func TestReportHub_GetRoomVulnerabilities(t *testing.T) {
 			BaseCVSSScore: 7.5,
 		},
 	}
-	
+
 	// Pre-populate room
 	room := NewReportRoom(scanID)
 	room.Vulnerabilities = expectedVulns
@@ -213,7 +213,7 @@ func TestReportHub_GetRoomVulnerabilities_NoRoom(t *testing.T) {
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
-	
+
 	scanID := "nonexistent-scan-id"
 
 	// Act
@@ -228,10 +228,10 @@ func TestReportHub_GetRoomVulnerabilities_NoRoom(t *testing.T) {
 var _ interfaces.IReportClient = (*MockReportClient)(nil)
 
 type MockReportClient struct {
-	id       string
-	send     chan []byte
-	closed   bool
-	roomID   string
+	id     string
+	send   chan []byte
+	closed bool
+	roomID string
 }
 
 func (m *MockReportClient) GetID() string {

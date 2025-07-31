@@ -65,7 +65,7 @@ func TestScanClient_Close(t *testing.T) {
 	// Arrange
 	outgoing := make(chan []byte, 256)
 	client := &ScanClient{
-		outgoing: outgoing,
+		outgoing:   outgoing,
 		connection: nil, // Explicitly set to nil to test the panic recovery
 	}
 
@@ -75,9 +75,9 @@ func TestScanClient_Close(t *testing.T) {
 			// Expected panic due to nil connection
 		}
 	}()
-	
+
 	client.Close()
-	
+
 	// Check that the channel is closed even if connection panics
 	select {
 	case _, ok := <-outgoing:
@@ -86,4 +86,3 @@ func TestScanClient_Close(t *testing.T) {
 		// Channel is closed and empty, which is expected
 	}
 }
-

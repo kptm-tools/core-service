@@ -74,9 +74,9 @@ func TestReportClient_Close(t *testing.T) {
 			// Expected panic due to nil connection
 		}
 	}()
-	
+
 	client.Close()
-	
+
 	// Check that the channel is closed even if connection panics
 	select {
 	case _, ok := <-outgoing:
@@ -89,7 +89,7 @@ func TestReportClient_Close(t *testing.T) {
 func TestReportClient_GetVectorStatus(t *testing.T) {
 	// Arrange
 	expectedStatus := map[enums.OwaspCategory]float64{
-		enums.OwaspCategoryInjection:                         7.5,
+		enums.OwaspCategoryInjection:                               7.5,
 		enums.OwaspCategoryIdentificationAndAuthenticationFailures: 6.2,
 	}
 	client := &ReportClient{
@@ -109,7 +109,7 @@ func TestReportClient_SetVectorStatus(t *testing.T) {
 		vectorStatus: make(map[enums.OwaspCategory]float64),
 	}
 	newStatus := map[enums.OwaspCategory]float64{
-		enums.OwaspCategoryInjection:                         8.0,
+		enums.OwaspCategoryInjection:                               8.0,
 		enums.OwaspCategoryIdentificationAndAuthenticationFailures: 7.0,
 	}
 
@@ -124,7 +124,7 @@ func TestReportClient_UpdateVector(t *testing.T) {
 	// Arrange
 	client := &ReportClient{
 		vectorStatus: map[enums.OwaspCategory]float64{
-			enums.OwaspCategoryInjection:                         5.0,
+			enums.OwaspCategoryInjection:                               5.0,
 			enums.OwaspCategoryIdentificationAndAuthenticationFailures: 3.0,
 		},
 	}
@@ -176,4 +176,3 @@ func TestReportClient_GetHubReport(t *testing.T) {
 	// Assert
 	assert.Equal(t, hub, hubReport)
 }
-
