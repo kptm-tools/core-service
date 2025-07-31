@@ -418,11 +418,11 @@ func generateWebVulnerabilities() []tools.WebVulnerability {
 		// Edge cases - these will map to "Other" or "No Info"
 		{
 			name:   "Unknown Vulnerability Type 1",
-			cweIDs: []string{"CWE-99999", "12345", ""}, // Invalid formats
+			cweIDs: []string{"CWE-99999", "12345", ""}, // Deliberately invalid CWE IDs to test mapping fallback behavior
 		},
 		{
 			name:   "Unknown Vulnerability Type 2",
-			cweIDs: []string{"", "INVALID", "None"}, // Empty or invalid
+			cweIDs: []string{"", "INVALID", "None"}, // Deliberately invalid or empty CWE IDs to test mapping fallback behavior
 		},
 	}
 
