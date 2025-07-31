@@ -72,7 +72,8 @@ func TestScanClient_Close(t *testing.T) {
 	// Act & Assert - This should panic due to nil connection, which is expected
 	defer func() {
 		if r := recover(); r != nil {
-			// Expected panic due to nil connection
+			// Expected panic due to nil connection - this is the desired behavior
+			_ = r // Acknowledge the panic was caught as expected
 		}
 	}()
 

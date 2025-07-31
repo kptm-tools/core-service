@@ -21,7 +21,7 @@ func TestNewReportRoom(t *testing.T) {
 	assert.Equal(t, 0, room.AmountOfClients)
 	assert.NotNil(t, room.Vulnerabilities)
 	assert.Empty(t, room.Vulnerabilities)
-	assert.NotNil(t, room.mu)
+	// Note: mu (sync.Mutex) is a value type, always initialized, no need to check for nil
 }
 
 func TestReportRoom_ConcurrentAccess(t *testing.T) {

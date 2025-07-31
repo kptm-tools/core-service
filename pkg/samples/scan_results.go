@@ -468,6 +468,8 @@ func generateInstancesWebVuln(sizeInstances int) []tools.InstanceAlert {
 	return instances
 }
 
+// generateRealisticSolution returns appropriate remediation guidance for common vulnerability types.
+// Returns a generic security guidance message for unknown vulnerability types.
 func generateRealisticSolution(vulnName string) string {
 	solutions := map[string]string{
 		"Cross Site Scripting":      "Encode all user input before rendering it in HTML context. Use Content Security Policy (CSP) headers. Validate and sanitize all input data.",
@@ -488,6 +490,8 @@ func generateRealisticSolution(vulnName string) string {
 	return "Review and update the application to address this security vulnerability. Consult security best practices for your specific framework and technology stack."
 }
 
+// generateRealisticReference returns relevant OWASP reference URLs for common vulnerability types.
+// Returns the OWASP Top 10 URL for unknown vulnerability types.
 func generateRealisticReference(vulnName string) string {
 	references := map[string]string{
 		"Cross Site Scripting":      "https://owasp.org/www-community/attacks/xss/",
