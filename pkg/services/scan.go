@@ -450,6 +450,11 @@ func (s *ScanService) GetScanRapporteursAndHostAlias(ctx context.Context, scanID
 	return host.Rapporteurs, host.Name, nil
 }
 
-func calculateDateRange(currentTime time.Time, filter domain.TimePeriodFilter) (*time.Time, *time.Time) {
-	return nil, nil
+func (s *ScanService) GetSeverityCountsFromToolVulns(ctx context.Context, vulns []tools.Vulnerability) tools.SeverityCounts {
+	domainVulners := domain.ConvertToolsToDomainVulnerabilities(vulns)
+	return domain.CountSeverityOccurrencesGeneric(domainVulners)
+}
+
+func (s *ScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts {
+	return domain.CountSeverityOccurrencesGeneric(vulns)
 }

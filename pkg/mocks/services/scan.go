@@ -36,6 +36,8 @@ type MockScanService struct {
 	MockGetSeverityServiceCountsByScanAndServiceID func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error)
 	MockCreateTarget                               func(ctx context.Context, hostID uuid.UUID) (*results.Target, error)
 	MockGetScanRapporteursAndHostAlias             func(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
+	MockGetSeverityCountsFromToolVulns             func(ctx context.Context, vulns []tools.Vulnerability) tools.SeverityCounts
+	MockGetSeverityCountsFromDomainVulnDetail      func(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts
 }
 
 // Ensure MockScanService satisfies the IScanService interface at compile time.
@@ -186,4 +188,18 @@ func (m *MockScanService) GetScanRapporteursAndHostAlias(ctx context.Context, sc
 		return m.MockGetScanRapporteursAndHostAlias(ctx, scanID)
 	}
 	panic(fmt.Sprintf("MockScanService: method GetScanRapporteursAndHostAlias called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanService) GetSeverityCountsFromToolVulns(ctx context.Context, vulns []tools.Vulnerability) tools.SeverityCounts {
+	if m.MockGetSeverityCountsFromToolVulns != nil {
+		return m.MockGetSeverityCountsFromToolVulns(ctx, vulns)
+	}
+	panic(fmt.Sprintf("MockScanService: method GetSeverityCountsFromToolVulns called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts {
+	if m.MockGetSeverityCountsFromDomainVulnDetail != nil {
+		return m.MockGetSeverityCountsFromDomainVulnDetail(ctx, vulns)
+	}
+	panic(fmt.Sprintf("MockScanService: method GetSeverityCountsFromDomainVulnDetail called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

@@ -356,7 +356,7 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
 				},
-				MockGetSeverityOSCountsByScanID: func(ctx context.Context, scanID uuid.UUID) (tools.SeverityCounts, error) {
+				MockGetSeverityCountsFromDomainVulnDetail: func(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts {
 					return tools.SeverityCounts{
 						Critical: 0,
 						High:     0,
@@ -364,7 +364,7 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 						Low:      0,
 						None:     0,
 						Unknown:  0,
-					}, nil
+					}
 				},
 			},
 			vulnerability: &mock_services.MockVulnerabilityService{
