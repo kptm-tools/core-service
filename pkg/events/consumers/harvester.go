@@ -90,7 +90,7 @@ func (h *HarvesterHandler) processHarvesterEvent(ctx context.Context, data []byt
 	// 3. Save ToolResult to DB
 	scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
 	if err := h.scanService.InsertScanResult(ctx, *scanResult); err != nil {
-		slog.Error("Error inserting Scanresult to DB",
+		slog.Error("Error inserting ScanResult to DB",
 			slog.String("scan_id", evt.ScanID.String()),
 			slog.String("tool_name", string(evt.ToolResult.Tool)),
 			slog.Any("error", err))

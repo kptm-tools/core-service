@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProcessWhoIsEvent(t *testing.T) {
+func TestProcessHarvesterEvent(t *testing.T) {
 
 	tests := []struct {
 		name          string
@@ -32,7 +32,7 @@ func TestProcessWhoIsEvent(t *testing.T) {
 			name:          "Invalid tool name",
 			scanService:   &mock_services.MockScanService{},
 			data:          []byte(`{}`),
-			expectedError: "invalid toolName for WhoIsEvent",
+			expectedError: "invalid toolName for HarvesterEvent",
 		},
 		{
 			name: "Scan not found",
@@ -42,13 +42,12 @@ func TestProcessWhoIsEvent(t *testing.T) {
 				},
 			},
 			data: []byte(`{
-							  "scan_id": "123e4567-e89b-12d3-a456-426614174000",
-							  "timestamp": "2025-07-07T12:34:56Z",
-                              "ToolResult": {"tool_name": "WhoIs",
-                              "result": null,
-							  "error": null,
-							  "timestamp": "2025-07-07T12:34:56Z"
-							}}`),
+				"scan_id": "dfa86ed2-5601-4dec-be89-97a16a579dfb",
+				"ToolResult": {
+					"tool_name": "Harvester",
+					"result": null
+				}
+			}`),
 			expectedError: "scan not found",
 		},
 		{
@@ -64,7 +63,7 @@ func TestProcessWhoIsEvent(t *testing.T) {
 			data: []byte(`{
 				"scan_id": "dfa86ed2-5601-4dec-be89-97a16a579dfb",
 				"ToolResult": {
-					"tool_name": "WhoIs",
+					"tool_name": "Harvester",
 					"result": null,
 					"timestamp": "2025-07-07T12:34:56Z"
 				}
@@ -87,32 +86,10 @@ func TestProcessWhoIsEvent(t *testing.T) {
 			data: []byte(`{
 				"scan_id": "dfa86ed2-5601-4dec-be89-97a16a579dfb",
 				"ToolResult": {
-					"tool_name": "WhoIs",
+					"tool_name": "Harvester",
 					"result": {
-					  "raw_data": {
-						"domain": {
-						  "id": "8363973_DOMAIN_NET-VRSN",
-						  "domain": "testfire.net",
-						  "punycode": "testfire.net",
-						  "name": "testfire",
-						  "extension": "net",
-						  "whois_server": "whois.registrar.amazon",
-						  "status": [
-							"clientDeleteProhibited",
-							"clientTransferProhibited",
-							"clientUpdateProhibited"
-						  ],
-						  "name_servers": [
-							"asia3.akam.net"
-						  ],
-						  "created_date": "1999-07-23T13:52:32Z",
-						  "created_date_in_time": "1999-07-23T13:52:32Z",
-						  "updated_date": "2025-02-27T17:53:33Z",
-						  "updated_date_in_time": "2025-02-27T17:53:33Z",
-						  "expiration_date": "2026-07-23T13:52:32Z",
-						  "expiration_date_in_time": "2026-07-23T13:52:32Z"
-						}
-					  }
+						"emails": [],
+						"subdomains": ["http://example.com"]
 					}
 				}
 			}`),
@@ -121,10 +98,12 @@ func TestProcessWhoIsEvent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewWhoIsHandler(tt.scanService)
+			h := NewHarvesterHandler(tt.scanService)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			err := h.processWhoIsEvent(ctx, tt.data)
+
+			err := h.processHarvesterEvent(ctx, tt.data)
+
 			if tt.expectedError != "" {
 				assert.EqualError(t, err, tt.expectedError)
 			} else {
