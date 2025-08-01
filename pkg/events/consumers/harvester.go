@@ -3,7 +3,10 @@ package consumers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
+	"runtime/debug"
+	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/events"
@@ -23,53 +26,77 @@ func NewHarvesterHandler(scanService interfaces.IScanService) *HarvesterHandler 
 var _ interfaces.EventConsumer = (*HarvesterHandler)(nil)
 
 func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
-	go func(msg *nats.Msg) {
-		ctx := context.Background()
-		slog.Info("Received HarvesterEvent")
-
-		// 1. Parse payload
-		var evt events.ToolResultEvent
-		if err := json.Unmarshal(msg.Data, &evt); err != nil {
-			slog.Error("Failed to unmarshal ToolResultEvent",
-				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", err))
-			return
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Panic recovered in HarvesterHandler", "panic", r, "stack", string(debug.Stack()))
 		}
+	}()
+	slog.Info("Received HarvesterEvent")
+	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	defer cancel()
+	go h.processHarvesterEventRoutine(ctx, msg.Data)
+	<-ctx.Done()
+}
 
-		// 2. Validate contents
-		if evt.ToolResult.Tool != enums.ToolHarvester {
-			slog.Error("Invalid toolName for HarvesterEvent", slog.String("tool_name", string(evt.ToolResult.Tool)))
-			return
+func (h *HarvesterHandler) processHarvesterEventRoutine(ctx context.Context, data []byte) {
+	select {
+	case <-ctx.Done():
+		slog.Debug("HarvesterHandler context cancelled or timed out", slog.Any("error", ctx.Err()))
+	default:
+		err := h.processHarvesterEvent(ctx, data)
+		if err != nil {
+			slog.Debug("Error processing HarvesterEvent", "error", err)
 		}
+	}
+}
 
-		// 2.1 Check if the current scan status is still healthy
-		scan, errScan := h.scanService.GetScanByID(ctx, evt.ScanID)
-		if errScan != nil {
-			slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
-			return
-		}
-		if scan.IsFailedOrCancelled() {
-			slog.Error("Error inserting ScanResult to DB because of Scan Status",
-				slog.String("scan_id", evt.ScanID.String()),
-				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("current_status ", scan.Status),
-			)
-			return
-		}
+func (h *HarvesterHandler) processHarvesterEvent(ctx context.Context, data []byte) error {
 
-		// 2.2 Check for errors in the result
-		handleToolResultError(ctx, evt.ScanID, evt.ToolResult, h.scanService)
+	// 1. Parse payload
+	var evt events.ToolResultEvent
+	if err := json.Unmarshal(data, &evt); err != nil {
+		slog.Error("Failed to unmarshal ToolResultEvent",
+			slog.String("tool_name", string(evt.ToolResult.Tool)),
+			slog.Any("error", err))
+		return err
+	}
 
-		// 3. Save ToolResult to DB
-		scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
-		if err := h.scanService.InsertScanResult(ctx, *scanResult); err != nil {
-			slog.Error("Error inserting Scanresult to DB",
-				slog.String("scan_id", evt.ScanID.String()),
-				slog.String("tool_name", string(evt.ToolResult.Tool)),
-				slog.Any("error", err))
-			return
-		}
+	// 2. Validate contents
+	if evt.ToolResult.Tool != enums.ToolHarvester {
+		slog.Error("Invalid toolName for HarvesterEvent",
+			slog.String("scan_id", evt.ScanID.String()),
+			slog.String("tool_name", string(evt.ToolResult.Tool)))
+		return errors.New("invalid toolName for HarvesterEvent")
+	}
 
-		slog.Debug("HarvesterEvent handled successfully")
-	}(msg)
+	// 2.1 Check if the current scan status is still healthy
+	scan, errScan := h.scanService.GetScanByID(ctx, evt.ScanID)
+	if errScan != nil {
+		slog.Error("Failed to get Scan", slog.String("scan_id", evt.ScanID.String()))
+		return errScan
+	}
+	if scan.IsFailedOrCancelled() {
+		slog.Error("Error inserting ScanResult to DB because of Scan Status",
+			slog.String("scan_id", evt.ScanID.String()),
+			slog.String("tool_name", string(evt.ToolResult.Tool)),
+			slog.Any("current_status ", scan.Status),
+		)
+		return errors.New("cannot insert scan result: scan is failed or cancelled")
+	}
+
+	// 2.2 Check for errors in the result
+	handleToolResultError(ctx, evt.ScanID, evt.ToolResult, h.scanService)
+
+	// 3. Save ToolResult to DB
+	scanResult := domain.NewScanResult(evt.ScanID, evt.ToolResult)
+	if err := h.scanService.InsertScanResult(ctx, *scanResult); err != nil {
+		slog.Error("Error inserting ScanResult to DB",
+			slog.String("scan_id", evt.ScanID.String()),
+			slog.String("tool_name", string(evt.ToolResult.Tool)),
+			slog.Any("error", err))
+		return err
+	}
+
+	slog.Debug("HarvesterEvent handled successfully")
+	return nil
 }
