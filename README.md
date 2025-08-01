@@ -53,6 +53,7 @@ Welcome to **Core-Service**, the heart of the Kriptome-Tools project! This servi
 | `make run`           | Run the application locally.                 |
 | `make run/live`      | Run the application with live reload.        |
 | `make populate`      | Populate the database with sample data.      |
+| `make populate-cwe`  | Populate CWE details and mitigations from data/cwe.json. |
 | `make clear`         | Clear all database tables (requires confirm).|
 | `make migrate/create NAME=<name>`        | Create a new migration file. |
 | `make migrate/up`        | Apply all up migrations. |
@@ -67,6 +68,58 @@ Welcome to **Core-Service**, the heart of the Kriptome-Tools project! This servi
 | `make audit`         | Run static analysis and vulnerability checks.|
 | `make test`          | Run all tests.                               |
 | `make test/cover`    | Run tests with coverage report.              |
+
+---
+
+## 🔒 CWE Data Management
+
+Core-Service includes a command-line tool for populating the database with comprehensive CWE (Common Weakness Enumeration) data. This creates a pre-populated knowledge base of security weaknesses and their mitigations, optimizing the vulnerability ingestion pipeline.
+
+### CWE Data Population
+
+**Prerequisites:**
+- Ensure database migrations are up to date: `make migrate/up`
+- The `data/cwe.json` file must be present (copied from vulnerability-analysis service)
+
+**Command:**
+```bash
+make populate-cwe
+```
+
+This command:
+- Reads and parses the CWE JSON data from `data/cwe.json`
+- Populates the `cwe_details` table with weakness information
+- Populates the `cwe_mitigations` table with remediation strategies
+- Uses upsert logic (safe to run multiple times)
+- Provides progress updates during execution
+
+**Manual execution:**
+```bash
+go run ./db/db_tool/main.go populate-cwe
+```
+
+### CWE Data Validation
+
+To validate the CWE JSON parsing without database operations:
+
+```bash
+go run ./cmd/test-cwe/main.go
+```
+
+This test utility:
+- Validates that `data/cwe.json` is properly formatted
+- Shows parsing statistics and sample data
+- Helps debug CWE data issues during development
+- Can be run independently of database setup
+
+### Updating CWE Data
+
+When the CWE JSON file is updated:
+1. Replace `data/cwe.json` with the new file
+2. Optionally validate: `go run ./cmd/test-cwe/main.go`
+3. Repopulate the database: `make populate-cwe`
+
+The population process is idempotent and will update existing records while preserving referential integrity.
 
 ---
 
