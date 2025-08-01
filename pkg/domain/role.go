@@ -46,6 +46,9 @@ const (
 	ActionVulnerabilityPatchComment  Action = "vulnerability:patch_comment"
 	ActionVulnerabilityDeleteComment Action = "vulnerability:delete_comment"
 
+	// WebVulnerability Actions
+	ActionWebVulnerabilityDetailGet Action = "web_vulnerability:get_details_by_id"
+
 	// Dashboard Actions
 	ActionDashboardGet Action = "dashboard:get"
 )
@@ -102,6 +105,7 @@ var actionRoles = map[Action][]Role{
 	ActionVulnerabilityCreateComment: {RoleAdmin, RoleAnalyst},
 	ActionVulnerabilityPatchComment:  {RoleAdmin, RoleAnalyst},
 	ActionVulnerabilityDeleteComment: {RoleAdmin, RoleAnalyst},
+	ActionWebVulnerabilityDetailGet:  {RoleAdmin, RoleOperator, RoleAnalyst},
 
 	ActionDashboardGet: {RoleAdmin, RoleOperator, RoleAnalyst},
 }
