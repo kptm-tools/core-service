@@ -108,6 +108,11 @@ generate:
 populate:
 	go run ${sample_package_path} populate
 
+## populate-cwe: populate DB with CWE data from data/cwe.json
+.PHONY: populate-cwe
+populate-cwe:
+	go run ${migrations_main} populate-cwe
+
 ## clear: clear DB tables
 .PHONY: clear
 clear: confirm
