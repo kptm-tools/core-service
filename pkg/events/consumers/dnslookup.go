@@ -77,7 +77,7 @@ func (h *DNSLookupHandler) processDNSLookupEvent(ctx context.Context, data []byt
 			slog.String("tool_name", string(evt.ToolResult.Tool)),
 			slog.Any("current_status ", scan.Status),
 		)
-		return errors.New("error inserting ScanResult to DB of Scan Status")
+		return errors.New("cannot insert scan result: scan is failed or cancelled")
 	}
 
 	// 2.2 Check for errors in the result

@@ -66,7 +66,7 @@ func TestProcessDNSLookupEvent(t *testing.T) {
 					"result": null
 				}
 			}`),
-			expectedError: "error inserting ScanResult to DB of Scan Status",
+			expectedError: "cannot insert scan result: scan is failed or cancelled",
 		},
 		{
 			name: "Error in inserting scan result",

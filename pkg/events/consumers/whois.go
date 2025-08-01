@@ -78,7 +78,7 @@ func (h *WhoIsHandler) processWhoIsEvent(ctx context.Context, data []byte) error
 			slog.String("tool_name", string(evt.ToolResult.Tool)),
 			slog.Any("Status ", actualScan.Status),
 		)
-		return errors.New("error inserting ScanResult to DB of Scan Status")
+		return errors.New("cannot insert scan result: scan is failed or cancelled")
 	}
 
 	// 2.2 Check for errors in the result
