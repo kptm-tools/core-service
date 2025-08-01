@@ -19,18 +19,18 @@ import (
 func main() {
 	fmt.Println("CWE Parsing Validation Tool")
 	fmt.Println("===========================")
-	
+
 	parser := services.NewCWEParser()
-	
+
 	// Test parsing the CWE JSON file
 	fmt.Println("Loading and parsing data/cwe.json...")
 	cweData, err := parser.LoadCWE("data/cwe.json")
 	if err != nil {
 		log.Fatalf("❌ Failed to parse CWE data: %v", err)
 	}
-	
+
 	fmt.Printf("✅ Successfully parsed %d CWE weaknesses\n", len(cweData))
-	
+
 	// Count weaknesses with mitigations
 	withMitigations := 0
 	totalMitigations := 0
@@ -40,12 +40,12 @@ func main() {
 			totalMitigations += len(weakness.Mitigations)
 		}
 	}
-	
+
 	fmt.Printf("📊 Statistics:\n")
 	fmt.Printf("   - Weaknesses with mitigations: %d (%.1f%%)\n", withMitigations, float64(withMitigations)/float64(len(cweData))*100)
 	fmt.Printf("   - Total mitigatations: %d\n", totalMitigations)
 	fmt.Printf("   - Average mitigations per weakness: %.1f\n", float64(totalMitigations)/float64(len(cweData)))
-	
+
 	// Show a few examples with mitigations
 	fmt.Printf("\n📝 Sample weaknesses:\n")
 	count := 0
@@ -59,7 +59,7 @@ func main() {
 			fmt.Printf("   Description: %s...\n", truncateString(weakness.Description, 100))
 			fmt.Printf("   Mitigations: %d\n", len(weakness.Mitigations))
 			fmt.Printf("   Last Updated: %s\n", weakness.LastUpdated.Format("2006-01-02"))
-			
+
 			// Show first mitigation as example
 			if len(weakness.Mitigations) > 0 {
 				m := weakness.Mitigations[0]
@@ -68,7 +68,7 @@ func main() {
 			count++
 		}
 	}
-	
+
 	fmt.Println("\n✅ CWE parsing validation completed successfully!")
 }
 

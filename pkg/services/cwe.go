@@ -20,11 +20,11 @@ func NewCWEParser() *CWEParser {
 
 // ParsedCWE represents a parsed CWE weakness with calculated fields
 type ParsedCWE struct {
-	ID           string
-	Name         string
-	Description  string
-	LastUpdated  time.Time
-	Mitigations  []ParsedMitigation
+	ID          string
+	Name        string
+	Description string
+	LastUpdated time.Time
+	Mitigations []ParsedMitigation
 }
 
 // ParsedMitigation represents a parsed mitigation strategy
@@ -55,13 +55,13 @@ func (p *CWEParser) LoadCWE(filePath string) (map[string]ParsedCWE, error) {
 	for _, w := range all.Weaknesses {
 		// Standardize the CWE ID (add CWE- prefix if missing)
 		cweID := p.standardizeCWEID(w.ID)
-		
+
 		// Calculate last updated date from content history
 		lastUpdated := p.calculateLastUpdated(w.ContentHistory)
-		
+
 		// Parse mitigations
 		mitigations := p.parseMitigations(w.PotentialMitigations)
-		
+
 		parsed := ParsedCWE{
 			ID:          cweID,
 			Name:        w.Name,
@@ -69,10 +69,10 @@ func (p *CWEParser) LoadCWE(filePath string) (map[string]ParsedCWE, error) {
 			LastUpdated: lastUpdated,
 			Mitigations: mitigations,
 		}
-		
+
 		result[cweID] = parsed
 	}
-	
+
 	return result, nil
 }
 
@@ -95,7 +95,7 @@ func (p *CWEParser) standardizeCWEID(rawCWEID string) string {
 // calculateLastUpdated finds the most recent modification date from content history
 func (p *CWEParser) calculateLastUpdated(contentHistory []dto.CWEContentHistory) time.Time {
 	var lastUpdated time.Time
-	
+
 	for _, h := range contentHistory {
 		if h.ModificationDate == "" {
 			continue
@@ -109,19 +109,19 @@ func (p *CWEParser) calculateLastUpdated(contentHistory []dto.CWEContentHistory)
 			lastUpdated = dt
 		}
 	}
-	
+
 	// If no valid date found, use current time
 	if lastUpdated.IsZero() {
 		lastUpdated = time.Now()
 	}
-	
+
 	return lastUpdated
 }
 
 // parseMitigations converts CWE mitigations to our format
 func (p *CWEParser) parseMitigations(potentialMitigations []dto.CWEMitigation) []ParsedMitigation {
 	var result []ParsedMitigation
-	
+
 	for _, m := range potentialMitigations {
 		// Handle multiple phases - create a mitigation entry for each phase
 		if len(m.Phase) == 0 {
@@ -146,6 +146,6 @@ func (p *CWEParser) parseMitigations(potentialMitigations []dto.CWEMitigation) [
 			}
 		}
 	}
-	
+
 	return result
 }
