@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 
+	repository "github.com/kptm-tools/core-service/db"
 	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/config"
+	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
 	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
@@ -98,6 +102,8 @@ func main() {
 		generateSQLC()
 	case "create":
 		createMigration()
+	case "populate-cwe":
+		populateCWE()
 	default:
 		printHelp()
 	}
@@ -203,6 +209,135 @@ func createMigration() {
 	logger.Info("Migration created successfully", slog.String("name", name))
 }
 
+func populateCWE() {
+	ctx := context.Background()
+
+	logger.Info("Starting CWE population process...")
+
+	// Find the CWE JSON file
+	cweFilePath := "data/cwe.json"
+
+	// Check if running from core-service directory
+	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
+		// Try from project root
+		cweFilePath = filepath.Join("..", "..", "data", "cwe.json")
+		if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
+			logger.Error("CWE JSON file not found. Expected at data/cwe.json or ../../data/cwe.json")
+			os.Exit(1)
+		}
+	}
+
+	logger.Info("Found CWE JSON file", slog.String("path", cweFilePath))
+
+	// Initialize CWE parser
+	parser := services.NewCWEParser()
+
+	// Load and parse CWE data
+	cweData, err := parser.LoadCWE(cweFilePath)
+	if err != nil {
+		logger.Error("Failed to load and parse CWE data", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	logger.Info("Successfully parsed CWE data", slog.Int("weakness_count", len(cweData)))
+
+	// Create queries instance for database operations
+	queries := repository.New(db)
+
+	var successCount, errorCount int
+
+	// First, insert the special edge case CWE records
+	logger.Info("Inserting special CWE records for edge cases...")
+
+	specialCWEs := []struct {
+		ID          string
+		Name        string
+		Description string
+	}{
+		{
+			ID:          "CWE-Other",
+			Name:        "Other or Uncategorized Weakness",
+			Description: "This vulnerability falls into a category that is not otherwise classified. Further manual analysis is recommended.",
+		},
+		{
+			ID:          "CWE-noinfo",
+			Name:        "No Information Available",
+			Description: "The scanning tool did not provide a specific weakness classification for this finding.",
+		},
+	}
+
+	for _, special := range specialCWEs {
+		_, err := queries.CreateOrUpdateCWEDetail(ctx, repository.CreateOrUpdateCWEDetailParams{
+			CweID:       special.ID,
+			Title:       special.Name,
+			Description: special.Description,
+			LastUpdated: time.Now().UTC(),
+		})
+		if err != nil {
+			logger.Error("Failed to insert special CWE record",
+				slog.String("cwe_id", special.ID),
+				slog.Any("error", err))
+			errorCount++
+		} else {
+			logger.Info("Created special CWE record", slog.String("cwe_id", special.ID))
+			successCount++
+		}
+	}
+
+	// Insert/update each CWE weakness from the JSON data
+	for cweID, weakness := range cweData {
+		// Insert/update the main CWE detail
+		_, err := queries.CreateOrUpdateCWEDetail(ctx, repository.CreateOrUpdateCWEDetailParams{
+			CweID:       cweID,
+			Title:       weakness.Name,
+			Description: weakness.Description,
+			LastUpdated: weakness.LastUpdated,
+		})
+		if err != nil {
+			logger.Error("Failed to insert/update CWE detail",
+				slog.String("cwe_id", cweID),
+				slog.Any("error", err))
+			errorCount++
+			continue
+		}
+
+		// Insert each mitigation for this CWE
+		for _, mitigation := range weakness.Mitigations {
+			_, err := queries.CreateCWERemediation(ctx, repository.CreateCWERemediationParams{
+				CweID:              cweID,
+				MitigationID:       sql.NullString{String: mitigation.MitigationID, Valid: mitigation.MitigationID != ""},
+				Phase:              mitigation.Phase,
+				Description:        mitigation.Description,
+				Effectiveness:      sql.NullString{String: mitigation.Effectiveness, Valid: mitigation.Effectiveness != ""},
+				EffectivenessNotes: sql.NullString{String: mitigation.EffectivenessNotes, Valid: mitigation.EffectivenessNotes != ""},
+				CreatedAt:          sql.NullTime{Time: time.Now(), Valid: true},
+			})
+			if err != nil {
+				logger.Error("Failed to insert CWE mitigation",
+					slog.String("cwe_id", cweID),
+					slog.String("mitigation_id", mitigation.MitigationID),
+					slog.Any("error", err))
+				errorCount++
+				continue
+			}
+		}
+
+		successCount++
+		if successCount%100 == 0 {
+			logger.Info("Progress update", slog.Int("processed", successCount))
+		}
+	}
+
+	logger.Info("CWE population completed",
+		slog.Int("success_count", successCount),
+		slog.Int("error_count", errorCount))
+
+	if errorCount > 0 {
+		logger.Warn("Some errors occurred during population", slog.Int("error_count", errorCount))
+		os.Exit(1)
+	}
+}
+
 func printHelp() {
 	fmt.Println("Usage: go run main.go <command>")
 	fmt.Println("Available commands:")
@@ -213,4 +348,5 @@ func printHelp() {
 	fmt.Println("  drop            - Drop all migration tables and enum types")
 	fmt.Println("  force <version> - Force migration to a specific version")
 	fmt.Println("  gen             - Run sqlc code generation")
+	fmt.Println("  populate-cwe    - Populate CWE details and mitigations from data/cwe.json")
 }
