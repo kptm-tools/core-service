@@ -12,19 +12,8 @@ FROM web_vulnerabilities wv
 WHERE v.id = wv.vulnerability_id
   AND wv.wasc_id IS NOT NULL;
 
--- Add foreign key constraint back to vulnerabilities table
-ALTER TABLE vulnerabilities
-    ADD CONSTRAINT fk_vulnerabilities_wasc_details
-        FOREIGN KEY (wasc_id) REFERENCES wasc_details (wasc_id)
-            ON DELETE SET NULL
-            ON UPDATE CASCADE;
-
 -- Create index on wasc_id in vulnerabilities table
-CREATE INDEX idx_vulnerabilities_wasc_id ON vulnerabilities (wasc_id);
-
--- Drop the foreign key constraint from web_vulnerabilities table
-ALTER TABLE web_vulnerabilities
-    DROP CONSTRAINT IF EXISTS fk_web_vulnerabilities_wasc_details;
+CREATE INDEX IF NOT EXISTS idx_vulnerabilities_wasc_id ON vulnerabilities (wasc_id);
 
 -- Drop the index on wasc_id in web_vulnerabilities table
 DROP INDEX IF EXISTS idx_web_vulnerabilities_wasc_id;
