@@ -5,6 +5,11 @@ ALTER TABLE vulnerabilities
 
 -- Drop the index on wasc_id
 DROP INDEX IF EXISTS idx_vulnerabilities_wasc_id;
+
+-- Drop the wasc_id column from vulnerabilities table
+ALTER TABLE vulnerabilities
+    DROP COLUMN IF EXISTS wasc_id;
+
 -- Drop the wasc_details table
 DROP TABLE IF EXISTS wasc_details;
 
