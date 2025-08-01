@@ -246,7 +246,45 @@ func populateCWE() {
 	
 	var successCount, errorCount int
 	
-	// Insert/update each CWE weakness
+	// First, insert the special edge case CWE records
+	logger.Info("Inserting special CWE records for edge cases...")
+	
+	specialCWEs := []struct {
+		ID          string
+		Name        string
+		Description string
+	}{
+		{
+			ID:          "CWE-Other",
+			Name:        "Other or Uncategorized Weakness",
+			Description: "This vulnerability falls into a category that is not otherwise classified. Further manual analysis is recommended.",
+		},
+		{
+			ID:          "CWE-noinfo",
+			Name:        "No Information Available",
+			Description: "The scanning tool did not provide a specific weakness classification for this finding.",
+		},
+	}
+	
+	for _, special := range specialCWEs {
+		_, err := queries.CreateOrUpdateCWEDetail(ctx, repository.CreateOrUpdateCWEDetailParams{
+			CweID:       special.ID,
+			Title:       special.Name,
+			Description: special.Description,
+			LastUpdated: time.Now().UTC(),
+		})
+		if err != nil {
+			logger.Error("Failed to insert special CWE record", 
+				slog.String("cwe_id", special.ID), 
+				slog.Any("error", err))
+			errorCount++
+		} else {
+			logger.Info("Created special CWE record", slog.String("cwe_id", special.ID))
+			successCount++
+		}
+	}
+	
+	// Insert/update each CWE weakness from the JSON data
 	for cweID, weakness := range cweData {
 		// Insert/update the main CWE detail
 		_, err := queries.CreateOrUpdateCWEDetail(ctx, repository.CreateOrUpdateCWEDetailParams{

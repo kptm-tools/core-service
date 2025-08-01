@@ -87,6 +87,7 @@ make populate-cwe
 ```
 
 This command:
+- Creates special CWE records for edge cases (`CWE-Other` and `CWE-noinfo`)
 - Reads and parses the CWE JSON data from `data/cwe.json`
 - Populates the `cwe_details` table with weakness information
 - Populates the `cwe_mitigations` table with remediation strategies
