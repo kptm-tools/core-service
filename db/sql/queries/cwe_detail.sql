@@ -12,6 +12,11 @@ INSERT INTO cwe_details (
   last_updated = EXCLUDED.last_updated
 RETURNING *;
 
+-- name: GetCWEDetailByCWEID :one
+SELECT cwe_id, title, description, last_updated, created_at
+FROM cwe_details
+WHERE cwe_id = $1;
+
 -- name: GetCWEDetailWithMitigationsByID :many 
 SELECT
   cd.cwe_id,
