@@ -430,7 +430,6 @@ type Vulnerability struct {
 	CreatedAt      sql.NullTime          `json:"created_at"`
 	UpdatedAt      sql.NullTime          `json:"updated_at"`
 	CweID          sql.NullString        `json:"cwe_id"`
-	WascID         sql.NullString        `json:"wasc_id"`
 }
 
 type WebVulnerability struct {
@@ -442,6 +441,7 @@ type WebVulnerability struct {
 	Reference       sql.NullString `json:"reference"`
 	CreatedAt       sql.NullTime   `json:"created_at"`
 	UpdatedAt       sql.NullTime   `json:"updated_at"`
+	WascID          sql.NullString `json:"wasc_id"`
 }
 
 type WebVulnerabilityInstance struct {
