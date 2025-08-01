@@ -25,11 +25,11 @@ type CWEDetailWithMitigations struct {
 // This is used when only the basic CWE information is needed.
 // Maintains backward compatibility with existing code.
 type CWEDetail struct {
-	ID          string     `json:"cwe_id"`          // Renamed from CweID for backward compatibility
+	ID          string     `json:"cwe_id"` // Renamed from CweID for backward compatibility
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	CreatedAt   *time.Time `json:"created_at"`      // Maintained for backward compatibility
-	LastUpdated *time.Time `json:"last_updated"`    // Maintained for backward compatibility
+	CreatedAt   *time.Time `json:"created_at"`   // Maintained for backward compatibility
+	LastUpdated *time.Time `json:"last_updated"` // Maintained for backward compatibility
 }
 
 // CWEMitigation represents a single mitigation strategy for a CWE.

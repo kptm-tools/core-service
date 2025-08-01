@@ -11,27 +11,21 @@ import (
 )
 
 type MockCWERepo struct {
-	// Legacy methods
-	MockCreateOrUpdateCWE         func(ctx context.Context, vuln domain.CWEDetail) (*domain.CWEDetail, error)
+	// Core methods for refactored approach
+	MockGetCWEByID                      func(ctx context.Context, cweID string) (*domain.CWEDetail, error)
+	MockCWEExists                       func(ctx context.Context, cweID string) (bool, error)
+	MockCreateCWEStub                   func(ctx context.Context, cweID string) (*domain.CWEDetail, error)
+	MockGetCWEDetailWithMitigationsByID func(ctx context.Context, cweID string) ([]domain.CWEDetailWithMitigations, error)
+
+	// Legacy methods - kept for CWE pre-population script only
 	MockCreateCWERemediation      func(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error)
 	MockGetCWERemediationByID     func(ctx context.Context, mitigationID string) (*tools.CWERemediation, error)
 	MockGetCWERemediationsByCWEID func(ctx context.Context, cweID string) ([]tools.CWERemediation, error)
-	
-	// New methods for refactored approach
-	MockGetCWEByID                           func(ctx context.Context, cweID string) (*domain.CWEDetail, error)
-	MockCWEExists                            func(ctx context.Context, cweID string) (bool, error)
-	MockCreateCWEStub                        func(ctx context.Context, cweID string) (*domain.CWEDetail, error)
-	MockGetCWEDetailWithMitigationsByID      func(ctx context.Context, cweID string) ([]domain.CWEDetailWithMitigations, error)
 }
 
 var _ interfaces.CWERepository = (*MockCWERepo)(nil)
 
-func (m *MockCWERepo) CreateOrUpdateCWE(ctx context.Context, vuln domain.CWEDetail) (*domain.CWEDetail, error) {
-	if m.MockCreateOrUpdateCWE != nil {
-		return m.MockCreateOrUpdateCWE(ctx, vuln)
-	}
-	panic(fmt.Sprintf("MockCWERepo: method CreateOrUpdateCWE called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
-}
+// CreateOrUpdateCWE method removed - no longer needed with pre-populated CWE approach
 
 func (m *MockCWERepo) CreateCWERemediation(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error) {
 	if m.MockCreateCWERemediation != nil {
