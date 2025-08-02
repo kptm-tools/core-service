@@ -57,7 +57,67 @@ func (q *Queries) CreateScan(ctx context.Context, arg CreateScanParams) (Scan, e
 }
 
 const getAssetsByScanID = `-- name: GetAssetsByScanID :many
-WITH os_assets AS (
+WITH network_vuln_counts AS (
+    -- Step 1: Count vulnerabilities linked via the network_os_vulnerabilities table (for OS and Services)
+    SELECT
+        nov.operating_system_id,
+        nov.service_id,
+        COUNT(v.id) AS total_vulnerabilities,
+        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical,
+        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high,
+        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium,
+        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low,
+        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none,
+        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown
+    FROM
+        vulnerabilities v
+    JOIN
+        network_os_vulnerabilities nov ON v.id = nov.vulnerability_id
+    WHERE
+        v.scan_id = $1
+    GROUP BY
+        nov.operating_system_id, nov.service_id
+),
+web_vuln_counts AS (
+    -- Step 2: Count vulnerabilities linked via the web_vulnerabilities table (for Services only)
+    SELECT
+        wv.service_id,
+        COUNT(v.id) AS total_vulnerabilities,
+        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical,
+        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high,
+        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium,
+        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low,
+        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none,
+        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown
+    FROM
+        vulnerabilities v
+    JOIN
+        web_vulnerabilities wv ON v.id = wv.vulnerability_id
+    WHERE
+        v.scan_id = $1
+    GROUP BY
+        wv.service_id
+),
+combined_service_counts AS (
+    -- Step 3: Combine the counts for services, as they can have both network and web vulns.
+    SELECT
+        COALESCE(nvc.service_id, wvc.service_id) AS service_id,
+        COALESCE(nvc.total_vulnerabilities, 0) + COALESCE(wvc.total_vulnerabilities, 0) AS total_vulnerabilities_count,
+        COALESCE(nvc.critical, 0) + COALESCE(wvc.critical, 0) AS critical_count,
+        COALESCE(nvc.high, 0) + COALESCE(wvc.high, 0) AS high_count,
+        COALESCE(nvc.medium, 0) + COALESCE(wvc.medium, 0) AS medium_count,
+        COALESCE(nvc.low, 0) + COALESCE(wvc.low, 0) AS low_count,
+        COALESCE(nvc.none, 0) + COALESCE(wvc.none, 0) AS none_count,
+        COALESCE(nvc.unknown, 0) + COALESCE(wvc.unknown, 0) AS unknown_count
+    FROM
+        network_vuln_counts nvc
+    FULL OUTER JOIN
+        web_vuln_counts wvc ON nvc.service_id = wvc.service_id
+    WHERE
+        nvc.service_id IS NOT NULL OR wvc.service_id IS NOT NULL
+),
+os_assets AS (
+    -- Step 4: Get the OS asset and join ONLY with network vulnerability counts.
     SELECT
         'os' AS asset_type,
         os.id,
@@ -74,36 +134,24 @@ WITH os_assets AS (
         NULL::VARCHAR AS product,
         os.accuracy,
         NULL::port_state_enum AS port_state,
-
-        COUNT(v.id) AS total_vulnerabilities_count,
-        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
-        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
-        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
-        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
-        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
-        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count,
-
+        COALESCE(nvc.total_vulnerabilities, 0) AS total_vulnerabilities_count,
+        COALESCE(nvc.critical, 0) AS critical_count,
+        COALESCE(nvc.high, 0) AS high_count,
+        COALESCE(nvc.medium, 0) AS medium_count,
+        COALESCE(nvc.low, 0) AS low_count,
+        COALESCE(nvc.none, 0) AS none_count,
+        COALESCE(nvc.unknown, 0) AS unknown_count,
         os.created_at,
         os.updated_at
-    FROM operating_systems os
-    LEFT JOIN vulnerabilities v ON os.host_id = v.host_id
-                             AND os.scan_id = v.scan_id
-                             AND v.vuln_type = 'NETWORK_OS'
-    WHERE os.scan_id = $1
-    GROUP BY
-        os.id,
-        os.host_id,
-        os.scan_id,
-        os.os_name,
-        os.family,
-        os.os_type,
-        os.fingerprint,
-        os.cpe,
-        os.accuracy,
-        os.created_at,
-        os.updated_at
+    FROM
+        operating_systems os
+    LEFT JOIN
+        network_vuln_counts nvc ON os.id = nvc.operating_system_id
+    WHERE
+        os.scan_id = $1
 ),
 service_assets AS (
+    -- Step 5: Get Service assets and join with the COMBINED vulnerability counts.
     SELECT
         'service' AS asset_type,
         s.id,
@@ -120,36 +168,21 @@ service_assets AS (
         s.product,
         s.confidence AS accuracy,
         s.port_state,
-
-        COUNT(v.id) AS total_vulnerabilities_count,
-        SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
-        SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
-        SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
-        SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
-        SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
-        SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count,
-
+        COALESCE(csc.total_vulnerabilities_count, 0) AS total_vulnerabilities_count,
+        COALESCE(csc.critical_count, 0) AS critical_count,
+        COALESCE(csc.high_count, 0) AS high_count,
+        COALESCE(csc.medium_count, 0) AS medium_count,
+        COALESCE(csc.low_count, 0) AS low_count,
+        COALESCE(csc.none_count, 0) AS none_count,
+        COALESCE(csc.unknown_count, 0) AS unknown_count,
         s.created_at,
         s.updated_at
-    FROM services s
-    LEFT JOIN vulnerabilities v ON s.host_id = v.host_id
-                             AND s.scan_id = v.scan_id
-                             AND v.vuln_type = 'WEB_APPLICATION'
-    WHERE s.scan_id = $1
-    GROUP BY
-        s.id,
-        s.host_id,
-        s.scan_id,
-        s.sv_name,
-        s.sv_version,
-        s.port,
-        s.protocol,
-        s.cpe,
-        s.product,
-        s.confidence,
-        s.port_state,
-        s.created_at,
-        s.updated_at
+    FROM
+        services s
+    LEFT JOIN
+        combined_service_counts csc ON s.id = csc.service_id
+    WHERE
+        s.scan_id = $1
 )
 SELECT asset_type, id, host_id, scan_id, name, version, family, os_type, port, protocol, fingerprint, cpe, product, accuracy, port_state, total_vulnerabilities_count, critical_count, high_count, medium_count, low_count, none_count, unknown_count, created_at, updated_at FROM os_assets
 UNION ALL
@@ -184,6 +217,7 @@ type GetAssetsByScanIDRow struct {
 	UpdatedAt                 sql.NullTime      `json:"updated_at"`
 }
 
+// Step 6: Combine results.
 func (q *Queries) GetAssetsByScanID(ctx context.Context, scanID uuid.UUID) ([]GetAssetsByScanIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAssetsByScanID, scanID)
 	if err != nil {
