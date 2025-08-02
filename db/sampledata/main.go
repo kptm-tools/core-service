@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
 	migrations "github.com/kptm-tools/core-service/db/sql"
@@ -17,6 +16,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/samples"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
 
 type PopulatorDependencies struct {
@@ -105,44 +105,10 @@ func populateDB(ctx context.Context, deps PopulatorDependencies) {
 	fmt.Println("🎉 Database population completed successfully!")
 }
 
-// findProjectRoot attempts to find the project root directory
-func findProjectRoot() (string, error) {
-	// Get the path of the current source file
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("failed to get current file path")
-	}
-
-	// Navigate up from db/sampledata/main.go to find project root
-	dir := filepath.Dir(filename)
-	
-	// Try different levels to find go.mod (indicator of project root)
-	for i := 0; i < 5; i++ {
-		goModPath := filepath.Join(dir, "go.mod")
-		if _, err := os.Stat(goModPath); err == nil {
-			return dir, nil
-		}
-		dir = filepath.Dir(dir)
-	}
-
-	// If go.mod not found, fall back to relative paths from current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-	
-	// Check if we're already in the project root
-	if _, err := os.Stat(filepath.Join(cwd, "go.mod")); err == nil {
-		return cwd, nil
-	}
-	
-	return "", fmt.Errorf("could not find project root")
-}
-
 // populateCWEKnowledgeBase executes the CWE pre-population script
 func populateCWEKnowledgeBase() error {
 	// Find project root first
-	projectRoot, err := findProjectRoot()
+	projectRoot, err := utils.FindProjectRoot()
 	if err != nil {
 		// Fall back to current directory
 		projectRoot = "."
@@ -150,13 +116,13 @@ func populateCWEKnowledgeBase() error {
 
 	// Construct path to CWE JSON file
 	cweFilePath := filepath.Join(projectRoot, "data", "cwe.json")
-	
+
 	// Verify the CWE file exists
 	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
 		// Try relative path as fallback
 		cweFilePath = "data/cwe.json"
 		if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
-			return fmt.Errorf("CWE JSON file not found at %s or %s", 
+			return fmt.Errorf("CWE JSON file not found at %s or %s",
 				filepath.Join(projectRoot, "data", "cwe.json"), cweFilePath)
 		}
 	}

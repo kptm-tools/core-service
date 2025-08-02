@@ -14,44 +14,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/kptm-tools/core-service/pkg/services"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
-
-// findProjectRoot attempts to find the project root directory
-func findProjectRoot() (string, error) {
-	// Get the path of the current source file
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("failed to get current file path")
-	}
-
-	// Navigate up from cmd/test-cwe/main.go to find project root
-	dir := filepath.Dir(filename)
-	
-	// Try different levels to find go.mod (indicator of project root)
-	for i := 0; i < 5; i++ {
-		goModPath := filepath.Join(dir, "go.mod")
-		if _, err := os.Stat(goModPath); err == nil {
-			return dir, nil
-		}
-		dir = filepath.Dir(dir)
-	}
-
-	// If go.mod not found, fall back to relative paths from current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-	
-	// Check if we're already in the project root
-	if _, err := os.Stat(filepath.Join(cwd, "go.mod")); err == nil {
-		return cwd, nil
-	}
-	
-	return "", fmt.Errorf("could not find project root")
-}
 
 func main() {
 	fmt.Println("CWE Parsing Validation Tool")
@@ -60,7 +26,7 @@ func main() {
 	parser := services.NewCWEParser()
 
 	// Find project root first
-	projectRoot, err := findProjectRoot()
+	projectRoot, err := utils.FindProjectRoot()
 	if err != nil {
 		fmt.Printf("⚠️ Could not determine project root, using relative paths: %v\n", err)
 		projectRoot = "."
@@ -68,13 +34,13 @@ func main() {
 
 	// Construct path to CWE JSON file
 	cweFilePath := filepath.Join(projectRoot, "data", "cwe.json")
-	
+
 	// Check if file exists
 	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
 		// Try current working directory as fallback
 		cweFilePath = "data/cwe.json"
 		if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
-			log.Fatalf("❌ CWE JSON file not found at %s or %s", 
+			log.Fatalf("❌ CWE JSON file not found at %s or %s",
 				filepath.Join(projectRoot, "data", "cwe.json"), cweFilePath)
 		}
 	}

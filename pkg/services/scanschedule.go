@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
 
-	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
 
 type ScanScheduleService struct {
@@ -108,7 +108,7 @@ func (s *ScanScheduleService) PatchScanSchedule(
 	if frequency != nil {
 		isRepeated = true
 		periodName = string(frequency.UnitOfFrequency)
-		periodQuantity, err = convert.SafeIntToInt32(frequency.Quantity)
+		periodQuantity, err = utils.SafeIntToInt32(frequency.Quantity)
 		if err != nil {
 			return err
 		}

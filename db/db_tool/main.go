@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"github.com/kptm-tools/core-service/pkg/utils"
 	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
 )
@@ -210,47 +210,13 @@ func createMigration() {
 	logger.Info("Migration created successfully", slog.String("name", name))
 }
 
-// findProjectRoot attempts to find the project root directory
-func findProjectRoot() (string, error) {
-	// Get the path of the current source file
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("failed to get current file path")
-	}
-
-	// Navigate up from db/db_tool/main.go to find project root
-	dir := filepath.Dir(filename)
-	
-	// Try different levels to find go.mod (indicator of project root)
-	for i := 0; i < 5; i++ {
-		goModPath := filepath.Join(dir, "go.mod")
-		if _, err := os.Stat(goModPath); err == nil {
-			return dir, nil
-		}
-		dir = filepath.Dir(dir)
-	}
-
-	// If go.mod not found, fall back to relative paths from current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-	
-	// Check if we're already in the project root
-	if _, err := os.Stat(filepath.Join(cwd, "go.mod")); err == nil {
-		return cwd, nil
-	}
-	
-	return "", fmt.Errorf("could not find project root")
-}
-
 func populateCWE() {
 	ctx := context.Background()
 
 	logger.Info("Starting CWE population process...")
 
 	// Find project root first
-	projectRoot, err := findProjectRoot()
+	projectRoot, err := utils.FindProjectRoot()
 	if err != nil {
 		logger.Warn("Could not determine project root, using relative paths", slog.Any("error", err))
 		projectRoot = "."
@@ -258,13 +224,13 @@ func populateCWE() {
 
 	// Construct path to CWE JSON file
 	cweFilePath := filepath.Join(projectRoot, "data", "cwe.json")
-	
+
 	// Check if file exists
 	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
 		// Try current working directory as fallback
 		cweFilePath = "data/cwe.json"
 		if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
-			logger.Error("CWE JSON file not found", 
+			logger.Error("CWE JSON file not found",
 				slog.String("expected_path", filepath.Join(projectRoot, "data", "cwe.json")),
 				slog.String("fallback_path", "data/cwe.json"))
 			os.Exit(1)

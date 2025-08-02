@@ -12,8 +12,8 @@ import (
 
 	cmmn "github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/config"
-	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/utils"
 	"github.com/lib/pq"
 )
 
@@ -176,7 +176,7 @@ func (pl *PostgresListener) handleScanCronNotification(ctx context.Context, payl
 	}
 	pl.eventBus.Publish(string(enums.ScanStartedEventSubject), scanStartedBytes)
 
-	scheduleID, err := convert.SafeIntToInt32(scanCron.ScanScheduleID)
+	scheduleID, err := utils.SafeIntToInt32(scanCron.ScanScheduleID)
 	if err != nil {
 		return err
 	}
