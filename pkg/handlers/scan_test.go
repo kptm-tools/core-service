@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
+	"github.com/kptm-tools/core-service/pkg/dto"
 	hh "github.com/kptm-tools/core-service/pkg/handlers"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/middleware"
@@ -96,7 +98,7 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 				MockGetScanAssetsByID: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanOSandServicesResult, error) {
 					return []domain.ScanOSandServicesResult{
 						{
-							AssetType:                 "host",
+							AssetType:                 "os",
 							ID:                        1,
 							HostID:                    uuid.New(),
 							ScanID:                    uuid.New(),
@@ -178,6 +180,60 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 			err := h.GetScanAssetsByID(rr, tt.r)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantStatus, rr.Code, "Expected http response code %d, got %d", tt.wantStatus, rr.Code)
+
+			// Additional validation for the "Scan Status Ok → 200" test case
+			if tt.name == "Scan Status Ok → 200" && rr.Code == http.StatusOK {
+				// Parse the response to validate vulnerability counts
+				var response dto.ScanAssetsResponse
+				err := json.Unmarshal(rr.Body.Bytes(), &response)
+				assert.NoError(t, err, "Response should be valid JSON")
+
+				// Validate OS asset counts are internally consistent
+				os := response.OperatingSystem
+				if os.ID != 0 { // OS is present
+					osSeveritySum := os.CriticalCount + os.HighCount + os.MediumCount + os.LowCount + os.NoneCount + os.UnknownCount
+					assert.Equal(t, os.TotalVulnerabilities, osSeveritySum, "OS total vulnerabilities should equal sum of severity counts")
+				}
+
+				// Validate each service asset counts are internally consistent
+				for i, svc := range response.Services {
+					svcSeveritySum := svc.CriticalCount + svc.HighCount + svc.MediumCount + svc.LowCount + svc.NoneCount + svc.UnknownCount
+					assert.Equal(t, svc.TotalVulnerabilities, svcSeveritySum, "Service %d total vulnerabilities should equal sum of severity counts", i)
+				}
+
+				// Validate that asset counts sum correctly across the scan
+				totalCritical := os.CriticalCount
+				totalHigh := os.HighCount
+				totalMedium := os.MediumCount
+				totalLow := os.LowCount
+				totalNone := os.NoneCount
+				totalUnknown := os.UnknownCount
+				totalOverall := os.TotalVulnerabilities
+
+				for _, svc := range response.Services {
+					totalCritical += svc.CriticalCount
+					totalHigh += svc.HighCount
+					totalMedium += svc.MediumCount
+					totalLow += svc.LowCount
+					totalNone += svc.NoneCount
+					totalUnknown += svc.UnknownCount
+					totalOverall += svc.TotalVulnerabilities
+				}
+
+				// Verify that the sum of all severity counts equals the total vulnerability count
+				allSeveritySum := totalCritical + totalHigh + totalMedium + totalLow + totalNone + totalUnknown
+				assert.Equal(t, totalOverall, allSeveritySum, "Sum of all severity counts should equal total vulnerabilities across all assets")
+
+				// Expected totals based on our test data:
+				// OS: 5 total (1 critical, 2 high, 1 medium, 1 low)
+				// Service: 3 total (0 critical, 1 high, 1 medium, 1 low)
+				// Total: 8 vulnerabilities
+				assert.Equal(t, 8, totalOverall, "Total vulnerabilities across all assets should match expected sum")
+				assert.Equal(t, 1, totalCritical, "Total critical vulnerabilities should match expected sum")   // 1 from OS + 0 from Service
+				assert.Equal(t, 3, totalHigh, "Total high vulnerabilities should match expected sum")         // 2 from OS + 1 from Service  
+				assert.Equal(t, 2, totalMedium, "Total medium vulnerabilities should match expected sum")     // 1 from OS + 1 from Service
+				assert.Equal(t, 2, totalLow, "Total low vulnerabilities should match expected sum")           // 1 from OS + 1 from Service
+			}
 		})
 	}
 }
