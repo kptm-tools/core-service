@@ -39,7 +39,7 @@ var predefinedOSProfiles = []tools.OSData{
 	},
 }
 
-func generateOSData(cweDetails []tools.CWERemediation) tools.OSData {
+func generateOSData() tools.OSData {
 	gofakeit.ShuffleAnySlice(predefinedOSProfiles)
 	selectedOSProfile := predefinedOSProfiles[0]
 
@@ -50,6 +50,6 @@ func generateOSData(cweDetails []tools.CWERemediation) tools.OSData {
 		Type:            selectedOSProfile.Type,
 		FingerPrint:     selectedOSProfile.FingerPrint,
 		CPE:             selectedOSProfile.CPE,
-		Vulnerabilities: generateVuln(4, time.Now(), cweDetails),
+		Vulnerabilities: generateVuln(4, time.Now()), // Updated to use new signature
 	}
 }

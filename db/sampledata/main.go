@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"math/rand"
+	"os/exec"
+
 	"github.com/kptm-tools/common/common/pkg/enums"
-	"github.com/kptm-tools/common/common/pkg/results/tools"
 	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -12,8 +15,6 @@ import (
 	"github.com/kptm-tools/core-service/pkg/samples"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
-	"math/rand"
-	"os"
 )
 
 type PopulatorDependencies struct {
@@ -67,25 +68,61 @@ func Run() {
 }
 
 func populateDB(ctx context.Context, deps PopulatorDependencies) {
-	fmt.Println("Populating DB with sample data...")
+	fmt.Println("Starting comprehensive database population...")
 
+	// Step 1: Pre-populate CWE knowledge base first
+	fmt.Println("Step 1/4: Pre-populating CWE knowledge base...")
+	if err := populateCWEKnowledgeBase(); err != nil {
+		panic(fmt.Errorf("failed to populate CWE knowledge base: %w", err))
+	}
+	fmt.Println("✅ CWE knowledge base populated successfully")
+
+	// Step 2: Populate tenants
+	fmt.Println("Step 2/4: Populating tenants...")
 	tenants, err := populateTenants()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Tenants populated successfully")
+	fmt.Println("✅ Tenants populated successfully")
 
+	// Step 3: Populate hosts
+	fmt.Println("Step 3/4: Populating hosts...")
 	hosts, errHost := populateHosts(ctx, deps.HostRepo, tenants)
 	if errHost != nil {
 		panic(errHost)
 	}
-	fmt.Println("Hosts populated successfully")
+	fmt.Println("✅ Hosts populated successfully")
 
-	fmt.Println("Populating scans...")
+	// Step 4: Populate scans with realistic vulnerability data
+	fmt.Println("Step 4/4: Populating scans with realistic vulnerability data...")
 	if err := populateScans(ctx, deps, tenants, hosts); err != nil {
 		panic(err)
 	}
-	fmt.Println("Scans populated successfully")
+	fmt.Println("✅ Scans populated successfully")
+	
+	fmt.Println("🎉 Database population completed successfully!")
+}
+
+// populateCWEKnowledgeBase executes the CWE pre-population script
+func populateCWEKnowledgeBase() error {
+	// Find the CWE JSON file (command runs from project root)
+	cweFilePath := "data/cwe.json"
+	
+	// Verify the CWE file exists
+	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("CWE JSON file not found at %s", cweFilePath)
+	}
+
+	// Execute the CWE population command using db_tool
+	cmd := exec.Command("go", "run", "./db/db_tool/main.go", "populate-cwe")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to execute CWE population: %w", err)
+	}
+
+	return nil
 }
 
 func populateTenants() ([]domain.Tenant, error) {
@@ -128,8 +165,7 @@ func populateScans(
 		sampleScans[i] = *createdScan
 	}
 
-	cweDetails := samples.SampleCWEDetails()
-	if err := populateNetworkOSVulnerabilities(ctx, deps, sampleScans, cweDetails); err != nil {
+	if err := populateNetworkOSVulnerabilities(ctx, deps, sampleScans); err != nil {
 		return fmt.Errorf("error populating NetworkOSVulnerabilities: %w", err)
 	}
 
@@ -163,10 +199,9 @@ func populateNetworkOSVulnerabilities(
 	ctx context.Context,
 	deps PopulatorDependencies,
 	scans []domain.Scan,
-	cweDetails []tools.CWERemediation,
 ) error {
 	for _, scan := range scans {
-		sampleNmapResult := samples.SampleNmapScanResults(scan, cweDetails)
+		sampleNmapResult := samples.SampleNmapScanResults(scan)
 		err := deps.VulnerabilityService.CreateNetworkOSVulnerabilities(ctx, scan.ID, sampleNmapResult)
 		if err != nil {
 			return fmt.Errorf("failed to create networkOSVulnerability: %w", err)

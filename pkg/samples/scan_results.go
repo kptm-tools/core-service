@@ -139,17 +139,20 @@ func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment 
 	return vendorComments
 }
 
-func generateVuln(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.Vulnerability {
+func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
 	severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact := generateDefaultEnumsVuln()
+	realisticCWEIDs := RealisticCWEIDs()
 
 	vulns := make([]tools.Vulnerability, size)
 	for i := range vulns {
-		randomCWE := cweDetails[gofakeit.IntRange(0, len(cweDetails)-1)]
+		// Use realistic CWE IDs that reference the pre-populated knowledge base
+		randomCWEID := realisticCWEIDs[gofakeit.IntRange(0, len(realisticCWEIDs)-1)]
 		vulns[i] = tools.Vulnerability{
 			ID:                 uuid.New(),
-			CveID:              "CVE-2020" + strconv.Itoa(gofakeit.Number(1, len(cweDetails))),
+			CveID:              "CVE-2024-" + fmt.Sprintf("%04d", gofakeit.Number(1, 9999)),
 			Type:               enums.AllOwaspCategories[gofakeit.IntRange(0, len(enums.AllOwaspCategories)-1)],
-			CWERemediation:     []tools.CWERemediation{randomCWE},
+			CweID:              randomCWEID, // Now using CweID field directly
+			CWERemediation:     []tools.CWERemediation{}, // Empty since we rely on pre-populated database
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
 			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
 			Access:             accessType[gofakeit.IntRange(0, 4)],
@@ -328,18 +331,17 @@ func generateDefaultEnumsVuln() ([]enums.SeverityType, []enums.ExploitabilityTyp
 	return severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact
 }
 
-func generateNmapResult(scan domain.Scan, cweDetails []tools.CWERemediation) tools.NmapResult {
-
+func generateNmapResult(scan domain.Scan) tools.NmapResult {
 	return tools.NmapResult{
 		HostName:     gofakeit.DomainName(),
 		HostAddress:  gofakeit.IPv4Address(),
-		MostLikelyOS: generateOSData(cweDetails),
-		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt, cweDetails),
+		MostLikelyOS: generateOSData(), // Updated to new signature
+		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt), // Updated to new signature
 	}
 }
 
-func SampleNmapScanResults(scan domain.Scan, cweDetail []tools.CWERemediation) tools.NmapResult {
-	return generateNmapResult(scan, cweDetail)
+func SampleNmapScanResults(scan domain.Scan) tools.NmapResult {
+	return generateNmapResult(scan) // Updated to new signature
 }
 
 func SampleWebScanResults() tools.WebScanResult {
@@ -367,10 +369,13 @@ func generateWebVulnerabilities() []tools.WebVulnerability {
 		"Broken Authentication",
 	}
 
+	realisticCWEIDs := RealisticCWEIDs()
 	sizeWebVulns := gofakeit.Number(1, len(webVulnNames))
 	webVulns := make([]tools.WebVulnerability, 0, sizeWebVulns)
 	gofakeit.ShuffleAnySlice(webVulnNames)
 	for i := 0; i < sizeWebVulns; i++ {
+		// Use realistic CWE IDs that reference the pre-populated knowledge base
+		randomCWEID := realisticCWEIDs[gofakeit.IntRange(0, len(realisticCWEIDs)-1)]
 		webVuln := tools.WebVulnerability{
 			Name:       webVulnNames[i],
 			Risk:       enums.RiskCodeType(gofakeit.RandomString([]string{"Low", "Medium", "High", "Informational"})),
@@ -378,7 +383,7 @@ func generateWebVulnerabilities() []tools.WebVulnerability {
 			Confidence: enums.ConfidenceWebScanType(gofakeit.RandomString([]string{"Low", "Medium", "High", "FalsePositive"})),
 			Solution:   gofakeit.LoremIpsumWord(),
 			Reference:  gofakeit.URL(),
-			CweID:      "CWE-" + strconv.Itoa(gofakeit.Number(1, 1000)),
+			CweID:      randomCWEID, // Now using realistic CWE IDs from pre-populated database
 			WascID:     "WASC-" + strconv.Itoa(gofakeit.Number(1, 100)),
 		}
 		webVulns = append(webVulns, webVuln)
