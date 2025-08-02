@@ -16,8 +16,16 @@ headers {
 
 body:json {
   {
-    "loginId": "lucasgrez3010@gmail.com",
+    "loginId": "jlozano@uni.edu.pe",
     "password": "password",
     "application_id": "00000000-1111-0000-0000-000000000000"
   }
+}
+
+script:post-response {
+  const jsonData = res.getBody();
+  
+  const token = jsonData.token;
+  
+  bru.setEnvVar("auth_token", token);
 }
