@@ -229,8 +229,8 @@ func TestScanHandlers_GetScanAssetsByID(t *testing.T) {
 				// Service: 3 total (0 critical, 1 high, 1 medium, 1 low)
 				// Total: 8 vulnerabilities
 				assert.Equal(t, 8, totalOverall, "Total vulnerabilities across all assets should match expected sum")
-				assert.Equal(t, 1, totalCritical, "Total critical vulnerabilities should match expected sum")   // 1 from OS + 0 from Service
-				assert.Equal(t, 3, totalHigh, "Total high vulnerabilities should match expected sum")         // 2 from OS + 1 from Service  
+				assert.Equal(t, 1, totalCritical, "Total critical vulnerabilities should match expected sum") // 1 from OS + 0 from Service
+				assert.Equal(t, 3, totalHigh, "Total high vulnerabilities should match expected sum")         // 2 from OS + 1 from Service
 				assert.Equal(t, 2, totalMedium, "Total medium vulnerabilities should match expected sum")     // 1 from OS + 1 from Service
 				assert.Equal(t, 2, totalLow, "Total low vulnerabilities should match expected sum")           // 1 from OS + 1 from Service
 			}
