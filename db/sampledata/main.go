@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"math/rand"
+	"os"
 	"os/exec"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -99,7 +99,7 @@ func populateDB(ctx context.Context, deps PopulatorDependencies) {
 		panic(err)
 	}
 	fmt.Println("✅ Scans populated successfully")
-	
+
 	fmt.Println("🎉 Database population completed successfully!")
 }
 
@@ -107,7 +107,7 @@ func populateDB(ctx context.Context, deps PopulatorDependencies) {
 func populateCWEKnowledgeBase() error {
 	// Find the CWE JSON file (command runs from project root)
 	cweFilePath := "data/cwe.json"
-	
+
 	// Verify the CWE file exists
 	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
 		return fmt.Errorf("CWE JSON file not found at %s", cweFilePath)
@@ -117,7 +117,7 @@ func populateCWEKnowledgeBase() error {
 	cmd := exec.Command("go", "run", "./db/db_tool/main.go", "populate-cwe")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to execute CWE population: %w", err)
 	}

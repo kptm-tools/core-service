@@ -151,7 +151,7 @@ func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
 			ID:                 uuid.New(),
 			CveID:              "CVE-2024-" + fmt.Sprintf("%04d", gofakeit.Number(1, 9999)),
 			Type:               enums.AllOwaspCategories[gofakeit.IntRange(0, len(enums.AllOwaspCategories)-1)],
-			CweID:              randomCWEID, // Now using CweID field directly
+			CweID:              randomCWEID,              // Now using CweID field directly
 			CWERemediation:     []tools.CWERemediation{}, // Empty since we rely on pre-populated database
 			BaseCVSSScore:      math.Trunc(gofakeit.Float64Range(0, 10)*10) / 10,
 			BaseSeverity:       severityType[gofakeit.IntRange(0, 5)],
@@ -335,7 +335,7 @@ func generateNmapResult(scan domain.Scan) tools.NmapResult {
 	return tools.NmapResult{
 		HostName:     gofakeit.DomainName(),
 		HostAddress:  gofakeit.IPv4Address(),
-		MostLikelyOS: generateOSData(), // Updated to new signature
+		MostLikelyOS: generateOSData(),                                         // Updated to new signature
 		ScannedPorts: generatePortsData(gofakeit.Number(1, 10), *scan.EndedAt), // Updated to new signature
 	}
 }
