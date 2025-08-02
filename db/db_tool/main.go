@@ -16,6 +16,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/config"
 	"github.com/kptm-tools/core-service/pkg/services"
 	"github.com/kptm-tools/core-service/pkg/storage"
+	"github.com/kptm-tools/core-service/pkg/utils"
 	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
 )
@@ -214,15 +215,24 @@ func populateCWE() {
 
 	logger.Info("Starting CWE population process...")
 
-	// Find the CWE JSON file
-	cweFilePath := "data/cwe.json"
+	// Find project root first
+	projectRoot, err := utils.FindProjectRoot()
+	if err != nil {
+		logger.Warn("Could not determine project root, using relative paths", slog.Any("error", err))
+		projectRoot = "."
+	}
 
-	// Check if running from core-service directory
+	// Construct path to CWE JSON file
+	cweFilePath := filepath.Join(projectRoot, "data", "cwe.json")
+
+	// Check if file exists
 	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
-		// Try from project root
-		cweFilePath = filepath.Join("..", "..", "data", "cwe.json")
+		// Try current working directory as fallback
+		cweFilePath = "data/cwe.json"
 		if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
-			logger.Error("CWE JSON file not found. Expected at data/cwe.json or ../../data/cwe.json")
+			logger.Error("CWE JSON file not found",
+				slog.String("expected_path", filepath.Join(projectRoot, "data", "cwe.json")),
+				slog.String("fallback_path", "data/cwe.json"))
 			os.Exit(1)
 		}
 	}

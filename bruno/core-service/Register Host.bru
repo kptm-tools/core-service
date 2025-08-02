@@ -16,8 +16,8 @@ auth:bearer {
 
 body:json {
   {
-    "value": "nmap.scanme.org",
-    "name": "Nmap Scanme",
+    "value": "http://www.susaron.cl",
+    "name": "Susarons",
     "value_type": "Domain",
     "credentials": [
       {
@@ -33,4 +33,12 @@ body:json {
       }
     ]
   }
+}
+
+script:post-response {
+  const jsonData = res.getBody();
+  
+  const hostID = jsonData.id;
+  
+  bru.setEnvVar("hostID", hostID);
 }

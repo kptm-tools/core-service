@@ -31,32 +31,7 @@ func (r *CWERepo) getQueries(ctx context.Context) *repository.Queries {
 	return GetQueriesFromContext(ctx, r.defaultQueries)
 }
 
-func (r *CWERepo) CreateOrUpdateCWE(ctx context.Context, cwe domain.CWEDetail) (*domain.CWEDetail, error) {
-	if cwe.ID == "" {
-		return nil, nil
-	}
-
-	queries := r.getQueries(ctx)
-
-	params := repository.CreateOrUpdateCWEDetailParams{
-		CweID:       cwe.ID,
-		Title:       cwe.Title,
-		Description: cwe.Description,
-		LastUpdated: time.Now(),
-	}
-
-	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.CWEDetail{
-		ID:          dbCWE.CweID,
-		Title:       dbCWE.Title,
-		Description: dbCWE.Description,
-		LastUpdated: &dbCWE.LastUpdated,
-	}, nil
-}
+// CreateOrUpdateCWE method removed - no longer needed with pre-populated CWE approach
 
 func (r *CWERepo) CreateCWERemediation(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error) {
 	queries := r.getQueries(ctx)
@@ -175,34 +150,66 @@ func (r *CWERepo) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID str
 			MitigationDescription: dbCWE.MitigationDescription.String,
 			Effectiveness:         dbCWE.Effectiveness.String,
 			EffectivenessNotes:    dbCWE.EffectivenessNotes.String,
-			MigrationCreatedAt:    dbCWE.MitigationCreatedAt.Time,
+			MitigationCreatedAt:   dbCWE.MitigationCreatedAt.Time,
 		}
 	}
 	return remediationDetails, nil
 }
 
-func (r *CWERepo) CreateOrUpdateCWEFromWebVulnerability(ctx context.Context, vuln tools.WebVulnerability) (*tools.CWERemediation, error) {
-	if vuln.CweID == "" {
-		return nil, nil
-	}
+// CreateOrUpdateCWEFromWebVulnerability method removed - no longer needed with pre-populated CWE approach
 
+// New methods for refactored approach
+
+// GetCWEByID retrieves a CWE detail by its ID from the pre-populated database
+func (r *CWERepo) GetCWEByID(ctx context.Context, cweID string) (*domain.CWEDetail, error) {
 	queries := r.getQueries(ctx)
 
-	params := repository.CreateOrUpdateCWEDetailParams{
-		CweID:       vuln.CweID,
-		Title:       "",
-		Description: "",
-		LastUpdated: time.Now(),
+	dbCWE, err := queries.GetCWEDetailByCWEID(ctx, cweID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // CWE not found
+		}
+		return nil, err
 	}
+
+	return &domain.CWEDetail{
+		ID:          dbCWE.CweID,
+		Title:       dbCWE.Title,
+		Description: dbCWE.Description,
+		LastUpdated: &dbCWE.LastUpdated,
+	}, nil
+}
+
+// CWEExists checks if a CWE exists in the pre-populated database
+func (r *CWERepo) CWEExists(ctx context.Context, cweID string) (bool, error) {
+	cwe, err := r.GetCWEByID(ctx, cweID)
+	if err != nil {
+		return false, err
+	}
+	return cwe != nil, nil
+}
+
+// CreateCWEStub creates a minimal CWE record for unknown CWE IDs (Option A)
+func (r *CWERepo) CreateCWEStub(ctx context.Context, cweID string) (*domain.CWEDetail, error) {
+	queries := r.getQueries(ctx)
+
+	// Create a stub record with minimal information
+	params := repository.CreateOrUpdateCWEDetailParams{
+		CweID:       cweID,
+		Title:       "Unknown Weakness",
+		Description: "This CWE ID was not found in the pre-populated knowledge base. Manual review recommended.",
+		LastUpdated: time.Now().UTC(),
+	}
+
 	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
-	return &tools.CWERemediation{
+	return &domain.CWEDetail{
 		ID:          dbCWE.CweID,
 		Title:       dbCWE.Title,
 		Description: dbCWE.Description,
-		LastUpdated: dbCWE.LastUpdated,
+		LastUpdated: &dbCWE.LastUpdated,
 	}, nil
 }

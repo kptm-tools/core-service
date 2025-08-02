@@ -30,7 +30,7 @@ var predefinedServiceProfiles = []serviceProfile{
 	{PortID: 8080, Protocol: "tcp", ServiceName: "http-proxy", Product: "Apache Tomcat", Version: "9.0.65", CPE: "cpe:/a:apache:tomcat:9.0.65"},
 }
 
-func generatePortsData(size int, fromDate time.Time, cweDetails []tools.CWERemediation) []tools.PortData {
+func generatePortsData(size int, fromDate time.Time) []tools.PortData {
 	ports := make([]tools.PortData, size)
 	half := size / 2
 	for i := 0; i < half; i++ {
@@ -47,7 +47,7 @@ func generatePortsData(size int, fromDate time.Time, cweDetails []tools.CWERemed
 				CPE:        selectedService.CPE,
 			},
 			Product:         selectedService.Product,
-			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate, cweDetails),
+			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate), // Updated signature
 		}
 	}
 	for i := half; i < size; i++ {
@@ -65,7 +65,7 @@ func generatePortsData(size int, fromDate time.Time, cweDetails []tools.CWERemed
 				CPE:        selectedService.CPE,
 			},
 			Product:         selectedService.Product,
-			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate, cweDetails),
+			Vulnerabilities: generateVuln(gofakeit.IntRange(0, 10), fromDate), // Updated signature
 		}
 	}
 	return ports

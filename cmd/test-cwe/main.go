@@ -12,8 +12,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/kptm-tools/core-service/pkg/services"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
 
 func main() {
@@ -22,9 +25,29 @@ func main() {
 
 	parser := services.NewCWEParser()
 
+	// Find project root first
+	projectRoot, err := utils.FindProjectRoot()
+	if err != nil {
+		fmt.Printf("⚠️ Could not determine project root, using relative paths: %v\n", err)
+		projectRoot = "."
+	}
+
+	// Construct path to CWE JSON file
+	cweFilePath := filepath.Join(projectRoot, "data", "cwe.json")
+
+	// Check if file exists
+	if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
+		// Try current working directory as fallback
+		cweFilePath = "data/cwe.json"
+		if _, err := os.Stat(cweFilePath); os.IsNotExist(err) {
+			log.Fatalf("❌ CWE JSON file not found at %s or %s",
+				filepath.Join(projectRoot, "data", "cwe.json"), cweFilePath)
+		}
+	}
+
 	// Test parsing the CWE JSON file
-	fmt.Println("Loading and parsing data/cwe.json...")
-	cweData, err := parser.LoadCWE("data/cwe.json")
+	fmt.Printf("Loading and parsing %s...\n", cweFilePath)
+	cweData, err := parser.LoadCWE(cweFilePath)
 	if err != nil {
 		log.Fatalf("❌ Failed to parse CWE data: %v", err)
 	}

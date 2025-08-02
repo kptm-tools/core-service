@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/kptm-tools/core-service/pkg/convert"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
 
 type malformedRequest struct {
@@ -127,7 +127,7 @@ func GetIDInt32(req *http.Request) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return convert.SafeIntToInt32(intID)
+	return utils.SafeIntToInt32(intID)
 }
 
 func GetVerificationIDAndTenantID(req *http.Request) (string, string, error) {

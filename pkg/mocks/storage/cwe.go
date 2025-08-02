@@ -11,7 +11,13 @@ import (
 )
 
 type MockCWERepo struct {
-	MockCreateOrUpdateCWE         func(ctx context.Context, vuln domain.CWEDetail) (*domain.CWEDetail, error)
+	// Core methods for refactored approach
+	MockGetCWEByID                      func(ctx context.Context, cweID string) (*domain.CWEDetail, error)
+	MockCWEExists                       func(ctx context.Context, cweID string) (bool, error)
+	MockCreateCWEStub                   func(ctx context.Context, cweID string) (*domain.CWEDetail, error)
+	MockGetCWEDetailWithMitigationsByID func(ctx context.Context, cweID string) ([]domain.CWEDetailWithMitigations, error)
+
+	// Legacy methods - kept for CWE pre-population script only
 	MockCreateCWERemediation      func(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error)
 	MockGetCWERemediationByID     func(ctx context.Context, mitigationID string) (*tools.CWERemediation, error)
 	MockGetCWERemediationsByCWEID func(ctx context.Context, cweID string) ([]tools.CWERemediation, error)
@@ -19,12 +25,7 @@ type MockCWERepo struct {
 
 var _ interfaces.CWERepository = (*MockCWERepo)(nil)
 
-func (m *MockCWERepo) CreateOrUpdateCWE(ctx context.Context, vuln domain.CWEDetail) (*domain.CWEDetail, error) {
-	if m.MockCreateOrUpdateCWE != nil {
-		return m.MockCreateOrUpdateCWE(ctx, vuln)
-	}
-	panic(fmt.Sprintf("MockCWERepo: method CreateOrUpdateCWE called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
-}
+// CreateOrUpdateCWE method removed - no longer needed with pre-populated CWE approach
 
 func (m *MockCWERepo) CreateCWERemediation(ctx context.Context, remediation *tools.CWERemediation) (*tools.CWERemediation, error) {
 	if m.MockCreateCWERemediation != nil {
@@ -45,4 +46,34 @@ func (m *MockCWERepo) GetCWERemediationsByCWEID(ctx context.Context, cweID strin
 		return m.MockGetCWERemediationsByCWEID(ctx, cweID)
 	}
 	panic(fmt.Sprintf("MockCWERepo: method GetCWERemediationsByCWEID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+// New methods for refactored approach
+
+func (m *MockCWERepo) GetCWEByID(ctx context.Context, cweID string) (*domain.CWEDetail, error) {
+	if m.MockGetCWEByID != nil {
+		return m.MockGetCWEByID(ctx, cweID)
+	}
+	panic(fmt.Sprintf("MockCWERepo: method GetCWEByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockCWERepo) CWEExists(ctx context.Context, cweID string) (bool, error) {
+	if m.MockCWEExists != nil {
+		return m.MockCWEExists(ctx, cweID)
+	}
+	panic(fmt.Sprintf("MockCWERepo: method CWEExists called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockCWERepo) CreateCWEStub(ctx context.Context, cweID string) (*domain.CWEDetail, error) {
+	if m.MockCreateCWEStub != nil {
+		return m.MockCreateCWEStub(ctx, cweID)
+	}
+	panic(fmt.Sprintf("MockCWERepo: method CreateCWEStub called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockCWERepo) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID string) ([]domain.CWEDetailWithMitigations, error) {
+	if m.MockGetCWEDetailWithMitigationsByID != nil {
+		return m.MockGetCWEDetailWithMitigationsByID(ctx, cweID)
+	}
+	panic(fmt.Sprintf("MockCWERepo: method GetCWEDetailWithMitigationsByID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

@@ -51,6 +51,25 @@ func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdat
 	return i, err
 }
 
+const getCWEDetailByCWEID = `-- name: GetCWEDetailByCWEID :one
+SELECT cwe_id, title, description, last_updated, created_at
+FROM cwe_details
+WHERE cwe_id = $1
+`
+
+func (q *Queries) GetCWEDetailByCWEID(ctx context.Context, cweID string) (CweDetail, error) {
+	row := q.db.QueryRowContext(ctx, getCWEDetailByCWEID, cweID)
+	var i CweDetail
+	err := row.Scan(
+		&i.CweID,
+		&i.Title,
+		&i.Description,
+		&i.LastUpdated,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCWEDetailWithMitigationsByID = `-- name: GetCWEDetailWithMitigationsByID :many
 SELECT
   cd.cwe_id,

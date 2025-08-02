@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
-	"github.com/kptm-tools/core-service/pkg/convert"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
+	"github.com/kptm-tools/core-service/pkg/utils"
 )
 
 type OSRepo struct {
@@ -40,7 +40,7 @@ func (r *OSRepo) CreateOS(
 	scanID uuid.UUID,
 	osData tools.OSData,
 ) (*domain.OperatingSystem, error) {
-	acc, err := convert.SafeIntToInt32(osData.Accuracy)
+	acc, err := utils.SafeIntToInt32(osData.Accuracy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert osData Accuracy field to Int32: %w", err)
 	}
