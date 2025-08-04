@@ -141,7 +141,6 @@ func (s *APIServer) Init() http.Server {
 	router.HandleFunc("GET /api/dashboard", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.tenantHandlers.GetDashboard), domain.ActionDashboardGet))
 
 	// WebVulnerabilities routes
-	// Dashboard routes
 	router.HandleFunc("GET /api/web-vulnerabilities/{id}", s.authHandlers.WithAuth(makeHTTPHandlerFunc(s.vulnHandlers.GetWebVulnerabilityDetailsByID), domain.ActionWebVulnerabilityDetailGet))
 
 	router.HandleFunc("/ws/scan", s.scanHub.Serve)
