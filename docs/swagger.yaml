@@ -260,6 +260,21 @@ definitions:
           User contains basic information about the authenticated user.
           Uses our local wrapper so swag can generate a schema for it.
     type: object
+  github_com_kptm-tools_core-service_pkg_domain.WebVulnerabilityInstance:
+    properties:
+      attack:
+        type: string
+      evidence:
+        type: string
+      method:
+        type: string
+      other_info:
+        type: string
+      param:
+        type: string
+      uri:
+        type: string
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.CWERemediation:
     properties:
       cwe_id:
@@ -550,6 +565,33 @@ definitions:
           $ref: '#/definitions/tools.VendorComment'
         type: array
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanWebVulnerabilityResponse:
+    properties:
+      created_at:
+        type: string
+      cwe_id:
+        type: string
+      host_id:
+        type: string
+      instances:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_domain.WebVulnerabilityInstance'
+        type: array
+      reference:
+        type: string
+      scan_id:
+        type: string
+      service_id:
+        type: string
+      solution_advice:
+        type: string
+      updated_at:
+        type: string
+      vulnerability_id:
+        type: string
+      wasc_id:
+        type: string
+    type: object
   tools.SeverityCounts:
     properties:
       critical:
@@ -722,6 +764,40 @@ paths:
       summary: GetScanServicesVulnerabilitiesByServiceID
       tags:
       - Scans
+  /api/web-vulnerabilities/{id}:
+    get:
+      description: Retrieve a web vulnerability information with a list of instances
+        where it occurred for a given Vulnerability ID.
+      parameters:
+      - description: Vulnerability ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanWebVulnerabilityResponse'
+        "400":
+          description: Invalid UUID format for Vulnerability ID
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "404":
+          description: Vulnerability not found
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      security:
+      - BearerAuth: []
+      summary: GetWebVulnerabilityDetailsByID
+      tags:
+      - Vulnerabilities
   /healthcheck:
     get:
       description: Check status of the KPTM Tools - Core Service

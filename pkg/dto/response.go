@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -509,6 +510,22 @@ type HostResponse struct {
 	UpdatedAt   time.Time           `json:"updated_at"`
 }
 
+// ScanWebVulnerabilityResponse is the DTO for a Web Vulnerability
+// associated to a scan.
+type ScanWebVulnerabilityResponse struct {
+	VulnID         string                            `json:"vulnerability_id"`
+	ScanID         string                            `json:"scan_id"`
+	HostID         string                            `json:"host_id"`
+	SolutionAdvice string                            `json:"solution_advice"`
+	ServiceID      string                            `json:"service_id"`
+	CreatedAt      *time.Time                        `json:"created_at"`
+	UpdatedAt      *time.Time                        `json:"updated_at"`
+	Instances      []domain.WebVulnerabilityInstance `json:"instances"`
+	Reference      string                            `json:"reference"`
+	CweID          string                            `json:"cwe_id"`
+	WascID         string                            `json:"wasc_id"`
+}
+
 func NewHostResponse(host domain.Host) HostResponse {
 	return HostResponse{
 		ID:          host.ID.String(),
@@ -723,4 +740,20 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 	}
 
 	return response
+}
+
+func ConvertDomWebVulnToDtoWebVuln(vulnerability domain.WebVulnerability) ScanWebVulnerabilityResponse {
+	return ScanWebVulnerabilityResponse{
+		VulnID:         vulnerability.VulnerabilityID.String(),
+		ScanID:         vulnerability.ScanID.String(),
+		HostID:         vulnerability.HostID.String(),
+		SolutionAdvice: vulnerability.SolutionAdvice,
+		ServiceID:      strconv.Itoa(int(vulnerability.ServiceID)),
+		CreatedAt:      vulnerability.CreatedAt,
+		UpdatedAt:      vulnerability.UpdatedAt,
+		Instances:      vulnerability.Instances,
+		Reference:      vulnerability.Reference,
+		CweID:          vulnerability.CweID,
+		WascID:         vulnerability.WascID,
+	}
 }
