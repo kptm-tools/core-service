@@ -236,6 +236,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/web-vulnerabilities/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a web vulnerability information with a list of instances where it occurred for a given Vulnerability ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vulnerabilities"
+                ],
+                "summary": "GetWebVulnerabilityDetailsByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vulnerability ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanWebVulnerabilityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format for Vulnerability ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Vulnerability not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/healthcheck": {
             "get": {
                 "description": "Check status of the KPTM Tools - Core Service",
@@ -626,6 +678,29 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_domain.WebVulnerabilityInstance": {
+            "type": "object",
+            "properties": {
+                "attack": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "other_info": {
+                    "type": "string"
+                },
+                "param": {
+                    "type": "string"
+                },
+                "uri": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.CWERemediation": {
             "type": "object",
             "properties": {
@@ -1005,6 +1080,47 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/tools.VendorComment"
                     }
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanWebVulnerabilityResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "cwe_id": {
+                    "type": "string"
+                },
+                "host_id": {
+                    "type": "string"
+                },
+                "instances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.WebVulnerabilityInstance"
+                    }
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "solution_advice": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "vulnerability_id": {
+                    "type": "string"
+                },
+                "wasc_id": {
+                    "type": "string"
                 }
             }
         },
