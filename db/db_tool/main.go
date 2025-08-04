@@ -260,28 +260,32 @@ func populateCWE() {
 	logger.Info("Inserting special CWE records for edge cases...")
 
 	specialCWEs := []struct {
-		ID          string
-		Name        string
-		Description string
+		ID                 string
+		Name               string
+		Description        string
+		OwaspTop10Category string
 	}{
 		{
-			ID:          "CWE-Other",
-			Name:        "Other or Uncategorized Weakness",
-			Description: "This vulnerability falls into a category that is not otherwise classified. Further manual analysis is recommended.",
+			ID:                 "CWE-Other",
+			Name:               "Other or Uncategorized Weakness",
+			Description:        "This vulnerability falls into a category that is not otherwise classified. Further manual analysis is recommended.",
+			OwaspTop10Category: "Other",
 		},
 		{
-			ID:          "CWE-noinfo",
-			Name:        "No Information Available",
-			Description: "The scanning tool did not provide a specific weakness classification for this finding.",
+			ID:                 "CWE-noinfo",
+			Name:               "No Information Available",
+			Description:        "The scanning tool did not provide a specific weakness classification for this finding.",
+			OwaspTop10Category: "No Info",
 		},
 	}
 
 	for _, special := range specialCWEs {
 		_, err := queries.CreateOrUpdateCWEDetail(ctx, repository.CreateOrUpdateCWEDetailParams{
-			CweID:       special.ID,
-			Title:       special.Name,
-			Description: special.Description,
-			LastUpdated: time.Now().UTC(),
+			CweID:              special.ID,
+			Title:              special.Name,
+			Description:        special.Description,
+			LastUpdated:        time.Now().UTC(),
+			OwaspTop10Category: sql.NullString{String: special.OwaspTop10Category, Valid: true},
 		})
 		if err != nil {
 			logger.Error("Failed to insert special CWE record",
@@ -298,10 +302,11 @@ func populateCWE() {
 	for cweID, weakness := range cweData {
 		// Insert/update the main CWE detail
 		_, err := queries.CreateOrUpdateCWEDetail(ctx, repository.CreateOrUpdateCWEDetailParams{
-			CweID:       cweID,
-			Title:       weakness.Name,
-			Description: weakness.Description,
-			LastUpdated: weakness.LastUpdated,
+			CweID:              cweID,
+			Title:              weakness.Name,
+			Description:        weakness.Description,
+			LastUpdated:        weakness.LastUpdated,
+			OwaspTop10Category: sql.NullString{String: weakness.OwaspTop10Category, Valid: weakness.OwaspTop10Category != ""},
 		})
 		if err != nil {
 			logger.Error("Failed to insert/update CWE detail",
