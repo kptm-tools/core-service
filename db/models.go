@@ -298,11 +298,12 @@ type CveDetail struct {
 }
 
 type CweDetail struct {
-	CweID       string       `json:"cwe_id"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	LastUpdated time.Time    `json:"last_updated"`
-	CreatedAt   sql.NullTime `json:"created_at"`
+	CweID              string         `json:"cwe_id"`
+	Title              string         `json:"title"`
+	Description        string         `json:"description"`
+	LastUpdated        time.Time      `json:"last_updated"`
+	CreatedAt          sql.NullTime   `json:"created_at"`
+	OwaspTop10Category sql.NullString `json:"owasp_top10_category"`
 }
 
 type CweMitigation struct {
