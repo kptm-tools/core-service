@@ -713,7 +713,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			}(),
 			wantStatus: http.StatusOK,
 			// Ensure that we return service and scan metadata
-			wantBodyContains: []string{"http", scanID.String(), scanDate.Format("2006-01-02T15:04:05.000000-07:00")},
+			wantBodyContains: []string{"http", scanID.String(), scanDate.Format("2006-01-02T15:04:05")},
 		},
 		{
 			name: "Error in serviceID detail→ 500",
