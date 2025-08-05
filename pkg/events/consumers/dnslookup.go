@@ -15,27 +15,56 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// DNSLookupHandler struct con un canal de worker pool
 type DNSLookupHandler struct {
 	scanService interfaces.IScanService
+	workers     int            // Número de workers
+	queue       chan *nats.Msg // La cola de trabajo
 }
 
-func NewDNSLookupHandler(scanService interfaces.IScanService) *DNSLookupHandler {
-	return &DNSLookupHandler{scanService: scanService}
+// NewDNSLookupHandler ahora toma como argumento el numero de workers
+func NewDNSLookupHandler(scanService interfaces.IScanService, workers int) *DNSLookupHandler {
+	handler := &DNSLookupHandler{
+		scanService: scanService,
+		workers:     workers,
+		queue:       make(chan *nats.Msg, workers), // Ojo que es un canal **BUFFERED** para evitar bloqueos
+	}
+	handler.startWorkers()
+	return handler
 }
 
 var _ interfaces.EventConsumer = (*DNSLookupHandler)(nil)
 
+// startWorkers lanza todas las corutinas de los workers.
+// Estos se quedan "esperando" a que les llegue trabajo!
+func (h *DNSLookupHandler) startWorkers() {
+	for i := 0; i < h.workers; i++ {
+		go func() {
+			for msg := range h.queue {
+				// ... lógica de procesamiento (igualito al processDNSLookupEventRoutine de antes)
+				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+				err := h.processDNSLookupEvent(ctx, msg.Data)
+				cancel()
+
+				if err != nil {
+					slog.Error("Error processing DNSLookupEvent", "error", err)
+				} else {
+					slog.Debug("DNSLookupEvent handled successfully")
+				}
+			}
+		}()
+	}
+}
+
+// La función HandleMessage ahora solo "agrega trabajo" a la cola de trabajo, de la cual los trabajadores siempre escuchan.
 func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("Panic recovered in DNSLookupHandler", "panic", r, "stack", string(debug.Stack()))
 		}
 	}()
-	slog.Info("Received DNSLookupEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
-	defer cancel()
-	go h.processDNSLookupEventRoutine(ctx, msg.Data)
-	<-ctx.Done()
+
+	h.queue <- msg
 }
 
 func (h *DNSLookupHandler) processDNSLookupEventRoutine(ctx context.Context, data []byte) {

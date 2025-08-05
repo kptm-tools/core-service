@@ -2,7 +2,12 @@ package consumers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/events"
+	"github.com/nats-io/nats.go"
+	"sync"
 	"testing"
 	"time"
 
@@ -199,4 +204,123 @@ func TestProcessDNSLookupEvent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProcessDNSLookupEvent_UnitCases(t *testing.T) {
+	validScanID := uuid.New()
+	validEvent := events.ToolResultEvent{
+		ScanID: validScanID,
+		ToolResult: events.ToolResult{
+			Tool: enums.ToolDNSLookup,
+			Result: map[string]interface{}{
+				"domain": "example.com",
+			},
+		},
+	}
+	validData, _ := json.Marshal(validEvent)
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		h := NewDNSLookupHandler(&mock_services.MockScanService{}, 1)
+		err := h.processDNSLookupEvent(context.Background(), []byte("{invalid"))
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid tool name", func(t *testing.T) {
+		evt := validEvent
+		evt.ToolResult.Tool = enums.ToolNmap
+		data, _ := json.Marshal(evt)
+		h := NewDNSLookupHandler(&mock_services.MockScanService{}, 1)
+		err := h.processDNSLookupEvent(context.Background(), data)
+		assert.EqualError(t, err, "invalid toolName for DNSLookupEvent")
+	})
+
+	t.Run("scan not found", func(t *testing.T) {
+		h := NewDNSLookupHandler(&mock_services.MockScanService{
+			MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+				return nil, errors.New("scan not found")
+			},
+		}, 1)
+		err := h.processDNSLookupEvent(context.Background(), validData)
+		assert.EqualError(t, err, "scan not found")
+	})
+
+	t.Run("scan is failed or cancelled", func(t *testing.T) {
+		h := NewDNSLookupHandler(&mock_services.MockScanService{
+			MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+				return &domain.Scan{ID: id, Status: "Failed"}, nil
+			},
+		}, 1)
+		err := h.processDNSLookupEvent(context.Background(), validData)
+		assert.EqualError(t, err, "cannot insert scan result: scan is failed or cancelled")
+	})
+
+	t.Run("error inserting scan result", func(t *testing.T) {
+		h := NewDNSLookupHandler(&mock_services.MockScanService{
+			MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+				return &domain.Scan{ID: id, Status: "InProgress"}, nil
+			},
+			MockInsertScanResult: func(ctx context.Context, result domain.ScanResult) error {
+				return errors.New("db error")
+			},
+		}, 1)
+		err := h.processDNSLookupEvent(context.Background(), validData)
+		assert.EqualError(t, err, "db error")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		h := NewDNSLookupHandler(&mock_services.MockScanService{
+			MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+				return &domain.Scan{ID: id, Status: "InProgress"}, nil
+			},
+			MockInsertScanResult: func(ctx context.Context, result domain.ScanResult) error {
+				return nil
+			},
+		}, 1)
+		err := h.processDNSLookupEvent(context.Background(), validData)
+		assert.NoError(t, err)
+	})
+}
+
+func TestDNSLookupHandler_WorkerPool(t *testing.T) {
+	var (
+		mu         sync.Mutex
+		calls      []uuid.UUID
+		workerNum  = 3
+		messageNum = 10
+	)
+	mockScanService := &mock_services.MockScanService{
+		MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+			return &domain.Scan{ID: id, Status: "InProgress"}, nil
+		},
+		MockInsertScanResult: func(ctx context.Context, result domain.ScanResult) error {
+			mu.Lock()
+			calls = append(calls, result.ScanID)
+			mu.Unlock()
+			return nil
+		},
+	}
+	handler := NewDNSLookupHandler(mockScanService, workerNum)
+
+	for i := 0; i < messageNum; i++ {
+		scanID := uuid.New()
+		evt := events.ToolResultEvent{
+			ScanID: scanID,
+			ToolResult: events.ToolResult{
+				Tool: enums.ToolDNSLookup,
+				Result: map[string]interface{}{
+					"domain": "example.com",
+				},
+			},
+		}
+		data, _ := json.Marshal(evt)
+		msg := &nats.Msg{Data: data}
+		handler.HandleMessage(msg)
+	}
+
+	// Wait for all messages to be processed
+	time.Sleep(1 * time.Second)
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, messageNum, len(calls))
 }
