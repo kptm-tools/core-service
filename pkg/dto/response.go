@@ -777,8 +777,8 @@ func ConvertToWebVulnSummaryToResponse(results []domain.WebVulnerability) []WebV
 			ScanID:          r.ScanID.String(),
 			HostID:          r.HostID.String(),
 			ServiceID:       strconv.Itoa(int(r.ServiceID)),
-			Title:           "",
-			Severity:        "",
+			Title:           r.Title,
+			Severity:        r.Severity,
 			InstancesCount:  len(r.Instances),
 		}
 	}

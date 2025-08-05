@@ -266,11 +266,15 @@ definitions:
         type: string
       evidence:
         type: string
+      id:
+        type: string
       method:
         type: string
       other_info:
         type: string
       param:
+        type: string
+      source_vulnerability_id:
         type: string
       uri:
         type: string
@@ -470,7 +474,7 @@ definitions:
         items:
           type: string
         type: array
-      remediation:
+      remediations:
         items:
           $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
         type: array
@@ -493,7 +497,7 @@ definitions:
         items:
           type: string
         type: array
-      remediation:
+      remediations:
         items:
           $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
         type: array
@@ -515,7 +519,7 @@ definitions:
         type: string
       service_protocol:
         type: string
-      service_verion:
+      service_version:
         type: string
       severity_counts:
         $ref: '#/definitions/tools.SeverityCounts'
@@ -524,6 +528,10 @@ definitions:
       vulnerabilities:
         items:
           $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem'
+        type: array
+      web_vulnerabilities:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WebVulnerabilitySummary'
         type: array
     type: object
   github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem:
@@ -590,6 +598,23 @@ definitions:
       vulnerability_id:
         type: string
       wasc_id:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WebVulnerabilitySummary:
+    properties:
+      host_id:
+        type: string
+      instances_count:
+        type: integer
+      scan_id:
+        type: string
+      service_id:
+        type: string
+      severity:
+        type: string
+      title:
+        type: string
+      vulnerability_id:
         type: string
     type: object
   tools.SeverityCounts:

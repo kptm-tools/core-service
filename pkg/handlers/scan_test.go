@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 
 	//"github.com/kptm-tools/core-service/pkg/customerrors"
@@ -468,7 +469,9 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 	scanID := uuid.New()
 	vulnID := uuid.New()
 	serviceID := 42
-
+	titleWebVuln := "Cross Site Scripting (Reflected)"
+	titleVuln := "CVE-2024-5985"
+	mitigationID := "MIT-1"
 	tests := []struct {
 		name                string
 		scanService         interfaces.IScanService
@@ -798,7 +801,14 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
 					return []domain.ScanVulnerabilityDetail{
 						{
-							ID: vulnID,
+							ID:   vulnID,
+							Name: titleVuln,
+							CWERemediation: []tools.CWERemediation{
+								{
+									MitigationID: mitigationID,
+									Description:  "Example mitigation description",
+								},
+							},
 						},
 					}, nil
 				},
@@ -806,6 +816,17 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 					return []domain.WebVulnerability{
 						{
 							VulnerabilityID: vulnID,
+							ServiceID:       serviceID,
+							Title:           "Cross Site Scripting (Reflected)",
+							Severity:        enums.SeverityTypeHigh.String(),
+							Instances: []domain.WebVulnerabilityInstance{
+								{
+									URI: "url1",
+								},
+								{
+									URI: "url2",
+								},
+							},
 						},
 					}, nil
 				},
@@ -827,7 +848,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				return r
 			}(),
 			wantStatus:       http.StatusOK,
-			wantBodyContains: []string{"http"},
+			wantBodyContains: []string{"http", "HIGH"},
 		},
 	}
 
@@ -859,9 +880,12 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				assert.Equal(t, 2, resp.SeverityCounts.High)
 				assert.Equal(t, 3, resp.SeverityCounts.Medium)
 				assert.Equal(t, 4, resp.SeverityCounts.Low)
-				//assert.Equal(t, "CVE-2024-0001", resp.Vulnerabilities[0].Name)
-				//assert.Equal(t, "Remediation description", resp.CWERemediations[0].Description)
-				//assert.Equal(t, "WebVuln", resp.WebVulnerabilities[0].Name)
+				assert.Equal(t, titleVuln, resp.Vulnerabilities[0].Name)
+				assert.Equal(t, mitigationID, *resp.CWERemediations[0].MitigationID)
+				assert.Equal(t, 2, resp.WebVulnerabilities[0].InstancesCount)
+				assert.Equal(t, strconv.Itoa(serviceID), resp.WebVulnerabilities[0].ServiceID)
+				assert.Equal(t, titleWebVuln, resp.WebVulnerabilities[0].Title)
+				assert.Equal(t, enums.SeverityTypeHigh.String(), resp.WebVulnerabilities[0].Severity)
 			}
 		})
 	}
