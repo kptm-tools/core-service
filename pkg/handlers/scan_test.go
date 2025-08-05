@@ -569,6 +569,43 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			wantBodyContains: []string{},
 		},
 		{
+			name: "ScanID exists but Not ServiceID for that Scan → 404",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{}, customerrors.ErrScanNotFound
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{
+						ID: serviceID,
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusNotFound,
+			wantBodyContains: []string{"Service not found for scanID"},
+		},
+		{
 			name: "Error in Get Not Web Vulnerabilities → 500",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
