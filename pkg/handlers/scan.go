@@ -714,19 +714,30 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		})
 	}
 
-	if len(vulnerabilities) == 0 {
-		slog.Warn("No vulnerabilities found for scan",
+	webVulns, errWebVulns := h.vulnService.GetWebVulnerabilitiesForService(ctx, serviceID)
+
+	if errWebVulns != nil {
+		slog.Error("Failed to fetch scan vulnerabilities", slog.Any("error", errWebVulns))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
+	}
+
+	if len(vulnerabilities) == 0 && len(webVulns) == 0 {
+		slog.Warn("No vulnerabilities no web and web found for scan",
 			slog.String("scan_id", scanID.String()),
 			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
 		)
 		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{})
+	} else if len(vulnerabilities) == 0 && len(webVulns) > 0 {
+		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{
+			WebVulnerabilities: dto.ConvertToWebVulnSummaryToResponse(webVulns),
+		})
 	}
-
-	webVulns, err := h.vulnService.GetWebVulnerabilitiesForService(ctx, serviceID)
 
 	serviceDetail, err := h.vulnService.GetServiceByID(ctx, serviceID)
 	if err != nil {
-		slog.Error("Failed to fetch severity counts",
+		slog.Error("Failed to fetch service detail",
 			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
 			slog.Any("error", err),
 		)

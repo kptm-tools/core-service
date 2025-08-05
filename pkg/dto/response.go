@@ -284,7 +284,7 @@ type ScanVulnerabilityDetectedServiceResponse struct {
 	ScanID               string                    `json:"scan_id"`
 	ScanDate             time.Time                 `json:"scan_date"`
 	ServiceName          string                    `json:"service_name"`
-	ServiceVersion       string                    `json:"service_verion"`
+	ServiceVersion       string                    `json:"service_version"`
 	ServiceConfidence    int32                     `json:"service_confidence"`
 	ServiceCPE           string                    `json:"service_cpe"`
 	ServiceProduct       string                    `json:"service_product"`
