@@ -7,7 +7,6 @@ import (
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 
-	//"github.com/kptm-tools/core-service/pkg/customerrors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -589,7 +588,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			emailService:        &mock_services.MockEmailService{},
 			eventBus:            &events.NatsEventBus{},
 			r: func() *http.Request {
-				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/invalid/vulnerabilities", nil)
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
 				r.SetPathValue("id", scanID.String())
 				r.SetPathValue("service_id", strconv.Itoa(serviceID))
 				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
