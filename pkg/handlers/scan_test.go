@@ -471,6 +471,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 	titleWebVuln := "Cross Site Scripting (Reflected)"
 	titleVuln := "CVE-2024-5985"
 	mitigationID := "MIT-1"
+	scanDate := time.Now()
 	tests := []struct {
 		name                string
 		scanService         interfaces.IScanService
@@ -635,6 +636,9 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
 				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{}, nil
+				},
 			},
 			vulnService: &mock_services.MockVulnerabilityService{
 				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
@@ -665,7 +669,18 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			name: "Empty for No Web Vulnerabilities but not empty for web→ 200",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
-					return &domain.Scan{Status: "Completed"}, nil
+					return &domain.Scan{
+						ID:        scanID,
+						CreatedAt: scanDate,
+						Status:    "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{
+						Critical: 1,
+						High:     2,
+						Medium:   3,
+						Low:      4,
+					}, nil
 				},
 			},
 			vulnService: &mock_services.MockVulnerabilityService{
@@ -680,7 +695,9 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 					}, nil
 				},
 				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
-					return &domain.Service{}, nil
+					return &domain.Service{
+						SvName: "http",
+					}, nil
 				},
 			},
 			scanScheduleService: &mock_services.MockScanScheduleService{},
@@ -694,8 +711,9 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
 				return r
 			}(),
-			wantStatus:       http.StatusOK,
-			wantBodyContains: []string{},
+			wantStatus: http.StatusOK,
+			// Ensure that we return service and scan metadata
+			wantBodyContains: []string{"http", scanID.String(), scanDate.Format("2006-01-02T15:04:05.000000-07:00")},
 		},
 		{
 			name: "Error in serviceID detail→ 500",

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -723,22 +724,6 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		})
 	}
 
-	if len(vulnerabilities) == 0 && len(webVulns) == 0 {
-		slog.Warn("There are no vulnerabilities for scan",
-			slog.String("scan_id", scanID.String()),
-			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
-		)
-		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{})
-	} else if len(vulnerabilities) == 0 && len(webVulns) > 0 {
-		slog.Warn("There are only web vulnerabilities for scan",
-			slog.String("scan_id", scanID.String()),
-			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
-		)
-		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{
-			WebVulnerabilities: dto.ConvertToWebVulnSummaryToResponse(webVulns),
-		})
-	}
-
 	serviceDetail, err := h.vulnService.GetServiceByID(ctx, serviceID)
 	if err != nil {
 		slog.Error("Failed to fetch service detail",
@@ -752,6 +737,12 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 
 	severityCounts, err := h.scanService.GetSeverityServiceCountsByScanAndServiceID(ctx, scanID, serviceID)
 	if err != nil {
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			slog.Error("Service not found for scanID", slog.String("scan_id", scanID.String()), slog.String("service_id", strconv.Itoa(int(serviceID))))
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{
+				Error: "Service not found for scanID",
+			})
+		}
 		slog.Error("Failed to fetch severity counts",
 			slog.String("scan_id", scanID.String()),
 			slog.Any("error", err),
@@ -816,7 +807,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 	// Aggregate response object
 	response := dto.ScanVulnerabilityDetectedServiceResponse{
 		ScanID:               scanID.String(),
-		ScanDate:             vulnerabilities[0].ScanDate,
+		ScanDate:             scan.CreatedAt,
 		ServiceName:          serviceDetail.SvName,
 		ServiceVersion:       serviceDetail.SvVersion,
 		ServiceConfidence:    serviceDetail.Confidence,
