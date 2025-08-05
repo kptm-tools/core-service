@@ -623,7 +623,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		Vulnerabilities:      scanVulnerabilityItems,
 		CWERemediations:      totalRemediations,
 		References:           totalReferences,
-		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low,
+		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low + severityCounts.None + severityCounts.Unknown,
 		SeverityCounts:       severityCounts,
 	}
 
