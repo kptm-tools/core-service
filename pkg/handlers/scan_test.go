@@ -3,8 +3,13 @@ package handlers_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
+
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -455,6 +460,487 @@ func TestScanHandlers_GetScanOperatingSystemVulnerabilitiesByID(t *testing.T) {
 			err := h.GetScanOperatingSystemVulnerabilitiesByID(rr, tt.r)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantStatus, rr.Code, "Expected http response code %d, got %d", tt.wantStatus, rr.Code)
+		})
+	}
+}
+
+func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
+	scanID := uuid.New()
+	vulnID := uuid.New()
+	serviceID := 42
+	titleWebVuln := "Cross Site Scripting (Reflected)"
+	titleVuln := "CVE-2024-5985"
+	mitigationID := "MIT-1"
+	scanDate := time.Now()
+	tests := []struct {
+		name                string
+		scanService         interfaces.IScanService
+		vulnService         interfaces.IVulnerabilityService
+		scanScheduleService interfaces.IScanScheduleService
+		hostService         interfaces.IHostService
+		emailService        interfaces.IEmailService
+		eventBus            events.EventBus
+		r                   *http.Request
+		wantStatus          int
+		wantBodyContains    []string
+	}{
+		{
+			name:                "Bad ScanID → 400",
+			scanService:         &mock_services.MockScanService{},
+			vulnService:         &mock_services.MockVulnerabilityService{},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/invalid/services/42/vulnerabilities", nil)
+				r.SetPathValue("id", "invalid")
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusBadRequest,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Scan Not Found → 404",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return nil, customerrors.ErrScanNotFound
+				},
+			},
+			vulnService:         &mock_services.MockVulnerabilityService{},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusNotFound,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Scan Not Completed → 409",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "InProgress"}, nil
+				},
+			},
+			vulnService:         &mock_services.MockVulnerabilityService{},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusConflict,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Bad ServiceID → 400",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+			},
+			vulnService:         &mock_services.MockVulnerabilityService{},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/invalid/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", "invalid")
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusBadRequest,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Service not found for scan → 404",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{}, customerrors.ErrScanNotFound
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{
+						ID: serviceID,
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusNotFound,
+			wantBodyContains: []string{"Service not found for scanID"},
+		},
+		{
+			name: "Error Getting Service Vulnerability Details → 500",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return nil, errors.New("error getting vuln for service")
+				},
+
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusInternalServerError,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Error in Get Web Vulnerabilities → 500",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return nil, errors.New("error getting web vuln for service")
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusInternalServerError,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "No vulnerabilities returns empty response → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{}, nil
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusOK,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Service with only web vulnerabilities returns partial data → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{
+						ID:        scanID,
+						CreatedAt: scanDate,
+						Status:    "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{
+						Critical: 1,
+						High:     2,
+						Medium:   3,
+						Low:      4,
+					}, nil
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{
+						{
+							VulnerabilityID: vulnID,
+						},
+					}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{
+						SvName: "http",
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusOK,
+			// Ensure that we return service and scan metadata
+			wantBodyContains: []string{"http", scanID.String(), scanDate.Format("2006-01-02T15:04:05")},
+		},
+		{
+			name: "Error in serviceID detail → 500",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{
+						{
+							ID: vulnID,
+						},
+					}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{
+						{
+							VulnerabilityID: vulnID,
+						},
+					}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return nil, errors.New("error in fetch service")
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusInternalServerError,
+			wantBodyContains: []string{},
+		},
+
+		{
+			name: "Error in SeverityCounts → 500",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{}, errors.New("error in severityCounts")
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{
+						{
+							ID: vulnID,
+						},
+					}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{
+						{
+							VulnerabilityID: vulnID,
+						},
+					}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/"+strconv.Itoa(serviceID)+"/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", strconv.Itoa(serviceID))
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusInternalServerError,
+			wantBodyContains: []string{},
+		},
+		{
+			name: "Status OK → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+					return &domain.Scan{Status: "Completed"}, nil
+				},
+				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
+					return tools.SeverityCounts{
+						Critical: 1,
+						High:     2,
+						Medium:   3,
+						Low:      4,
+					}, nil
+				},
+			},
+			vulnService: &mock_services.MockVulnerabilityService{
+				MockGetServiceVulnerabilityDetailByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) ([]domain.ScanVulnerabilityDetail, error) {
+					return []domain.ScanVulnerabilityDetail{
+						{
+							ID:   vulnID,
+							Name: titleVuln,
+							CWERemediation: []tools.CWERemediation{
+								{
+									MitigationID: mitigationID,
+									Description:  "Example mitigation description",
+								},
+							},
+						},
+					}, nil
+				},
+				MockGetWebVulnerabilitiesForService: func(ctx context.Context, serviceID int32) ([]domain.WebVulnerability, error) {
+					return []domain.WebVulnerability{
+						{
+							VulnerabilityID: vulnID,
+							ServiceID:       serviceID,
+							Title:           "Cross Site Scripting (Reflected)",
+							Severity:        enums.SeverityTypeHigh.String(),
+							Instances: []domain.WebVulnerabilityInstance{
+								{
+									URI: "url1",
+								},
+								{
+									URI: "url2",
+								},
+							},
+						},
+					}, nil
+				},
+				MockGetServiceByID: func(ctx context.Context, serviceID int32) (*domain.Service, error) {
+					return &domain.Service{
+						SvName: "http",
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/services/42/vulnerabilities", nil)
+				r.SetPathValue("id", scanID.String())
+				r.SetPathValue("service_id", "42")
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusOK,
+			wantBodyContains: []string{"http", "HIGH"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			h := hh.NewScanHandlers(
+				tt.scanService,
+				tt.vulnService,
+				tt.scanScheduleService,
+				tt.hostService,
+				tt.emailService,
+				tt.eventBus,
+			)
+			err := h.GetScanServicesVulnerabilitiesByServiceID(rr, tt.r)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantStatus, rr.Code, "Expected http response code %d, got %d", tt.wantStatus, rr.Code)
+			body := rr.Body.String()
+			for _, substr := range tt.wantBodyContains {
+				assert.Contains(t, body, substr, "Response body should contain %q", substr)
+			}
+			// Additional validation for "Status OK → 200"
+			if tt.name == "Status OK → 200" && rr.Code == http.StatusOK {
+				var resp dto.ScanVulnerabilityDetectedServiceResponse
+				err := json.Unmarshal(rr.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Equal(t, "http", resp.ServiceName)
+				assert.Equal(t, 1, resp.SeverityCounts.Critical)
+				assert.Equal(t, 2, resp.SeverityCounts.High)
+				assert.Equal(t, 3, resp.SeverityCounts.Medium)
+				assert.Equal(t, 4, resp.SeverityCounts.Low)
+				assert.Equal(t, titleVuln, resp.Vulnerabilities[0].Name)
+				assert.Equal(t, mitigationID, *resp.CWERemediations[0].MitigationID)
+				assert.Equal(t, 2, resp.WebVulnerabilities[0].InstancesCount)
+				assert.Equal(t, strconv.Itoa(serviceID), resp.WebVulnerabilities[0].ServiceID)
+				assert.Equal(t, titleWebVuln, resp.WebVulnerabilities[0].Title)
+				assert.Equal(t, enums.SeverityTypeHigh.String(), resp.WebVulnerabilities[0].Severity)
+			}
 		})
 	}
 }

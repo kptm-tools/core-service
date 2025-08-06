@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -623,7 +624,7 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		Vulnerabilities:      scanVulnerabilityItems,
 		CWERemediations:      totalRemediations,
 		References:           totalReferences,
-		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low,
+		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low + severityCounts.None + severityCounts.Unknown,
 		SeverityCounts:       severityCounts,
 	}
 
@@ -714,17 +715,18 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		})
 	}
 
-	if len(vulnerabilities) == 0 {
-		slog.Warn("No vulnerabilities found for scan",
-			slog.String("scan_id", scanID.String()),
-			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
-		)
-		return api.WriteJSON(w, http.StatusOK, dto.ScanVulnerabilityDetectedServiceResponse{})
+	webVulns, errWebVulns := h.vulnService.GetWebVulnerabilitiesForService(ctx, serviceID)
+
+	if errWebVulns != nil {
+		slog.Error("Failed to fetch scan vulnerabilities", slog.Any("error", errWebVulns))
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{
+			Error: http.StatusText(http.StatusInternalServerError),
+		})
 	}
 
 	serviceDetail, err := h.vulnService.GetServiceByID(ctx, serviceID)
 	if err != nil {
-		slog.Error("Failed to fetch severity counts",
+		slog.Error("Failed to fetch service detail",
 			slog.String("service_id", fmt.Sprintf("%d", serviceID)),
 			slog.Any("error", err),
 		)
@@ -735,6 +737,12 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 
 	severityCounts, err := h.scanService.GetSeverityServiceCountsByScanAndServiceID(ctx, scanID, serviceID)
 	if err != nil {
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			slog.Error("Service not found for scanID", slog.String("scan_id", scanID.String()), slog.String("service_id", strconv.Itoa(int(serviceID))))
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{
+				Error: "Service not found for scanID",
+			})
+		}
 		slog.Error("Failed to fetch severity counts",
 			slog.String("scan_id", scanID.String()),
 			slog.Any("error", err),
@@ -799,7 +807,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 	// Aggregate response object
 	response := dto.ScanVulnerabilityDetectedServiceResponse{
 		ScanID:               scanID.String(),
-		ScanDate:             vulnerabilities[0].ScanDate,
+		ScanDate:             scan.CreatedAt,
 		ServiceName:          serviceDetail.SvName,
 		ServiceVersion:       serviceDetail.SvVersion,
 		ServiceConfidence:    serviceDetail.Confidence,
@@ -811,6 +819,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low + severityCounts.None + severityCounts.Unknown,
 		SeverityCounts:       severityCounts,
 		Vulnerabilities:      scanVulnerabilityItems,
+		WebVulnerabilities:   dto.ConvertToWebVulnSummaryToResponse(webVulns),
 		CWERemediations:      totalRemediations,
 		References:           totalReferences,
 	}

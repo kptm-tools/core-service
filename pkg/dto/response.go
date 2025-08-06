@@ -270,22 +270,33 @@ type ScanVulnerabilityDetectedOSResponse struct {
 	References           []string                `json:"references"`
 }
 
+type WebVulnerabilitySummary struct {
+	VulnerabilityID string `json:"vulnerability_id"`
+	ScanID          string `json:"scan_id"`
+	HostID          string `json:"host_id"`
+	ServiceID       string `json:"service_id"`
+	Title           string `json:"title"`
+	Severity        string `json:"severity"`
+	InstancesCount  int    `json:"instances_count"`
+}
+
 type ScanVulnerabilityDetectedServiceResponse struct {
-	ScanID               string                  `json:"scan_id"`
-	ScanDate             time.Time               `json:"scan_date"`
-	ServiceName          string                  `json:"service_name"`
-	ServiceVersion       string                  `json:"service_verion"`
-	ServiceConfidence    int32                   `json:"service_confidence"`
-	ServiceCPE           string                  `json:"service_cpe"`
-	ServiceProduct       string                  `json:"service_product"`
-	ServiceProtocol      string                  `json:"service_protocol"`
-	ServicePort          int                     `json:"service_port"`
-	ServicePortState     string                  `json:"service_port_state"`
-	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
-	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
-	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
-	CWERemediations      []CWERemediation        `json:"remediations"`
-	References           []string                `json:"references"`
+	ScanID               string                    `json:"scan_id"`
+	ScanDate             time.Time                 `json:"scan_date"`
+	ServiceName          string                    `json:"service_name"`
+	ServiceVersion       string                    `json:"service_version"`
+	ServiceConfidence    int32                     `json:"service_confidence"`
+	ServiceCPE           string                    `json:"service_cpe"`
+	ServiceProduct       string                    `json:"service_product"`
+	ServiceProtocol      string                    `json:"service_protocol"`
+	ServicePort          int                       `json:"service_port"`
+	ServicePortState     string                    `json:"service_port_state"`
+	TotalVulnerabilities int                       `json:"total_vulnerabilities"`
+	SeverityCounts       tools.SeverityCounts      `json:"severity_counts"`
+	Vulnerabilities      []ScanVulnerabilityItem   `json:"vulnerabilities"`
+	CWERemediations      []CWERemediation          `json:"remediations"`
+	References           []string                  `json:"references"`
+	WebVulnerabilities   []WebVulnerabilitySummary `json:"web_vulnerabilities"`
 }
 
 type ScanVulnerabilityItem struct {
@@ -756,4 +767,20 @@ func ConvertDomWebVulnToDtoWebVuln(vulnerability domain.WebVulnerability) ScanWe
 		CweID:          vulnerability.CweID,
 		WascID:         vulnerability.WascID,
 	}
+}
+
+func ConvertToWebVulnSummaryToResponse(results []domain.WebVulnerability) []WebVulnerabilitySummary {
+	summaries := make([]WebVulnerabilitySummary, len(results))
+	for i, r := range results {
+		summaries[i] = WebVulnerabilitySummary{
+			VulnerabilityID: r.VulnerabilityID.String(),
+			ScanID:          r.ScanID.String(),
+			HostID:          r.HostID.String(),
+			ServiceID:       strconv.Itoa(int(r.ServiceID)),
+			Title:           r.Title,
+			Severity:        r.Severity,
+			InstancesCount:  len(r.Instances),
+		}
+	}
+	return summaries
 }

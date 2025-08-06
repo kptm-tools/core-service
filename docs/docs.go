@@ -687,6 +687,9 @@ const docTemplate = `{
                 "evidence": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "method": {
                     "type": "string"
                 },
@@ -694,6 +697,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "param": {
+                    "type": "string"
+                },
+                "source_vulnerability_id": {
                     "type": "string"
                 },
                 "uri": {
@@ -939,7 +945,7 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "remediation": {
+                "remediations": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
@@ -974,7 +980,7 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "remediation": {
+                "remediations": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
@@ -1007,7 +1013,7 @@ const docTemplate = `{
                 "service_protocol": {
                     "type": "string"
                 },
-                "service_verion": {
+                "service_version": {
                     "type": "string"
                 },
                 "severity_counts": {
@@ -1020,6 +1026,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityItem"
+                    }
+                },
+                "web_vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WebVulnerabilitySummary"
                     }
                 }
             }
@@ -1120,6 +1132,32 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "wasc_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.WebVulnerabilitySummary": {
+            "type": "object",
+            "properties": {
+                "host_id": {
+                    "type": "string"
+                },
+                "instances_count": {
+                    "type": "integer"
+                },
+                "scan_id": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "vulnerability_id": {
                     "type": "string"
                 }
             }
