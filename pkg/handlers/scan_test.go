@@ -569,7 +569,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			wantBodyContains: []string{},
 		},
 		{
-			name: "ScanID exists but Not ServiceID for that Scan → 404",
+			name: "Service not found for scan → 404",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
@@ -606,7 +606,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			wantBodyContains: []string{"Service not found for scanID"},
 		},
 		{
-			name: "Error in Get Not Web Vulnerabilities → 500",
+			name: "Error Getting Service Vulnerability Details → 500",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
@@ -668,7 +668,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			wantBodyContains: []string{},
 		},
 		{
-			name: "Empty for No Web and web Vulnerabilities → 200",
+			name: "No vulnerabilities returns empty response → 200",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
@@ -703,7 +703,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			wantBodyContains: []string{},
 		},
 		{
-			name: "Empty for No Web Vulnerabilities but not empty for web→ 200",
+			name: "Service with only web vulnerabilities returns partial data → 200",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{
@@ -753,7 +753,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 			wantBodyContains: []string{"http", scanID.String(), scanDate.Format("2006-01-02T15:04:05")},
 		},
 		{
-			name: "Error in serviceID detail→ 500",
+			name: "Error in serviceID detail → 500",
 			scanService: &mock_services.MockScanService{
 				MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
 					return &domain.Scan{Status: "Completed"}, nil
