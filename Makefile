@@ -125,7 +125,7 @@ clear: confirm
 
 ## audit: run quality control checks (static, vulnerabilities, etc)
 .PHONY: audit
-audit: test
+audit: test test/cwe
 	go mod tidy -diff
 	go mod verify
 	test -z "$(shell gofmt -l .)" 
@@ -137,6 +137,11 @@ audit: test
 .PHONY: test
 test:
 	go test -v -race -buildvcs ./...
+
+## test/cwe: validate CWE JSON parsing
+.PHONY: test/cwe
+test/cwe:
+	go run ./cmd/test-cwe/main.go
 
 ## test/cover: run all tests and display coverage
 .PHONY: test/cover
