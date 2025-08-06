@@ -3,6 +3,7 @@ FROM golang:1.24.4
 WORKDIR /app
 
 COPY go.mod go.sum ./
+COPY Makefile ./
 
 RUN go mod download
 
