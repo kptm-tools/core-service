@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kptm-tools/common/common/pkg/enums"
 	repository "github.com/kptm-tools/core-service/db"
 	migrations "github.com/kptm-tools/core-service/db/sql"
 	"github.com/kptm-tools/core-service/pkg/config"
@@ -269,13 +270,13 @@ func populateCWE() {
 			ID:                 "CWE-Other",
 			Name:               "Other or Uncategorized Weakness",
 			Description:        "This vulnerability falls into a category that is not otherwise classified. Further manual analysis is recommended.",
-			OwaspTop10Category: "Other",
+			OwaspTop10Category: enums.OwaspCategoryOther.String(),
 		},
 		{
 			ID:                 "CWE-noinfo",
 			Name:               "No Information Available",
 			Description:        "The scanning tool did not provide a specific weakness classification for this finding.",
-			OwaspTop10Category: "No Info",
+			OwaspTop10Category: enums.OwaspCategoryNoInfo.String(),
 		},
 	}
 
