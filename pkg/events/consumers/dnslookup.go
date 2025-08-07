@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -20,6 +21,12 @@ type DNSLookupHandler struct {
 	scanService interfaces.IScanService
 	workers     int            // Número de workers
 	queue       chan *nats.Msg // La cola de trabajo
+
+	// Metrics
+	processed  atomic.Uint64
+	failed     atomic.Uint64
+	dropped    atomic.Uint64
+	queueDepth atomic.Int32
 }
 
 // NewDNSLookupHandler ahora toma como argumento el numero de workers
@@ -47,8 +54,10 @@ func (h *DNSLookupHandler) startWorkers() {
 				cancel()
 
 				if err != nil {
+					h.failed.Add(1)
 					slog.Error("Error processing DNSLookupEvent", "error", err)
 				} else {
+					h.processed.Add(1)
 					slog.Debug("DNSLookupEvent handled successfully")
 				}
 			}
@@ -56,7 +65,7 @@ func (h *DNSLookupHandler) startWorkers() {
 	}
 }
 
-// La función HandleMessage ahora solo "agrega trabajo" a la cola de trabajo, de la cual los trabajadores siempre escuchan.
+// HandleMessage add work to the queue, from which works are always listening.
 func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -126,4 +135,15 @@ func (h *DNSLookupHandler) processDNSLookupEvent(ctx context.Context, data []byt
 
 	slog.Debug("DNSLookupEvent handled successfully")
 	return nil
+}
+
+// GetMetrics getters for monitoring
+func (h *DNSLookupHandler) GetMetrics() map[string]interface{} {
+	return map[string]interface{}{
+		"processed":   h.processed.Load(),
+		"failed":      h.failed.Load(),
+		"dropped":     h.dropped.Load(),
+		"queuedepth":  h.queueDepth.Load(),
+		"workercount": h.workers,
+	}
 }

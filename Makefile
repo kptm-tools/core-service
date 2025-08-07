@@ -136,7 +136,8 @@ audit: test test/cwe
 ## test: run all tests
 .PHONY: test
 test:
-	go test -v -race -buildvcs ./...
+	go test -v -race -buildvcs -bench=. -benchmem ./...
+
 
 ## test/cwe: validate CWE JSON parsing
 .PHONY: test/cwe
