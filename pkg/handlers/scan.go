@@ -762,26 +762,7 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 		doRemediations := make([]dto.CWERemediation, 0)
 		// Aggregate valid remediations
 
-		for _, remediation := range vuln.CWERemediation {
-			if remediation.Description != "" {
-				var phasePtr *string
-				if len(remediation.Phase) > 0 {
-					phasePtr = &remediation.Phase[0]
-				}
-
-				cweRemediation := dto.CWERemediation{
-					ID:                 remediation.ID,
-					MitigationID:       &remediation.MitigationID,
-					Title:              remediation.Title,
-					Phase:              phasePtr, // Now validated
-					Description:        remediation.Description,
-					Effectiveness:      &remediation.Effectiveness,
-					EffectivenessNotes: &remediation.EffectivenessNotes,
-					LastUpdated:        remediation.LastUpdated,
-				}
-				doRemediations = append(doRemediations, cweRemediation)
-			}
-		}
+		doRemediations = h.getDomRemediationsToDto(vuln, doRemediations)
 
 		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
 			ID:              vuln.ID,
@@ -833,6 +814,30 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 	)
 
 	return api.WriteJSON(w, http.StatusOK, response)
+}
+
+func (h *ScanHandlers) getDomRemediationsToDto(vuln domain.ScanVulnerabilityDetail, doRemediations []dto.CWERemediation) []dto.CWERemediation {
+	for _, remediation := range vuln.CWERemediation {
+		if remediation.Description != "" {
+			var phasePtr *string
+			if len(remediation.Phase) > 0 {
+				phasePtr = &remediation.Phase[0]
+			}
+
+			cweRemediation := dto.CWERemediation{
+				ID:                 remediation.ID,
+				MitigationID:       &remediation.MitigationID,
+				Title:              remediation.Title,
+				Phase:              phasePtr, // Now validated
+				Description:        remediation.Description,
+				Effectiveness:      &remediation.Effectiveness,
+				EffectivenessNotes: &remediation.EffectivenessNotes,
+				LastUpdated:        remediation.LastUpdated,
+			}
+			doRemediations = append(doRemediations, cweRemediation)
+		}
+	}
+	return doRemediations
 }
 
 func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error {
