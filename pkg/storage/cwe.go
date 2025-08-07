@@ -3,10 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"github.com/kptm-tools/core-service/pkg/domain"
 	"strconv"
 	"time"
 
+	"github.com/kptm-tools/core-service/pkg/domain"
+
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
@@ -140,11 +142,11 @@ func (r *CWERepo) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID str
 
 	remediationDetails := make([]domain.CWEDetailWithMitigations, len(dbCWEs))
 	for i, dbCWE := range dbCWEs {
-
 		remediationDetails[i] = domain.CWEDetailWithMitigations{
 			CweID:                 dbCWE.CweID,
 			Title:                 dbCWE.Title,
 			Description:           dbCWE.Description,
+			OwaspTop10Category:    dbCWE.OwaspTop10Category.String,
 			MitigationID:          dbCWE.MitigationID.String,
 			Phase:                 dbCWE.Phase.String,
 			MitigationDescription: dbCWE.MitigationDescription.String,
@@ -173,10 +175,11 @@ func (r *CWERepo) GetCWEByID(ctx context.Context, cweID string) (*domain.CWEDeta
 	}
 
 	return &domain.CWEDetail{
-		ID:          dbCWE.CweID,
-		Title:       dbCWE.Title,
-		Description: dbCWE.Description,
-		LastUpdated: &dbCWE.LastUpdated,
+		ID:                 dbCWE.CweID,
+		Title:              dbCWE.Title,
+		Description:        dbCWE.Description,
+		LastUpdated:        &dbCWE.LastUpdated,
+		OwaspTop10Category: dbCWE.OwaspTop10Category.String,
 	}, nil
 }
 
@@ -195,10 +198,11 @@ func (r *CWERepo) CreateCWEStub(ctx context.Context, cweID string) (*domain.CWED
 
 	// Create a stub record with minimal information
 	params := repository.CreateOrUpdateCWEDetailParams{
-		CweID:       cweID,
-		Title:       "Unknown Weakness",
-		Description: "This CWE ID was not found in the pre-populated knowledge base. Manual review recommended.",
-		LastUpdated: time.Now().UTC(),
+		CweID:              cweID,
+		Title:              "Unknown Weakness",
+		Description:        "This CWE ID was not found in the pre-populated knowledge base. Manual review recommended.",
+		LastUpdated:        time.Now().UTC(),
+		OwaspTop10Category: sql.NullString{String: enums.OwaspCategoryNoInfo.String(), Valid: true},
 	}
 
 	dbCWE, err := queries.CreateOrUpdateCWEDetail(ctx, params)
@@ -207,9 +211,10 @@ func (r *CWERepo) CreateCWEStub(ctx context.Context, cweID string) (*domain.CWED
 	}
 
 	return &domain.CWEDetail{
-		ID:          dbCWE.CweID,
-		Title:       dbCWE.Title,
-		Description: dbCWE.Description,
-		LastUpdated: &dbCWE.LastUpdated,
+		ID:                 dbCWE.CweID,
+		Title:              dbCWE.Title,
+		Description:        dbCWE.Description,
+		LastUpdated:        &dbCWE.LastUpdated,
+		OwaspTop10Category: dbCWE.OwaspTop10Category.String,
 	}, nil
 }

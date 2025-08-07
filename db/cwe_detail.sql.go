@@ -16,21 +16,24 @@ INSERT INTO cwe_details (
     cwe_id,
     title,
     description,
-    last_updated
+    last_updated,
+    owasp_top10_category
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5
 ) ON CONFLICT (cwe_id) DO UPDATE SET
   title = EXCLUDED.title,
   description = EXCLUDED.description,
-  last_updated = EXCLUDED.last_updated
-RETURNING cwe_id, title, description, last_updated, created_at
+  last_updated = EXCLUDED.last_updated,
+  owasp_top10_category = EXCLUDED.owasp_top10_category
+RETURNING cwe_id, title, description, last_updated, created_at, owasp_top10_category
 `
 
 type CreateOrUpdateCWEDetailParams struct {
-	CweID       string    `json:"cwe_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	LastUpdated time.Time `json:"last_updated"`
+	CweID              string         `json:"cwe_id"`
+	Title              string         `json:"title"`
+	Description        string         `json:"description"`
+	LastUpdated        time.Time      `json:"last_updated"`
+	OwaspTop10Category sql.NullString `json:"owasp_top10_category"`
 }
 
 func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdateCWEDetailParams) (CweDetail, error) {
@@ -39,6 +42,7 @@ func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdat
 		arg.Title,
 		arg.Description,
 		arg.LastUpdated,
+		arg.OwaspTop10Category,
 	)
 	var i CweDetail
 	err := row.Scan(
@@ -47,12 +51,13 @@ func (q *Queries) CreateOrUpdateCWEDetail(ctx context.Context, arg CreateOrUpdat
 		&i.Description,
 		&i.LastUpdated,
 		&i.CreatedAt,
+		&i.OwaspTop10Category,
 	)
 	return i, err
 }
 
 const getCWEDetailByCWEID = `-- name: GetCWEDetailByCWEID :one
-SELECT cwe_id, title, description, last_updated, created_at
+SELECT cwe_id, title, description, last_updated, created_at, owasp_top10_category
 FROM cwe_details
 WHERE cwe_id = $1
 `
@@ -66,6 +71,7 @@ func (q *Queries) GetCWEDetailByCWEID(ctx context.Context, cweID string) (CweDet
 		&i.Description,
 		&i.LastUpdated,
 		&i.CreatedAt,
+		&i.OwaspTop10Category,
 	)
 	return i, err
 }
@@ -75,6 +81,7 @@ SELECT
   cd.cwe_id,
   cd.title,
   cd.description,
+  cd.owasp_top10_category,
   cm.mitigation_id,
   cm.phase,
   cm.description AS mitigation_description,
@@ -90,6 +97,7 @@ type GetCWEDetailWithMitigationsByIDRow struct {
 	CweID                 string         `json:"cwe_id"`
 	Title                 string         `json:"title"`
 	Description           string         `json:"description"`
+	OwaspTop10Category    sql.NullString `json:"owasp_top10_category"`
 	MitigationID          sql.NullString `json:"mitigation_id"`
 	Phase                 sql.NullString `json:"phase"`
 	MitigationDescription sql.NullString `json:"mitigation_description"`
@@ -111,6 +119,7 @@ func (q *Queries) GetCWEDetailWithMitigationsByID(ctx context.Context, cweID str
 			&i.CweID,
 			&i.Title,
 			&i.Description,
+			&i.OwaspTop10Category,
 			&i.MitigationID,
 			&i.Phase,
 			&i.MitigationDescription,

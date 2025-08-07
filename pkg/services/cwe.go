@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/dto"
 )
 
@@ -20,11 +21,12 @@ func NewCWEParser() *CWEParser {
 
 // ParsedCWE represents a parsed CWE weakness with calculated fields
 type ParsedCWE struct {
-	ID          string
-	Name        string
-	Description string
-	LastUpdated time.Time
-	Mitigations []ParsedMitigation
+	ID                 string
+	Name               string
+	Description        string
+	LastUpdated        time.Time
+	Mitigations        []ParsedMitigation
+	OwaspTop10Category string
 }
 
 // ParsedMitigation represents a parsed mitigation strategy
@@ -62,12 +64,16 @@ func (p *CWEParser) LoadCWE(filePath string) (map[string]ParsedCWE, error) {
 		// Parse mitigations
 		mitigations := p.parseMitigations(w.PotentialMitigations)
 
+		// Get OWASP Top 10 category
+		owaspCategory := enums.GetOwaspCategoryForCWE(cweID).String()
+
 		parsed := ParsedCWE{
-			ID:          cweID,
-			Name:        w.Name,
-			Description: w.Description,
-			LastUpdated: lastUpdated,
-			Mitigations: mitigations,
+			ID:                 cweID,
+			Name:               w.Name,
+			Description:        w.Description,
+			LastUpdated:        lastUpdated,
+			Mitigations:        mitigations,
+			OwaspTop10Category: owaspCategory,
 		}
 
 		result[cweID] = parsed
