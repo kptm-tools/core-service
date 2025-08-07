@@ -935,7 +935,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				assert.Equal(t, 3, resp.SeverityCounts.Medium)
 				assert.Equal(t, 4, resp.SeverityCounts.Low)
 				assert.Equal(t, titleVuln, resp.Vulnerabilities[0].Name)
-				assert.Equal(t, mitigationID, *resp.CWERemediations[0].MitigationID)
+				assert.Equal(t, mitigationID, *resp.Vulnerabilities[0].CWERemediations[0].MitigationID)
 				assert.Equal(t, 2, resp.WebVulnerabilities[0].InstancesCount)
 				assert.Equal(t, strconv.Itoa(serviceID), resp.WebVulnerabilities[0].ServiceID)
 				assert.Equal(t, titleWebVuln, resp.WebVulnerabilities[0].Title)

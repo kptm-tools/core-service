@@ -294,28 +294,28 @@ type ScanVulnerabilityDetectedServiceResponse struct {
 	TotalVulnerabilities int                       `json:"total_vulnerabilities"`
 	SeverityCounts       tools.SeverityCounts      `json:"severity_counts"`
 	Vulnerabilities      []ScanVulnerabilityItem   `json:"vulnerabilities"`
-	CWERemediations      []CWERemediation          `json:"remediations"`
 	References           []string                  `json:"references"`
 	WebVulnerabilities   []WebVulnerabilitySummary `json:"web_vulnerabilities"`
 }
 
 type ScanVulnerabilityItem struct {
-	ID             uuid.UUID             `json:"id"`
-	Name           string                `json:"name"`
-	Type           string                `json:"type"`
-	Severity       string                `json:"severity"`
-	MaxCVSS        float64               `json:"max_cvss"`
-	RiskScore      float64               `json:"risk_score"`
-	ImpactScore    float64               `json:"impact_score"`
-	Likelihood     string                `json:"likelihood"`
-	Access         string                `json:"access"`
-	Complexity     string                `json:"complexity"`
-	Privileges     string                `json:"privileges"`
-	Exploitability string                `json:"exploitability"`
-	Description    string                `json:"description"`
-	Comment        string                `json:"comment"`
-	VendorComments []tools.VendorComment `json:"vendor_comments"`
-	References     []string              `json:"references"`
+	ID              uuid.UUID             `json:"id"`
+	Name            string                `json:"name"`
+	Type            string                `json:"type"`
+	Severity        string                `json:"severity"`
+	MaxCVSS         float64               `json:"max_cvss"`
+	RiskScore       float64               `json:"risk_score"`
+	ImpactScore     float64               `json:"impact_score"`
+	Likelihood      string                `json:"likelihood"`
+	Access          string                `json:"access"`
+	Complexity      string                `json:"complexity"`
+	Privileges      string                `json:"privileges"`
+	Exploitability  string                `json:"exploitability"`
+	Description     string                `json:"description"`
+	Comment         string                `json:"comment"`
+	VendorComments  []tools.VendorComment `json:"vendor_comments"`
+	References      []string              `json:"references"`
+	CWERemediations []CWERemediation      `json:"remediations"`
 }
 
 type RegisterTenantResponse struct {
