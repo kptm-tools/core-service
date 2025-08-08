@@ -285,8 +285,7 @@ func GetHighestCVSSVulnerabilityOfType(vulns []tools.Vulnerability, vulnType enu
 			} else if vuln.BaseCVSSScore == maxCVSS && highestVuln != nil {
 				// If CVSS is the same, compare ID's (names) alphabetically
 				if vuln.CveID > highestVuln.CveID {
-					v := vuln // Create a copy to avoid loop variable issues
-					highestVuln = &v
+					highestVuln = &vuln
 				}
 			}
 		}
