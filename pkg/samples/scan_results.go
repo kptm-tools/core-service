@@ -141,17 +141,12 @@ func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment 
 
 func generateVuln(size int, fromDate time.Time) []tools.Vulnerability {
 	severityType, exploitableType, accessType, complexityType, privilegeRequiredType, likelihoodType, integrityImpact := generateDefaultEnumsVuln()
-	// Common CWE IDs that reference the pre-populated database
-	commonCWEIDs := []string{
-		"CWE-79", "CWE-89", "CWE-22", "CWE-352", "CWE-434",
-		"CWE-78", "CWE-601", "CWE-502", "CWE-287", "CWE-798",
-		"CWE-16", "CWE-327", "CWE-311", "CWE-918", "CWE-778",
-	}
+	realisticCWEIDs := RealisticCWEIDs()
 
 	vulns := make([]tools.Vulnerability, size)
 	for i := range vulns {
 		// Use realistic CWE IDs that reference the pre-populated knowledge base
-		randomCWEID := commonCWEIDs[gofakeit.IntRange(0, len(commonCWEIDs)-1)]
+		randomCWEID := realisticCWEIDs[gofakeit.IntRange(0, len(realisticCWEIDs)-1)]
 		vulns[i] = tools.Vulnerability{
 			ID:                 uuid.New(),
 			CveID:              "CVE-2024-" + fmt.Sprintf("%04d", gofakeit.Number(1, 9999)),
