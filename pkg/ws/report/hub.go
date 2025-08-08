@@ -15,6 +15,7 @@ import (
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	wshandlers "github.com/kptm-tools/core-service/pkg/ws/report/handlers"
+	"github.com/kptm-tools/core-service/pkg/ws/report/reportutils"
 	"github.com/kptm-tools/core-service/pkg/ws/utils"
 )
 
@@ -26,6 +27,7 @@ type ReportHub struct {
 	handlers    map[string]interfaces.IReportHandler
 	authService interfaces.IAuthService
 	scanService interfaces.IScanService
+	cweRepo     interfaces.CWERepository
 	rooms       *sync.Map
 }
 
@@ -39,6 +41,7 @@ func NewReportHub(
 	config *common.Config,
 	scanService interfaces.IScanService,
 	authService interfaces.IAuthService,
+	cweRepo interfaces.CWERepository,
 ) *ReportHub {
 	handlers := map[string]interfaces.IReportHandler{
 		dto.MessageInitialRequest.String(): wshandlers.NewInitialRequestHandler(scanService),
@@ -55,6 +58,7 @@ func NewReportHub(
 		handlers:    handlers,
 		authService: authService,
 		scanService: scanService,
+		cweRepo:     cweRepo,
 		rooms:       &sync.Map{},
 	}
 }
@@ -156,9 +160,16 @@ func (h *ReportHub) AddToRoom(scanID string) {
 			slog.Error("Failed to fetch vulnerabilities from DB when adding client to room", slog.Any("error", err))
 			return
 		}
-		room.Vulnerabilities = vulns
+		
+		// TODO: REFACTOR - This is a temporary solution using tools.Vulnerability
+		// Future implementations should use NetworkOSVulnerability and WebVulnerability domain objects
+		// with native GetOwaspCategory() methods instead of enhancing legacy structs.
+		// Enhance vulnerabilities with database-driven OWASP categories instead of using convoluted Type field
+		enhancedVulns := reportutils.EnhanceVulnerabilitiesWithDatabaseOwaspCategories(ctx, h.cweRepo, vulns)
+		
+		room.Vulnerabilities = enhancedVulns
 		room.AmountOfClients = 1
-		slog.Info("Vulnerabilities loaded for scanID", slog.String("scan_id", scanID))
+		slog.Info("Vulnerabilities loaded for scanID with database-driven OWASP categories", slog.String("scan_id", scanID))
 	} else {
 		room.AmountOfClients += 1
 		slog.Info("Increasing the amount of clients for scanID", slog.String("scan_id", scanID))
