@@ -71,10 +71,15 @@ func (c *ScanClient) ReadMessages() {
 		// in the connection
 		_, _, err := c.connection.ReadMessage()
 		if err != nil {
-			// If Connection is closed, we will Recieve an error here
+			// If Connection is closed, we will Receive an error here
 			// We only want to log Strange errors, but simple Disconnection
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				slog.Error("Error reading message", slog.String("client_id", c.ID), slog.Any("error", err))
+				slog.Error("Unexpected websocket close error",
+					slog.String("client_id", c.ID),
+					slog.Any("error", err))
+			} else {
+				slog.Debug("Client connection closed normally",
+					slog.String("client_id", c.ID))
 			}
 			break // Break the loop to close conn & Cleanup
 		}

@@ -32,10 +32,24 @@ func (h *InitialRequestHandler) Handle(msg common.Message, client interfaces.IRe
 		return customerrors.NewParseError("failed to unmarshal initialRequestMessage payload", err)
 	}
 
-	scanID, err := uuid.Parse(initialRequestMessage.ScanID)
-	if err != nil {
-		return customerrors.NewParseError("scanID is an invalid UUID", nil)
+	// Determine scanID - prefer payload for backward compatibility, fallback to client roomID
+	var scanIDStr string
+	if initialRequestMessage.ScanID != "" {
+		// Use scanID from payload (backward compatibility)
+		scanIDStr = initialRequestMessage.ScanID
+	} else {
+		// Fallback to client's roomID (new approach via query param)
+		scanIDStr = client.GetRoomID()
+		if scanIDStr == "" {
+			return customerrors.NewParseError("scanID not provided in payload and client has no roomID", nil)
+		}
 	}
+
+	scanID, err := uuid.Parse(scanIDStr)
+	if err != nil {
+		return customerrors.NewParseError("scanID is an invalid UUID", err)
+	}
+
 	client.GetHubReport().AddToRoom(scanID.String())
 	client.SetRoomID(scanID.String())
 	vulns := client.GetHubReport().GetRoomVulnerabilities(scanID.String())

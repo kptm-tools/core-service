@@ -11,7 +11,6 @@ import (
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	mock_services "github.com/kptm-tools/core-service/pkg/mocks/services"
-	mock_storage "github.com/kptm-tools/core-service/pkg/mocks/storage"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,10 +25,9 @@ func TestNewReportHub(t *testing.T) {
 	}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
 
 	// Act
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	// Assert
 	assert.NotNil(t, hub)
@@ -55,8 +53,7 @@ func TestReportHub_Register(t *testing.T) {
 	cfg := &common.Config{}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	mockClient := &MockReportClient{
 		id: "test-client-1",
@@ -76,8 +73,7 @@ func TestReportHub_Unregister(t *testing.T) {
 	cfg := &common.Config{}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	mockClient := &MockReportClient{
 		id: "test-client-1",
@@ -110,8 +106,7 @@ func TestReportHub_AddToRoom(t *testing.T) {
 		},
 	}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 
@@ -134,8 +129,7 @@ func TestReportHub_RemoveFromRoom(t *testing.T) {
 	cfg := &common.Config{}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 
@@ -161,8 +155,7 @@ func TestReportHub_RemoveFromRoom_LastClient(t *testing.T) {
 	cfg := &common.Config{}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 
@@ -191,8 +184,7 @@ func TestReportHub_GetRoomVulnerabilities(t *testing.T) {
 	cfg := &common.Config{}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 	expectedVulns := []tools.Vulnerability{
@@ -220,8 +212,7 @@ func TestReportHub_GetRoomVulnerabilities_NoRoom(t *testing.T) {
 	cfg := &common.Config{}
 	mockScanService := &mock_services.MockScanService{}
 	mockAuthService := &mock_services.MockAuthService{}
-	mockCWERepo := &mock_storage.MockCWERepo{}
-	hub := NewReportHub(cfg, mockScanService, mockAuthService, mockCWERepo)
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	scanID := "nonexistent-scan-id"
 

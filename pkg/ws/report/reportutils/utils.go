@@ -1,7 +1,6 @@
 package reportutils
 
 import (
-	"context"
 	"log/slog"
 	"slices"
 	"sort"
@@ -10,7 +9,6 @@ import (
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/dto"
-	"github.com/kptm-tools/core-service/pkg/interfaces"
 )
 
 type (
@@ -23,64 +21,6 @@ type (
 	// UniqueCVSSValuesByType maps each OwaspCategory to a set of its unique CVSS Scores.
 	UniqueCVSSValuesByType map[enums.OwaspCategory]uniqueCVSSValues
 )
-
-// TODO: REFACTOR - This function is a temporary solution for the websocket layer
-// Future implementations should call a field in the NetworkOSVulnerability or WebVulnerability 
-// domain objects that references the OWASP category directly. Once the websocket layer is 
-// updated to use proper domain objects (NetworkOSVulnerability, WebVulnerability), 
-// this function should be DELETED.
-
-// GetOwaspCategoryFromCWE retrieves the OWASP Top 10 category for a vulnerability using its CWE ID
-// from the database. This replaces the runtime mapping with database-driven categories.
-func GetOwaspCategoryFromCWE(ctx context.Context, cweRepo interfaces.CWERepository, cweID string) enums.OwaspCategory {
-	if cweID == "" {
-		return enums.OwaspCategoryNoInfo
-	}
-	
-	cweDetail, err := cweRepo.GetCWEByID(ctx, cweID)
-	if err != nil {
-		slog.Debug("Could not find CWE in database, using NoInfo category", 
-			slog.String("cwe_id", cweID), 
-			slog.Any("error", err))
-		return enums.OwaspCategoryNoInfo
-	}
-	
-	if cweDetail.OwaspTop10Category == "" {
-		slog.Debug("CWE has no OWASP category mapping, using Other", 
-			slog.String("cwe_id", cweID))
-		return enums.OwaspCategoryOther
-	}
-	
-	// Parse the OWASP category from database
-	owaspCategory, ok := enums.ParseOwaspCategory(cweDetail.OwaspTop10Category)
-	if !ok {
-		slog.Warn("Invalid OWASP category in database, using Other", 
-			slog.String("cwe_id", cweID), 
-			slog.String("owasp_category", cweDetail.OwaspTop10Category))
-		return enums.OwaspCategoryOther
-	}
-	
-	return owaspCategory
-}
-
-// TODO: REFACTOR - This function is a temporary solution for the websocket layer
-// Future implementations should use NetworkOSVulnerability and WebVulnerability domain objects
-// directly, which will have GetOwaspCategory() methods. Once refactored, DELETE this function.
-
-// EnhanceVulnerabilitiesWithDatabaseOwaspCategories updates vulnerability OWASP categories
-// using database-driven CWE mappings instead of the convoluted Type field.
-func EnhanceVulnerabilitiesWithDatabaseOwaspCategories(ctx context.Context, cweRepo interfaces.CWERepository, vulns []tools.Vulnerability) []tools.Vulnerability {
-	enhancedVulns := make([]tools.Vulnerability, len(vulns))
-	
-	for i, vuln := range vulns {
-		enhancedVuln := vuln // Copy the vulnerability
-		// Replace the convoluted Type field with database-driven OWASP category
-		enhancedVuln.Type = GetOwaspCategoryFromCWE(ctx, cweRepo, vuln.CweID)
-		enhancedVulns[i] = enhancedVuln
-	}
-	
-	return enhancedVulns
-}
 
 // BuildVulnerabilityTypeData processes a slice of vulnerabilities to calculate and format data for the initial report response.
 // It calculates the highest CVSS score, count, percentage, and unique CVSS values for each vulnerability type,
