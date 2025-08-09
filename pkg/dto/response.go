@@ -271,13 +271,14 @@ type ScanVulnerabilityDetectedOSResponse struct {
 }
 
 type WebVulnerabilitySummary struct {
-	VulnerabilityID string `json:"vulnerability_id"`
-	ScanID          string `json:"scan_id"`
-	HostID          string `json:"host_id"`
-	ServiceID       string `json:"service_id"`
-	Title           string `json:"title"`
-	Severity        string `json:"severity"`
-	InstancesCount  int    `json:"instances_count"`
+	VulnerabilityID string                            `json:"vulnerability_id"`
+	ScanID          string                            `json:"scan_id"`
+	HostID          string                            `json:"host_id"`
+	ServiceID       string                            `json:"service_id"`
+	Title           string                            `json:"title"`
+	Severity        string                            `json:"severity"`
+	InstancesCount  int                               `json:"instances_count"`
+	CWERemediations []domain.CWEDetailWithMitigations `json:"remediations"`
 }
 
 type ScanVulnerabilityDetectedServiceResponse struct {
@@ -294,28 +295,28 @@ type ScanVulnerabilityDetectedServiceResponse struct {
 	TotalVulnerabilities int                       `json:"total_vulnerabilities"`
 	SeverityCounts       tools.SeverityCounts      `json:"severity_counts"`
 	Vulnerabilities      []ScanVulnerabilityItem   `json:"vulnerabilities"`
-	CWERemediations      []CWERemediation          `json:"remediations"`
 	References           []string                  `json:"references"`
 	WebVulnerabilities   []WebVulnerabilitySummary `json:"web_vulnerabilities"`
 }
 
 type ScanVulnerabilityItem struct {
-	ID             uuid.UUID             `json:"id"`
-	Name           string                `json:"name"`
-	Type           string                `json:"type"`
-	Severity       string                `json:"severity"`
-	MaxCVSS        float64               `json:"max_cvss"`
-	RiskScore      float64               `json:"risk_score"`
-	ImpactScore    float64               `json:"impact_score"`
-	Likelihood     string                `json:"likelihood"`
-	Access         string                `json:"access"`
-	Complexity     string                `json:"complexity"`
-	Privileges     string                `json:"privileges"`
-	Exploitability string                `json:"exploitability"`
-	Description    string                `json:"description"`
-	Comment        string                `json:"comment"`
-	VendorComments []tools.VendorComment `json:"vendor_comments"`
-	References     []string              `json:"references"`
+	ID              uuid.UUID             `json:"id"`
+	Name            string                `json:"name"`
+	Type            string                `json:"type"`
+	Severity        string                `json:"severity"`
+	MaxCVSS         float64               `json:"max_cvss"`
+	RiskScore       float64               `json:"risk_score"`
+	ImpactScore     float64               `json:"impact_score"`
+	Likelihood      string                `json:"likelihood"`
+	Access          string                `json:"access"`
+	Complexity      string                `json:"complexity"`
+	Privileges      string                `json:"privileges"`
+	Exploitability  string                `json:"exploitability"`
+	Description     string                `json:"description"`
+	Comment         string                `json:"comment"`
+	VendorComments  []tools.VendorComment `json:"vendor_comments"`
+	References      []string              `json:"references"`
+	CWERemediations []CWERemediation      `json:"remediations"`
 }
 
 type RegisterTenantResponse struct {
@@ -524,17 +525,18 @@ type HostResponse struct {
 // ScanWebVulnerabilityResponse is the DTO for a Web Vulnerability
 // associated to a scan.
 type ScanWebVulnerabilityResponse struct {
-	VulnID         string                            `json:"vulnerability_id"`
-	ScanID         string                            `json:"scan_id"`
-	HostID         string                            `json:"host_id"`
-	SolutionAdvice string                            `json:"solution_advice"`
-	ServiceID      string                            `json:"service_id"`
-	CreatedAt      *time.Time                        `json:"created_at"`
-	UpdatedAt      *time.Time                        `json:"updated_at"`
-	Instances      []domain.WebVulnerabilityInstance `json:"instances"`
-	Reference      string                            `json:"reference"`
-	CweID          string                            `json:"cwe_id"`
-	WascID         string                            `json:"wasc_id"`
+	VulnID          string                            `json:"vulnerability_id"`
+	ScanID          string                            `json:"scan_id"`
+	HostID          string                            `json:"host_id"`
+	SolutionAdvice  string                            `json:"solution_advice"`
+	ServiceID       string                            `json:"service_id"`
+	CreatedAt       *time.Time                        `json:"created_at"`
+	UpdatedAt       *time.Time                        `json:"updated_at"`
+	Instances       []domain.WebVulnerabilityInstance `json:"instances"`
+	Reference       string                            `json:"reference"`
+	CweID           string                            `json:"cwe_id"`
+	WascID          string                            `json:"wasc_id"`
+	CWERemediations []domain.CWEDetailWithMitigations `json:"remediations"`
 }
 
 func NewHostResponse(host domain.Host) HostResponse {
@@ -755,17 +757,18 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 
 func ConvertDomWebVulnToDtoWebVuln(vulnerability domain.WebVulnerability) ScanWebVulnerabilityResponse {
 	return ScanWebVulnerabilityResponse{
-		VulnID:         vulnerability.VulnerabilityID.String(),
-		ScanID:         vulnerability.ScanID.String(),
-		HostID:         vulnerability.HostID.String(),
-		SolutionAdvice: vulnerability.SolutionAdvice,
-		ServiceID:      strconv.Itoa(int(vulnerability.ServiceID)),
-		CreatedAt:      vulnerability.CreatedAt,
-		UpdatedAt:      vulnerability.UpdatedAt,
-		Instances:      vulnerability.Instances,
-		Reference:      vulnerability.Reference,
-		CweID:          vulnerability.CweID,
-		WascID:         vulnerability.WascID,
+		VulnID:          vulnerability.VulnerabilityID.String(),
+		ScanID:          vulnerability.ScanID.String(),
+		HostID:          vulnerability.HostID.String(),
+		SolutionAdvice:  vulnerability.SolutionAdvice,
+		ServiceID:       strconv.Itoa(int(vulnerability.ServiceID)),
+		CreatedAt:       vulnerability.CreatedAt,
+		UpdatedAt:       vulnerability.UpdatedAt,
+		Instances:       vulnerability.Instances,
+		Reference:       vulnerability.Reference,
+		CweID:           vulnerability.CweID,
+		WascID:          vulnerability.WascID,
+		CWERemediations: vulnerability.CWERemediations,
 	}
 }
 
@@ -780,6 +783,7 @@ func ConvertToWebVulnSummaryToResponse(results []domain.WebVulnerability) []WebV
 			Title:           r.Title,
 			Severity:        r.Severity,
 			InstancesCount:  len(r.Instances),
+			CWERemediations: r.CWERemediations,
 		}
 	}
 	return summaries
