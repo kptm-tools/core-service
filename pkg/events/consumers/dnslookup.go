@@ -72,8 +72,17 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			slog.Error("Panic recovered in DNSLookupHandler", "panic", r, "stack", string(debug.Stack()))
 		}
 	}()
-
-	h.queue <- msg
+	// Try to send to job queue with timeout
+	timer := time.NewTimer(100 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case h.queue <- msg:
+		h.queueDepth.Add(1)
+	case <-timer.C:
+		// Queue is full, drop the message and increment dropped metric
+		h.dropped.Add(1)
+		slog.Warn("DNSLookupHandler queue full, dropping message")
+	}
 }
 
 func (h *DNSLookupHandler) processDNSLookupEventRoutine(ctx context.Context, data []byte) {

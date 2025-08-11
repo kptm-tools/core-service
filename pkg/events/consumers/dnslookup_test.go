@@ -418,3 +418,52 @@ func BenchmarkEventProcessing(b *testing.B) {
 		})
 	}
 }
+
+func TestBackpressureHandling_DNSLookup(t *testing.T) {
+	// This is an integration test that verifies system behavior under load
+	// It ensures our backpressure mechanisms work correctly
+	workerCount := 2
+	var wg sync.WaitGroup
+	eventCount := 50
+	wg.Add(eventCount)
+	scanService := &mock_services.MockScanService{
+		MockGetScanByID: func(ctx context.Context, id uuid.UUID) (*domain.Scan, error) {
+			return &domain.Scan{
+				ID:     id,
+				Status: "InProgress",
+			}, nil
+		},
+		MockInsertScanResult: func(ctx context.Context, sr domain.ScanResult) error {
+			time.Sleep(200 * time.Millisecond)
+			return nil
+		},
+	}
+	handler := NewDNSLookupHandler(scanService, workerCount)
+	for i := 0; i < eventCount; i++ {
+		go func(id int) {
+			defer wg.Done()
+			msg := &nats.Msg{
+				Subject: "",
+				Reply:   "",
+				Header:  nil,
+				Data: []byte(`{
+						"scan_id": "dfa86ed2-5601-4dec-be89-97a16a579dfb",
+						"ToolResult": {
+							"tool_name": "DNSLookup",
+							"result": null,
+							"timestamp": "2025-07-07T12:34:56Z"
+						}
+					}`),
+				Sub: nil,
+			}
+			handler.HandleMessage(msg)
+		}(i)
+	}
+	wg.Wait()
+
+	// Verify metrics are accurate
+	metrics := handler.GetMetrics()
+	// Verify backpressure was applied
+	assert.Greater(t, metrics["dropped"], uint64(0),
+		"Expected some events to be dropped due to backpressure")
+}
