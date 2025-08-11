@@ -16,11 +16,11 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// DNSLookupHandler struct con un canal de worker pool
+// DNSLookupHandler struct contains attributes to handle worker pool pattern
 type DNSLookupHandler struct {
 	scanService interfaces.IScanService
-	workers     int            // Número de workers
-	queue       chan *nats.Msg // La cola de trabajo
+	workers     int            // number of workers
+	queue       chan *nats.Msg // jobQueue
 
 	// Metrics
 	processed  atomic.Uint64
@@ -29,12 +29,13 @@ type DNSLookupHandler struct {
 	queueDepth atomic.Int32
 }
 
-// NewDNSLookupHandler ahora toma como argumento el numero de workers
+// NewDNSLookupHandler contains also the worker number
 func NewDNSLookupHandler(scanService interfaces.IScanService, workers int) *DNSLookupHandler {
+	bufferSize := workers * 2
 	handler := &DNSLookupHandler{
 		scanService: scanService,
 		workers:     workers,
-		queue:       make(chan *nats.Msg, workers), // Ojo que es un canal **BUFFERED** para evitar bloqueos
+		queue:       make(chan *nats.Msg, bufferSize), //  **BUFFERED** channel to avoid blocking
 	}
 	handler.startWorkers()
 	return handler
@@ -42,13 +43,12 @@ func NewDNSLookupHandler(scanService interfaces.IScanService, workers int) *DNSL
 
 var _ interfaces.EventConsumer = (*DNSLookupHandler)(nil)
 
-// startWorkers lanza todas las corutinas de los workers.
-// Estos se quedan "esperando" a que les llegue trabajo!
+// startWorkers launch all goroutines for workers, these are there until new work arrive
 func (h *DNSLookupHandler) startWorkers() {
 	for i := 0; i < h.workers; i++ {
 		go func() {
 			for msg := range h.queue {
-				// ... lógica de procesamiento (igualito al processDNSLookupEventRoutine de antes)
+				// processing logic
 				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
 				err := h.processDNSLookupEvent(ctx, msg.Data)
 				cancel()
@@ -72,6 +72,7 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 			slog.Error("Panic recovered in DNSLookupHandler", "panic", r, "stack", string(debug.Stack()))
 		}
 	}()
+	slog.Info("Received DNSLookupEvent")
 	// Try to send to job queue with timeout
 	timer := time.NewTimer(100 * time.Millisecond)
 	defer timer.Stop()
@@ -149,10 +150,10 @@ func (h *DNSLookupHandler) processDNSLookupEvent(ctx context.Context, data []byt
 // GetMetrics getters for monitoring
 func (h *DNSLookupHandler) GetMetrics() map[string]interface{} {
 	return map[string]interface{}{
-		"processed":   h.processed.Load(),
-		"failed":      h.failed.Load(),
-		"dropped":     h.dropped.Load(),
-		"queuedepth":  h.queueDepth.Load(),
-		"workercount": h.workers,
+		"processed":    h.processed.Load(),
+		"failed":       h.failed.Load(),
+		"dropped":      h.dropped.Load(),
+		"queue_depth":  h.queueDepth.Load(),
+		"worker_count": h.workers,
 	}
 }
