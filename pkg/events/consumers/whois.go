@@ -53,10 +53,10 @@ func (h *WhoIsHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("Error processing DNSLookupEvent", "error", err)
+					slog.Error("WhoIsEvent incrementing metric of failed")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("DNSLookupEvent handled successfully")
+					slog.Debug("WhoIsEvent incrementing metric of processed")
 				}
 			}
 		}()

@@ -49,10 +49,10 @@ func (h *ScanFailedHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("Error processing DNSLookupEvent", "error", err)
+					slog.Error("ScanFailedEvent incrementing metric of failed")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("DNSLookupEvent handled successfully")
+					slog.Debug("ScanFailedEvent incrementing metric of processed")
 				}
 			}
 		}()

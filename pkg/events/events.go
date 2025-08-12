@@ -18,7 +18,7 @@ func SetupEventBus(
 	dnsLookupHandler := consumers.NewDNSLookupHandler(scanService, 1)
 	harvesterHandler := consumers.NewHarvesterHandler(scanService, 1)
 
-	nmapHandler := consumers.NewNmapHandler(scanService, vulnService)
+	nmapHandler := consumers.NewNmapHandler(scanService, vulnService, 1)
 	webScanHandler := consumers.NewWebScanHandler(scanService, vulnService)
 
 	scanFailedHandler := consumers.NewScanFailedHandler(scanService, 1)

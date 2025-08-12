@@ -53,10 +53,10 @@ func (h *HarvesterHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("Error processing DNSLookupEvent", "error", err)
+					slog.Error("HarvesterEvent incrementing metric of failed")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("DNSLookupEvent handled successfully")
+					slog.Debug("HarvesterEvent incrementing metric of processed")
 				}
 			}
 		}()
