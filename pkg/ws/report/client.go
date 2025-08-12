@@ -59,7 +59,6 @@ func (c *ReportClient) ReadMessages() {
 		messageType, payload, err := c.connection.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				c.GetHubReport().RemoveFromRoom(c.roomID)
 				slog.Error("Unexpected websocket close error",
 					slog.String("client_id", c.ID),
 					slog.String("room_id", c.roomID),
@@ -68,6 +67,10 @@ func (c *ReportClient) ReadMessages() {
 				slog.Debug("Client connection closed normally",
 					slog.String("client_id", c.ID),
 					slog.String("room_id", c.roomID))
+			}
+			// Always try to remove from room on disconnect, but handle empty room ID gracefully
+			if c.roomID != "" {
+				c.GetHubReport().RemoveFromRoom(c.roomID)
 			}
 			break
 		}

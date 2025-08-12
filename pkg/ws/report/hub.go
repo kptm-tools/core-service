@@ -171,19 +171,32 @@ func (h *ReportHub) AddToRoom(scanID string) {
 }
 
 func (h *ReportHub) RemoveFromRoom(scanID string) {
-	roomInterface, _ := h.rooms.Load(scanID)
+	if scanID == "" {
+		slog.Debug("RemoveFromRoom called with empty scanID, skipping")
+		return
+	}
+
+	roomInterface, exists := h.rooms.Load(scanID)
+	if !exists {
+		slog.Debug("Room not found for scanID", slog.String("scanID", scanID))
+		return
+	}
+
 	room, ok := roomInterface.(*ReportRoom)
+	if !ok {
+		slog.Error("Hub's room is not of type ReportRoom", slog.String("scanID", scanID))
+		return
+	}
+
 	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
-	if ok {
-		room.mu.Lock()
-		defer room.mu.Unlock()
-		slog.Info("Removing client from room", slog.String("scanID", scanID))
-		room.AmountOfClients = room.AmountOfClients - 1
-		h.rooms.Store(scanID, room)
-		if room.AmountOfClients == 0 {
-			slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
-			ExecuteAfterDelay(5*time.Second, scanID, h)
-		}
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	slog.Info("Removing client from room", slog.String("scanID", scanID))
+	room.AmountOfClients = room.AmountOfClients - 1
+	h.rooms.Store(scanID, room)
+	if room.AmountOfClients == 0 {
+		slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
+		ExecuteAfterDelay(5*time.Second, scanID, h)
 	}
 }
 
