@@ -138,6 +138,7 @@ audit: test test/cwe
 test:
 	go test -v -race -buildvcs ./...
 
+
 ## test/cwe: validate CWE JSON parsing
 .PHONY: test/cwe
 test/cwe:
@@ -149,4 +150,7 @@ test/cover:
 	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
 	go tool cover -html=/tmp/coverage.out
 
-
+## test/bench: run all benchmark tests
+.PHONY: test/bench
+test/bench:
+	go test -bench=. -benchmem ./...

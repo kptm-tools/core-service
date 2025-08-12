@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -17,13 +18,56 @@ import (
 
 type HarvesterHandler struct {
 	scanService interfaces.IScanService
+	workers     int            // number of workers
+	queue       chan *nats.Msg // jobQueue
+
+	// Metrics
+	// processed: Number of events successfully processed by the handler
+	processed atomic.Uint64
+	// failed: Number of events that failed during processing
+	failed atomic.Uint64
+	// dropped: Number of events dropped due to full queue/backpressure
+	dropped atomic.Uint64
+	// queueDepth: Current number of events waiting in the queue
+	queueDepth atomic.Int32
 }
 
-func NewHarvesterHandler(scanService interfaces.IScanService) *HarvesterHandler {
-	return &HarvesterHandler{scanService: scanService}
+func NewHarvesterHandler(scanService interfaces.IScanService, workers int) *HarvesterHandler {
+	bufferSize := workers * 2
+	handler := &HarvesterHandler{
+		scanService: scanService,
+		workers:     workers,
+		queue:       make(chan *nats.Msg, bufferSize), //  **BUFFERED** channel to avoid blocking
+	}
+	handler.startWorkers()
+	return handler
 }
 
 var _ interfaces.EventConsumer = (*HarvesterHandler)(nil)
+
+// startWorkers launch all goroutines for workers, these are there until new work arrive
+func (h *HarvesterHandler) startWorkers() {
+	for i := 0; i < h.workers; i++ {
+		go func() {
+			for msg := range h.queue {
+				// Update queue depth metric
+				h.queueDepth.Add(-1)
+				// processing logic
+				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+				err := h.processHarvesterEvent(ctx, msg.Data)
+				cancel()
+
+				if err != nil {
+					h.failed.Add(1)
+					slog.Error("HarvesterHandler incrementing FAILED metric")
+				} else {
+					h.processed.Add(1)
+					slog.Debug("HarvesterHandler incrementing PROCESSED metric")
+				}
+			}
+		}()
+	}
+}
 
 func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
@@ -32,10 +76,17 @@ func (h *HarvesterHandler) HandleMessage(msg *nats.Msg) {
 		}
 	}()
 	slog.Info("Received HarvesterEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
-	defer cancel()
-	go h.processHarvesterEventRoutine(ctx, msg.Data)
-	<-ctx.Done()
+	// Try to send to job queue with timeout
+	timer := time.NewTimer(100 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case h.queue <- msg:
+		h.queueDepth.Add(1)
+	case <-timer.C:
+		// Queue is full, drop the message and increment dropped metric
+		h.dropped.Add(1)
+		slog.Warn("HarvesterEvent queue full, dropping message")
+	}
 }
 
 func (h *HarvesterHandler) processHarvesterEventRoutine(ctx context.Context, data []byte) {
@@ -99,4 +150,15 @@ func (h *HarvesterHandler) processHarvesterEvent(ctx context.Context, data []byt
 
 	slog.Debug("HarvesterEvent handled successfully")
 	return nil
+}
+
+// GetMetrics getters for monitoring
+func (h *HarvesterHandler) GetMetrics() map[string]interface{} {
+	return map[string]interface{}{
+		"processed":    h.processed.Load(),
+		"failed":       h.failed.Load(),
+		"dropped":      h.dropped.Load(),
+		"queue_depth":  h.queueDepth.Load(),
+		"worker_count": h.workers,
+	}
 }

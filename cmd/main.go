@@ -93,7 +93,7 @@ func main() {
 	reportHub := report.NewReportHub(wsConfig, scanService, authService)
 
 	// Event Subscriptions
-	if err := events.SetupEventBus(eventBus, scanService, vulnService); err != nil {
+	if err := events.SetupEventBus(c, eventBus, scanService, vulnService); err != nil {
 		slog.Error("Failed to set up Event Bus", slog.Any("error", err))
 	}
 

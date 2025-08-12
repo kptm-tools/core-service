@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -15,16 +16,62 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// DNSLookupHandler struct contains attributes to handle worker pool pattern
 type DNSLookupHandler struct {
 	scanService interfaces.IScanService
+	workers     int            // number of workers
+	queue       chan *nats.Msg // jobQueue
+
+	// Metrics
+	// processed: Number of events successfully processed by the handler
+	processed atomic.Uint64
+	// failed: Number of events that failed during processing
+	failed atomic.Uint64
+	// dropped: Number of events dropped due to full queue/backpressure
+	dropped atomic.Uint64
+	// queueDepth: Current number of events waiting in the queue
+	queueDepth atomic.Int32
 }
 
-func NewDNSLookupHandler(scanService interfaces.IScanService) *DNSLookupHandler {
-	return &DNSLookupHandler{scanService: scanService}
+// NewDNSLookupHandler contains also the worker number
+func NewDNSLookupHandler(scanService interfaces.IScanService, workers int) *DNSLookupHandler {
+	bufferSize := workers * 2
+	handler := &DNSLookupHandler{
+		scanService: scanService,
+		workers:     workers,
+		queue:       make(chan *nats.Msg, bufferSize), //  **BUFFERED** channel to avoid blocking
+	}
+	handler.startWorkers()
+	return handler
 }
 
 var _ interfaces.EventConsumer = (*DNSLookupHandler)(nil)
 
+// startWorkers launch all goroutines for workers, these are there until new work arrive
+func (h *DNSLookupHandler) startWorkers() {
+	for i := 0; i < h.workers; i++ {
+		go func() {
+			for msg := range h.queue {
+				// processing logic
+				// Update queue depth metric
+				h.queueDepth.Add(-1)
+				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+				err := h.processDNSLookupEvent(ctx, msg.Data)
+				cancel()
+
+				if err != nil {
+					h.failed.Add(1)
+					slog.Debug("DNSLookupEventHandler incrementing FAILED metric")
+				} else {
+					h.processed.Add(1)
+					slog.Debug("DNSLookupEventHandler incrementing PROCESSED metric")
+				}
+			}
+		}()
+	}
+}
+
+// HandleMessage add work to the queue, from which works are always listening.
 func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -32,10 +79,17 @@ func (h *DNSLookupHandler) HandleMessage(msg *nats.Msg) {
 		}
 	}()
 	slog.Info("Received DNSLookupEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
-	defer cancel()
-	go h.processDNSLookupEventRoutine(ctx, msg.Data)
-	<-ctx.Done()
+	// Try to send to job queue with timeout
+	timer := time.NewTimer(100 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case h.queue <- msg:
+		h.queueDepth.Add(1)
+	case <-timer.C:
+		// Queue is full, drop the message and increment dropped metric
+		h.dropped.Add(1)
+		slog.Warn("DNSLookupHandler queue full, dropping message")
+	}
 }
 
 func (h *DNSLookupHandler) processDNSLookupEventRoutine(ctx context.Context, data []byte) {
@@ -97,4 +151,15 @@ func (h *DNSLookupHandler) processDNSLookupEvent(ctx context.Context, data []byt
 
 	slog.Debug("DNSLookupEvent handled successfully")
 	return nil
+}
+
+// GetMetrics getters for monitoring
+func (h *DNSLookupHandler) GetMetrics() map[string]interface{} {
+	return map[string]interface{}{
+		"processed":    h.processed.Load(),
+		"failed":       h.failed.Load(),
+		"dropped":      h.dropped.Load(),
+		"queue_depth":  h.queueDepth.Load(),
+		"worker_count": h.workers,
+	}
 }
