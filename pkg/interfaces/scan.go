@@ -69,9 +69,9 @@ type ScanRepository interface {
 	UpdateProtectionScore(ctx context.Context, scanID uuid.UUID, newScore float64) error
 	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus) error
 	UpdateScanStatusAndEndedAt(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus, endedAt time.Time) error
-	GetScanResultsByScanID(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error)
 }
 
 type ScanResultRepository interface {
 	CreateScanResult(context.Context, domain.ScanResult) error
+	GetScanResultsByScanID(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error)
 }

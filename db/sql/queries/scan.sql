@@ -384,6 +384,3 @@ UNION ALL
 SELECT * FROM service_assets
 ORDER BY host_id, asset_type, created_at;
 
--- name: GetScanResultsByScanID :many
-SELECT result FROM scan_results where scan_id=$1 and tool=ANY($2) and success=true;
-

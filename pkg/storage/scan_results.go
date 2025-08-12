@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	tools2 "github.com/kptm-tools/common/common/pkg/results/tools"
 
 	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -46,4 +48,30 @@ func (r *ScanResultsRepo) CreateScanResult(ctx context.Context, sr domain.ScanRe
 	queries.CreateScanResult(ctx, params)
 
 	return nil
+}
+
+func (r *ScanResultsRepo) GetScanResultsByScanID(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error) {
+	queries := r.getQueries(ctx)
+
+	params := repository.GetScanResultsByScanIDParams{
+		ScanID:  scanID,
+		Column2: make([]repository.ToolEnum, 0, len(tools)),
+	}
+	for _, t := range tools {
+		params.Column2 = append(params.Column2, repository.ToolEnum(t))
+	}
+	dbResults, err := queries.GetScanResultsByScanID(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	scanResults := make([]domain.ScanResult, len(dbResults))
+	for i, db := range dbResults {
+		scanResults[i] = domain.ScanResult{
+			ScanID:  db.ScanID,
+			Success: db.Success,
+			Result:  tools2.ToolResult{},
+		}
+	}
+	return scanResults, nil
 }
