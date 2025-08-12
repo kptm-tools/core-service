@@ -18,12 +18,12 @@ WITH aggregated_vulnerabilities AS (
 SELECT
 	s_cte.id AS scan_id,
 	COUNT(v.id) AS total_vulnerabilities_count,
-	SUM(CASE WHEN v.severity = 'Critical' THEN 1 ELSE 0 END) AS critical_count,
-	SUM(CASE WHEN v.severity = 'High' THEN 1 ELSE 0 END) AS high_count,
-	SUM(CASE WHEN v.severity = 'Medium' THEN 1 ELSE 0 END) AS medium_count,
-	SUM(CASE WHEN v.severity = 'Low' THEN 1 ELSE 0 END) AS low_count,
-	SUM(CASE WHEN v.severity = 'None' THEN 1 ELSE 0 END) AS none_count,
-	SUM(CASE WHEN v.severity = 'Unknown' THEN 1 ELSE 0 END) AS unknown_count
+	SUM(CASE WHEN v.severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical_count,
+	SUM(CASE WHEN v.severity = 'HIGH' THEN 1 ELSE 0 END) AS high_count,
+	SUM(CASE WHEN v.severity = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_count,
+	SUM(CASE WHEN v.severity = 'LOW' THEN 1 ELSE 0 END) AS low_count,
+	SUM(CASE WHEN v.severity = 'NONE' THEN 1 ELSE 0 END) AS none_count,
+	SUM(CASE WHEN v.severity = 'UNKNOWN' THEN 1 ELSE 0 END) AS unknown_count
 FROM
 	scans s_cte
 LEFT JOIN
