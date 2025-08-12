@@ -14,14 +14,14 @@ func SetupEventBus(
 ) error {
 	// Initialize individual consumers
 
-	whoIsEventHandler := consumers.NewWhoIsHandler(scanService)
+	whoIsEventHandler := consumers.NewWhoIsHandler(scanService, 1)
 	dnsLookupHandler := consumers.NewDNSLookupHandler(scanService, 1)
 	harvesterHandler := consumers.NewHarvesterHandler(scanService, 1)
 
 	nmapHandler := consumers.NewNmapHandler(scanService, vulnService)
 	webScanHandler := consumers.NewWebScanHandler(scanService, vulnService)
 
-	scanFailedHandler := consumers.NewScanFailedHandler(scanService)
+	scanFailedHandler := consumers.NewScanFailedHandler(scanService, 1)
 
 	err := eventBus.Subscribe(string(enums.DNSLookupEventSubject), dnsLookupHandler.HandleMessage)
 	if err != nil {

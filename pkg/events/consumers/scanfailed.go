@@ -3,24 +3,61 @@ package consumers
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
-	"runtime/debug"
-	"time"
-
 	"github.com/kptm-tools/common/common/pkg/events"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/nats-io/nats.go"
+	"log/slog"
+	"runtime/debug"
+	"sync/atomic"
+	"time"
 )
 
 type ScanFailedHandler struct {
 	scanService interfaces.IScanService
+	workers     int            // number of workers
+	queue       chan *nats.Msg // jobQueue
+
+	// Metrics
+	processed  atomic.Uint64
+	failed     atomic.Uint64
+	dropped    atomic.Uint64
+	queueDepth atomic.Int32
 }
 
-func NewScanFailedHandler(scanService interfaces.IScanService) *ScanFailedHandler {
-	return &ScanFailedHandler{scanService: scanService}
+func NewScanFailedHandler(scanService interfaces.IScanService, workers int) *ScanFailedHandler {
+	bufferSize := workers * 2
+	handler := &ScanFailedHandler{
+		scanService: scanService,
+		workers:     workers,
+		queue:       make(chan *nats.Msg, bufferSize), //  **BUFFERED** channel to avoid blocking
+	}
+	handler.startWorkers()
+	return handler
 }
 
 var _ interfaces.EventConsumer = (*ScanFailedHandler)(nil)
+
+// startWorkers launch all goroutines for workers, these are there until new work arrive
+func (h *ScanFailedHandler) startWorkers() {
+	for i := 0; i < h.workers; i++ {
+		go func() {
+			for msg := range h.queue {
+				// processing logic
+				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+				err := h.processScanFailedEvent(ctx, msg.Data)
+				cancel()
+
+				if err != nil {
+					h.failed.Add(1)
+					slog.Error("Error processing DNSLookupEvent", "error", err)
+				} else {
+					h.processed.Add(1)
+					slog.Debug("DNSLookupEvent handled successfully")
+				}
+			}
+		}()
+	}
+}
 
 func (h *ScanFailedHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
@@ -29,10 +66,17 @@ func (h *ScanFailedHandler) HandleMessage(msg *nats.Msg) {
 		}
 	}()
 	slog.Info("Received ScanFailedEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
-	defer cancel()
-	go h.processScanFailedEventRoutine(ctx, msg.Data)
-	<-ctx.Done()
+	// Try to send to job queue with timeout
+	timer := time.NewTimer(100 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case h.queue <- msg:
+		h.queueDepth.Add(1)
+	case <-timer.C:
+		// Queue is full, drop the message and increment dropped metric
+		h.dropped.Add(1)
+		slog.Warn("ScanFailedEvent queue full, dropping message")
+	}
 }
 
 func (h *ScanFailedHandler) processScanFailedEventRoutine(ctx context.Context, data []byte) {
@@ -68,4 +112,15 @@ func (h *ScanFailedHandler) processScanFailedEvent(ctx context.Context, data []b
 		return err
 	}
 	return nil
+}
+
+// GetMetrics getters for monitoring
+func (h *ScanFailedHandler) GetMetrics() map[string]interface{} {
+	return map[string]interface{}{
+		"processed":    h.processed.Load(),
+		"failed":       h.failed.Load(),
+		"dropped":      h.dropped.Load(),
+		"queue_depth":  h.queueDepth.Load(),
+		"worker_count": h.workers,
+	}
 }
