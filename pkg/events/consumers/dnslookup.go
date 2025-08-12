@@ -57,10 +57,10 @@ func (h *DNSLookupHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Debug("DNSLookupEvent incrementing metric of failed")
+					slog.Debug("DNSLookupEventHandler incrementing FAILED metric")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("DNSLookupEvent incrementing metric of processed")
+					slog.Debug("DNSLookupEventHandler incrementing PROCESSED metric")
 				}
 			}
 		}()

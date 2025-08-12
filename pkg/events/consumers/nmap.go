@@ -63,10 +63,10 @@ func (h *NmapHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("NmapEvent incrementing metric of failed")
+					slog.Error("NmapHandler incrementing FAILED metric")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("NmapEvent incrementing metric of processed")
+					slog.Debug("NmapHandler incrementing  PROCESSED metric")
 				}
 			}
 		}()

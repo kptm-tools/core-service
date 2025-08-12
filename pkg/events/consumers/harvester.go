@@ -55,10 +55,10 @@ func (h *HarvesterHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("HarvesterEvent incrementing metric of failed")
+					slog.Error("HarvesterHandler incrementing FAILED metric")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("HarvesterEvent incrementing metric of processed")
+					slog.Debug("HarvesterHandler incrementing PROCESSED metric")
 				}
 			}
 		}()

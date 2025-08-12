@@ -63,10 +63,10 @@ func (h *WebScanHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("WebScanEvent incrementing metric of failed")
+					slog.Error("WebScanHandler incrementing FAILED metric")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("WebScanEvent incrementing metric of processed")
+					slog.Debug("WebScanHandler incrementing PROCESSED metric")
 				}
 			}
 		}()
@@ -76,7 +76,7 @@ func (h *WebScanHandler) startWorkers() {
 func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
-			slog.Error("Panic recovered in NmapHandler", "panic", r, "stack", string(debug.Stack()))
+			slog.Error("Panic recovered in WebScanHandler", "panic", r, "stack", string(debug.Stack()))
 		}
 	}()
 	slog.Info("Received WebScanEvent")
@@ -96,7 +96,7 @@ func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
 func (h *WebScanHandler) processWebScanEventRoutine(ctx context.Context, data []byte) {
 	select {
 	case <-ctx.Done():
-		slog.Debug("NmapHandler context cancelled or timed out", slog.Any("error", ctx.Err()))
+		slog.Debug("WebScanHandler context cancelled or timed out", slog.Any("error", ctx.Err()))
 	default:
 		err := h.processWebScanEvent(ctx, data)
 		if err != nil {

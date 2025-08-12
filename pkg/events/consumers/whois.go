@@ -55,10 +55,10 @@ func (h *WhoIsHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("WhoIsEvent incrementing metric of failed")
+					slog.Error("WhoIsHandler incrementing FAILED metric")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("WhoIsEvent incrementing metric of processed")
+					slog.Debug("WhoIsHandler incrementing PROCESSED metric")
 				}
 			}
 		}()

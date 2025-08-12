@@ -51,10 +51,10 @@ func (h *ScanFailedHandler) startWorkers() {
 
 				if err != nil {
 					h.failed.Add(1)
-					slog.Error("ScanFailedEvent incrementing metric of failed")
+					slog.Error("ScanFailedHandler incrementing FAILED metric")
 				} else {
 					h.processed.Add(1)
-					slog.Debug("ScanFailedEvent incrementing metric of processed")
+					slog.Debug("ScanFailedHandler incrementing PROCESSED metric")
 				}
 			}
 		}()
