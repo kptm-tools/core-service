@@ -51,6 +51,9 @@ type Config struct {
 	Websocket struct {
 		IntervalScanRefresh string
 	}
+	Workers struct {
+		Size string
+	}
 }
 
 var (
@@ -139,6 +142,7 @@ func load() *Config {
 		Password:  fetchEnvOrPanic("SMTP_PASS"),
 	}
 	cfg.Websocket = struct{ IntervalScanRefresh string }{IntervalScanRefresh: fetchEnv("WS_SCAN_INTERVAL_NOTIFICATION", "60")}
+	cfg.Workers = struct{ Size string }{Size: fetchEnv("WORKERS_SIZE", "2")}
 	return cfg
 }
 
