@@ -267,7 +267,7 @@ func TestReportHub_RemoveFromRoom_InvalidRoomType(t *testing.T) {
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
 	scanID := "test-scan-id"
-	
+
 	// Store invalid type in rooms map
 	hub.rooms.Store(scanID, "invalid-room-type")
 

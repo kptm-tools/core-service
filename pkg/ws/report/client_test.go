@@ -213,16 +213,16 @@ func TestReportClient_DisconnectWithValidRoomID(t *testing.T) {
 		PongWait:     10 * time.Second,
 		PingInterval: 9 * time.Second,
 	}
-	
+
 	scanID := "123e4567-e89b-12d3-a456-426614174000"
 	room := NewReportRoom(scanID)
 	room.AmountOfClients = 2 // Simulate multiple clients
-	
+
 	hub := &ReportHub{
 		rooms: &sync.Map{},
 	}
 	hub.rooms.Store(scanID, room)
-	
+
 	client := &ReportClient{
 		ID:       "test-client",
 		config:   cfg,
@@ -239,7 +239,7 @@ func TestReportClient_DisconnectWithValidRoomID(t *testing.T) {
 	// Assert - room should still exist but with one less client
 	roomInterface, exists := hub.rooms.Load(scanID)
 	assert.True(t, exists)
-	
+
 	updatedRoom, ok := roomInterface.(*ReportRoom)
 	assert.True(t, ok)
 	assert.Equal(t, 1, updatedRoom.AmountOfClients)
