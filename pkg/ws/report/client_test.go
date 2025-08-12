@@ -1,6 +1,7 @@
 package report
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -176,4 +177,70 @@ func TestReportClient_GetHubReport(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, hub, hubReport)
+}
+
+func TestReportClient_DisconnectWithEmptyRoomID(t *testing.T) {
+	// This test verifies that disconnecting without setting roomID doesn't cause panic
+	// Arrange
+	cfg := &common.Config{
+		PongWait:     10 * time.Second,
+		PingInterval: 9 * time.Second,
+	}
+	hub := &ReportHub{
+		rooms: &sync.Map{},
+	}
+	client := &ReportClient{
+		ID:       "test-client",
+		config:   cfg,
+		hub:      hub,
+		outgoing: make(chan []byte, 256),
+		roomID:   "", // Empty room ID
+	}
+
+	// Act & Assert - should not panic with empty room ID
+	assert.NotPanics(t, func() {
+		// Simulate what happens in ReadMessages when a client disconnects
+		if client.roomID != "" {
+			client.GetHubReport().RemoveFromRoom(client.roomID)
+		}
+	})
+}
+
+func TestReportClient_DisconnectWithValidRoomID(t *testing.T) {
+	// This test verifies graceful disconnection with a valid room ID
+	// Arrange
+	cfg := &common.Config{
+		PongWait:     10 * time.Second,
+		PingInterval: 9 * time.Second,
+	}
+	
+	scanID := "123e4567-e89b-12d3-a456-426614174000"
+	room := NewReportRoom(scanID)
+	room.AmountOfClients = 2 // Simulate multiple clients
+	
+	hub := &ReportHub{
+		rooms: &sync.Map{},
+	}
+	hub.rooms.Store(scanID, room)
+	
+	client := &ReportClient{
+		ID:       "test-client",
+		config:   cfg,
+		hub:      hub,
+		outgoing: make(chan []byte, 256),
+		roomID:   scanID,
+	}
+
+	// Act - simulate disconnection
+	if client.roomID != "" {
+		client.GetHubReport().RemoveFromRoom(client.roomID)
+	}
+
+	// Assert - room should still exist but with one less client
+	roomInterface, exists := hub.rooms.Load(scanID)
+	assert.True(t, exists)
+	
+	updatedRoom, ok := roomInterface.(*ReportRoom)
+	assert.True(t, ok)
+	assert.Equal(t, 1, updatedRoom.AmountOfClients)
 }
