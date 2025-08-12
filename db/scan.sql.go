@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const createScan = `-- name: CreateScan :one
@@ -621,6 +622,38 @@ func (q *Queries) GetScanInsights(ctx context.Context, id uuid.UUID) (GetScanIns
 		&i.SeverityPerTypeMap,
 	)
 	return i, err
+}
+
+const getScanResultsByScanID = `-- name: GetScanResultsByScanID :many
+SELECT result FROM scan_results where scan_id=$1 and tool=ANY($2) and success=true
+`
+
+type GetScanResultsByScanIDParams struct {
+	ScanID uuid.UUID `json:"scan_id"`
+	Tool   ToolEnum  `json:"tool"`
+}
+
+func (q *Queries) GetScanResultsByScanID(ctx context.Context, arg GetScanResultsByScanIDParams) ([]pqtype.NullRawMessage, error) {
+	rows, err := q.db.QueryContext(ctx, getScanResultsByScanID, arg.ScanID, arg.Tool)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pqtype.NullRawMessage
+	for rows.Next() {
+		var result pqtype.NullRawMessage
+		if err := rows.Scan(&result); err != nil {
+			return nil, err
+		}
+		items = append(items, result)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listScansForTenant = `-- name: ListScansForTenant :many

@@ -37,6 +37,7 @@ type IScanService interface {
 	GetScanRapporteursAndHostAlias(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 	GetSeverityCountsFromToolVulns(ctx context.Context, vulns []tools.Vulnerability) tools.SeverityCounts
 	GetSeverityCountsFromDomainVulnDetail(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts
+	GetInformationGatheredResults(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error)
 }
 
 type IScanHandlers interface {
@@ -51,6 +52,7 @@ type IScanHandlers interface {
 	GetScoreCardTrends(w http.ResponseWriter, r *http.Request) error
 	GetScanVulnerabilities(w http.ResponseWriter, r *http.Request) error
 	DeleteScanSchedule(w http.ResponseWriter, r *http.Request) error
+	GetScanResultsByScanID(w http.ResponseWriter, r *http.Request) error
 }
 
 type ScanRepository interface {
@@ -67,6 +69,7 @@ type ScanRepository interface {
 	UpdateProtectionScore(ctx context.Context, scanID uuid.UUID, newScore float64) error
 	UpdateScanStatus(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus) error
 	UpdateScanStatusAndEndedAt(ctx context.Context, scanID uuid.UUID, newStatus enums.ScanStatus, endedAt time.Time) error
+	GetScanResultsByScanID(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error)
 }
 
 type ScanResultRepository interface {

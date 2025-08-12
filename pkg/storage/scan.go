@@ -355,3 +355,21 @@ func toDomainScan(dbScan repository.Scan) domain.Scan {
 		EndedAt:         &dbScan.EndedAt.Time,
 	}
 }
+
+func (r *ScanRepo) GetScanResultsByScanID(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error) {
+	queries := r.getQueries(ctx)
+
+	params := repository.GetScanResultsByScanIDParams{
+		ScanID: scanID,
+		Tool:   tools,
+	}
+	dbScanResults, err := queries.GetScanResultsByScanID(ctx, params)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customerrors.ErrScanNotFound
+		}
+		return nil, err
+	}
+
+	return dbScanResults, nil
+}

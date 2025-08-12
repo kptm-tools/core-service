@@ -860,3 +860,24 @@ func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request
 	}
 	return api.WriteJSON(w, http.StatusOK, result)
 }
+
+func (h *ScanHandlers) GetScanResultsByScanID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	scanID, err := GetUUID(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid scan ID"})
+	}
+
+	scanResults, err := h.scanService.GetInformationGatheredResults(ctx, scanID)
+	if err != nil {
+		slog.Error("Failed to get scan by ID",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err))
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+	return api.WriteJSON(w, http.StatusCreated, scanResults)
+}
