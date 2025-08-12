@@ -49,6 +49,8 @@ func (h *DNSLookupHandler) startWorkers() {
 		go func() {
 			for msg := range h.queue {
 				// processing logic
+				// Update queue depth metric
+				h.queueDepth.Add(-1)
 				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
 				err := h.processDNSLookupEvent(ctx, msg.Data)
 				cancel()

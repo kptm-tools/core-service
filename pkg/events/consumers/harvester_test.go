@@ -320,7 +320,7 @@ func BenchmarkEventProcessing_Harvester(b *testing.B) {
 						Data: []byte(`{
 						"scan_id": "dfa86ed2-5601-4dec-be89-97a16a579dfb",
 						"ToolResult": {
-							"tool_name": "DNSLookup",
+							"tool_name": "Harvester",
 							"result": null,
 							"timestamp": "2025-07-07T12:34:56Z"
 						}

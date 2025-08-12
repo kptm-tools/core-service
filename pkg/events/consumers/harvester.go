@@ -46,6 +46,8 @@ func (h *HarvesterHandler) startWorkers() {
 	for i := 0; i < h.workers; i++ {
 		go func() {
 			for msg := range h.queue {
+				// Update queue depth metric
+				h.queueDepth.Add(-1)
 				// processing logic
 				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
 				err := h.processHarvesterEvent(ctx, msg.Data)
