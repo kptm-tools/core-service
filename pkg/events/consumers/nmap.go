@@ -26,11 +26,11 @@ type NmapHandler struct {
 
 	// Metrics
 	// processed: Number of events successfully processed by the handler
-	processed  atomic.Uint64
+	processed atomic.Uint64
 	// failed: Number of events that failed during processing
-	failed     atomic.Uint64
+	failed atomic.Uint64
 	// dropped: Number of events dropped due to full queue/backpressure
-	dropped    atomic.Uint64
+	dropped atomic.Uint64
 	// queueDepth: Current number of events waiting in the queue
 	queueDepth atomic.Int32
 }
