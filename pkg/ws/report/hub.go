@@ -188,9 +188,9 @@ func (h *ReportHub) RemoveFromRoom(scanID string) {
 		return
 	}
 
-	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
 	room.mu.Lock()
 	defer room.mu.Unlock()
+	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
 	slog.Info("Removing client from room", slog.String("scanID", scanID))
 	room.AmountOfClients = room.AmountOfClients - 1
 	h.rooms.Store(scanID, room)

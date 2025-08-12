@@ -133,7 +133,7 @@ func TestReportHub_RapidConnectDisconnect(t *testing.T) {
 	mockAuthService := &mock_services.MockAuthService{}
 	hub := NewReportHub(cfg, mockScanService, mockAuthService)
 
-	scanID := "rapid-test-room"
+	scanID := uuid.New().String()
 
 	// Act - Rapid connect/disconnect cycles
 	var wg sync.WaitGroup
