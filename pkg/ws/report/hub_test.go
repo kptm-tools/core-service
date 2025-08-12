@@ -223,6 +223,64 @@ func TestReportHub_GetRoomVulnerabilities_NoRoom(t *testing.T) {
 	assert.Nil(t, vulnerabilities)
 }
 
+func TestReportHub_RemoveFromRoom_EmptyScanID(t *testing.T) {
+	// Arrange
+	cfg := &common.Config{}
+	mockScanService := &mock_services.MockScanService{}
+	mockAuthService := &mock_services.MockAuthService{}
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
+
+	// Act - should not panic when given empty scanID
+	assert.NotPanics(t, func() {
+		hub.RemoveFromRoom("")
+	})
+
+	// Assert - no room should be created
+	_, exists := hub.rooms.Load("")
+	assert.False(t, exists)
+}
+
+func TestReportHub_RemoveFromRoom_NonExistentRoom(t *testing.T) {
+	// Arrange
+	cfg := &common.Config{}
+	mockScanService := &mock_services.MockScanService{}
+	mockAuthService := &mock_services.MockAuthService{}
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
+
+	nonExistentScanID := "non-existent-scan-id"
+
+	// Act - should not panic when room doesn't exist
+	assert.NotPanics(t, func() {
+		hub.RemoveFromRoom(nonExistentScanID)
+	})
+
+	// Assert - no room should be created
+	_, exists := hub.rooms.Load(nonExistentScanID)
+	assert.False(t, exists)
+}
+
+func TestReportHub_RemoveFromRoom_InvalidRoomType(t *testing.T) {
+	// Arrange
+	cfg := &common.Config{}
+	mockScanService := &mock_services.MockScanService{}
+	mockAuthService := &mock_services.MockAuthService{}
+	hub := NewReportHub(cfg, mockScanService, mockAuthService)
+
+	scanID := "test-scan-id"
+	
+	// Store invalid type in rooms map
+	hub.rooms.Store(scanID, "invalid-room-type")
+
+	// Act - should not panic even with invalid room type
+	assert.NotPanics(t, func() {
+		hub.RemoveFromRoom(scanID)
+	})
+
+	// Assert - invalid room should still be in map (not deleted)
+	_, exists := hub.rooms.Load(scanID)
+	assert.True(t, exists)
+}
+
 // MockReportClient for testing
 // Ensure MockReportClient implements IReportClient interface
 var _ interfaces.IReportClient = (*MockReportClient)(nil)
