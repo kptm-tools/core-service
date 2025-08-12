@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	"github.com/kptm-tools/common/common/pkg/enums"
@@ -20,19 +21,55 @@ import (
 type WebScanHandler struct {
 	scanService interfaces.IScanService
 	vulnService interfaces.IVulnerabilityService
+	workers     int            // number of workers
+	queue       chan *nats.Msg // jobQueue
+
+	// Metrics
+	processed  atomic.Uint64
+	failed     atomic.Uint64
+	dropped    atomic.Uint64
+	queueDepth atomic.Int32
 }
 
 func NewWebScanHandler(
 	scanService interfaces.IScanService,
 	vulnerabilityService interfaces.IVulnerabilityService,
+	workers int,
 ) *WebScanHandler {
-	return &WebScanHandler{
+	bufferSize := workers * 2
+	handler := &WebScanHandler{
 		scanService: scanService,
 		vulnService: vulnerabilityService,
+		workers:     workers,
+		queue:       make(chan *nats.Msg, bufferSize), //  **BUFFERED** channel to avoid blocking
 	}
+	handler.startWorkers()
+	return handler
 }
 
 var _ interfaces.EventConsumer = (*WebScanHandler)(nil)
+
+// startWorkers launch all goroutines for workers, these are there until new work arrive
+func (h *WebScanHandler) startWorkers() {
+	for i := 0; i < h.workers; i++ {
+		go func() {
+			for msg := range h.queue {
+				// processing logic
+				ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+				err := h.processWebScanEvent(ctx, msg.Data)
+				cancel()
+
+				if err != nil {
+					h.failed.Add(1)
+					slog.Error("WebScanEvent incrementing metric of failed")
+				} else {
+					h.processed.Add(1)
+					slog.Debug("WebScanEvent incrementing metric of processed")
+				}
+			}
+		}()
+	}
+}
 
 func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
 	defer func() {
@@ -41,10 +78,17 @@ func (h *WebScanHandler) HandleMessage(msg *nats.Msg) {
 		}
 	}()
 	slog.Info("Received WebScanEvent")
-	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
-	defer cancel()
-	go h.processWebScanEventRoutine(ctx, msg.Data)
-	<-ctx.Done()
+	// Try to send to job queue with timeout
+	timer := time.NewTimer(100 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case h.queue <- msg:
+		h.queueDepth.Add(1)
+	case <-timer.C:
+		// Queue is full, drop the message and increment dropped metric
+		h.dropped.Add(1)
+		slog.Warn("WebScanEvent queue full, dropping message")
+	}
 }
 
 func (h *WebScanHandler) processWebScanEventRoutine(ctx context.Context, data []byte) {
@@ -160,4 +204,15 @@ func (h *WebScanHandler) processWebScanEvent(ctx context.Context, data []byte) e
 	}
 	slog.Debug("WebScanEvent handled successfully")
 	return nil
+}
+
+// GetMetrics getters for monitoring
+func (h *WebScanHandler) GetMetrics() map[string]interface{} {
+	return map[string]interface{}{
+		"processed":    h.processed.Load(),
+		"failed":       h.failed.Load(),
+		"dropped":      h.dropped.Load(),
+		"queue_depth":  h.queueDepth.Load(),
+		"worker_count": h.workers,
+	}
 }

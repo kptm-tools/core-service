@@ -19,7 +19,7 @@ func SetupEventBus(
 	harvesterHandler := consumers.NewHarvesterHandler(scanService, 1)
 
 	nmapHandler := consumers.NewNmapHandler(scanService, vulnService, 1)
-	webScanHandler := consumers.NewWebScanHandler(scanService, vulnService)
+	webScanHandler := consumers.NewWebScanHandler(scanService, vulnService, 1)
 
 	scanFailedHandler := consumers.NewScanFailedHandler(scanService, 1)
 
