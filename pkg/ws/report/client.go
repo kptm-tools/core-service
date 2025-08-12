@@ -59,8 +59,18 @@ func (c *ReportClient) ReadMessages() {
 		messageType, payload, err := c.connection.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				slog.Error("Unexpected websocket close error",
+					slog.String("client_id", c.ID),
+					slog.String("room_id", c.roomID),
+					slog.Any("error", err))
+			} else {
+				slog.Debug("Client connection closed normally",
+					slog.String("client_id", c.ID),
+					slog.String("room_id", c.roomID))
+			}
+			// Always try to remove from room on disconnect, but handle empty room ID gracefully
+			if c.roomID != "" {
 				c.GetHubReport().RemoveFromRoom(c.roomID)
-				slog.Error("Error reading message", slog.Any("error", err))
 			}
 			break
 		}
@@ -71,13 +81,21 @@ func (c *ReportClient) ReadMessages() {
 		// Route the Message
 		var msg common.Message
 		if err := json.Unmarshal(payload, &msg); err != nil {
-			slog.Error("failed to unmarshal message", slog.Any("error", err))
+			slog.Error("Failed to unmarshal message",
+				slog.String("client_id", c.ID),
+				slog.String("room_id", c.roomID),
+				slog.String("raw_message", string(payload)),
+				slog.Any("error", err))
 			c.sendErrorMessage("Failed to parse message")
 			continue
 		}
 		routeErr := c.hub.routeMessage(msg, c)
 		if routeErr != nil {
-			slog.Error("Failed to route message", slog.Any("error", routeErr))
+			slog.Error("Failed to route message",
+				slog.String("client_id", c.ID),
+				slog.String("room_id", c.roomID),
+				slog.String("message_type", msg.Type),
+				slog.Any("error", routeErr))
 			c.sendErrorMessage(routeErr.Error())
 		}
 	}
@@ -91,25 +109,49 @@ func (c *ReportClient) WriteMessages() {
 		msg, ok := <-c.outgoing
 		if !ok {
 			if err := c.connection.WriteMessage(websocket.CloseMessage, nil); err != nil {
-				slog.Warn("connection closed", slog.Any("error", err))
+				slog.Warn("Failed to send close message",
+					slog.String("client_id", c.ID),
+					slog.String("room_id", c.roomID),
+					slog.Any("error", err))
+			} else {
+				slog.Debug("Close message sent successfully",
+					slog.String("client_id", c.ID),
+					slog.String("room_id", c.roomID))
 			}
 			return
 		}
 
 		// Marshal the message, it must follow common Message struct
 		if err := c.connection.WriteMessage(websocket.TextMessage, msg); err != nil {
-			slog.Error("Failed to send message", slog.Any("error", err))
+			slog.Error("Failed to send message to client",
+				slog.String("client_id", c.ID),
+				slog.String("room_id", c.roomID),
+				slog.Any("error", err))
+			// Connection is likely broken, close the client
+			return
 		}
 
-		slog.Info("Message sent")
+		slog.Debug("Message sent successfully",
+			slog.String("client_id", c.ID),
+			slog.String("room_id", c.roomID))
 	}
 }
 
 // pongHandler is used to handle PongMessages for the Client
 func (c *ReportClient) pongHandler() error {
 	// Current time + Pong Wait time
-	slog.Debug("Received pong from server", slog.String("client_id", c.ID))
-	return c.connection.SetReadDeadline(time.Now().Add(c.config.PongWait))
+	slog.Debug("Received pong from client",
+		slog.String("client_id", c.ID),
+		slog.String("room_id", c.roomID))
+
+	err := c.connection.SetReadDeadline(time.Now().Add(c.config.PongWait))
+	if err != nil {
+		slog.Error("Failed to set read deadline on pong",
+			slog.String("client_id", c.ID),
+			slog.String("room_id", c.roomID),
+			slog.Any("error", err))
+	}
+	return err
 }
 
 func (c *ReportClient) GetSend() chan []byte {
@@ -120,13 +162,28 @@ func (c *ReportClient) GetID() string {
 	return c.ID
 }
 
-func (c *ReportClient) GetHub() interfaces.IHub {
-	return c.hub
-}
-
 func (c *ReportClient) Close() error {
+	slog.Debug("Closing client connection",
+		slog.String("client_id", c.ID),
+		slog.String("room_id", c.roomID))
+
+	// Close the outgoing channel to signal WriteMessages to stop
 	close(c.outgoing)
-	return c.connection.Close()
+
+	// Close the websocket connection
+	err := c.connection.Close()
+	if err != nil {
+		slog.Error("Failed to close websocket connection",
+			slog.String("client_id", c.ID),
+			slog.String("room_id", c.roomID),
+			slog.Any("error", err))
+	} else {
+		slog.Debug("Client connection closed successfully",
+			slog.String("client_id", c.ID),
+			slog.String("room_id", c.roomID))
+	}
+
+	return err
 }
 
 func (c *ReportClient) GetVectorStatus() map[enums.OwaspCategory]float64 {
@@ -146,19 +203,23 @@ func (c *ReportClient) sendErrorMessage(message string) {
 	errorPayload := dto.ErrorResponse{
 		Message: message,
 	}
-	errrPayloadBytes, err := json.Marshal(errorPayload)
+	errorPayloadBytes, err := json.Marshal(errorPayload)
 	if err != nil {
-		slog.Error("Failed to marshal error response paylaod", slog.Any("error", err))
+		slog.Error("Failed to marshal error response payload",
+			slog.String("client_id", c.ID),
+			slog.Any("error", err))
 		return
 	}
 
 	errorMessage := common.Message{
 		Type:    "error",
-		Payload: errrPayloadBytes,
+		Payload: errorPayloadBytes,
 	}
 	errMessageBytes, err := json.Marshal(errorMessage)
 	if err != nil {
-		slog.Error("Failed to marshal error message", slog.Any("error", err))
+		slog.Error("Failed to marshal error message",
+			slog.String("client_id", c.ID),
+			slog.Any("error", err))
 		return
 	}
 

@@ -1,14 +1,21 @@
 package interfaces
 
-import "github.com/kptm-tools/common/common/pkg/enums"
+import (
+	"github.com/google/uuid"
+	"github.com/kptm-tools/common/common/pkg/enums"
+)
 
 type IClient interface {
 	GetID() string
-	GetHub() IHub
 	GetSend() chan []byte
 	ReadMessages()
 	WriteMessages()
 	Close() error
+}
+
+type IScanClient interface {
+	IClient // Embedded IClient interface
+	GetTenantID() uuid.UUID
 }
 
 type IReportClient interface {

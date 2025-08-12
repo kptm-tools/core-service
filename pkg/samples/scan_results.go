@@ -356,35 +356,89 @@ func generateWebScanResult() tools.WebScanResult {
 }
 
 func generateWebVulnerabilities() []tools.WebVulnerability {
-	webVulnNames := []string{
-		"Cross Site Scripting",
-		"SQL Injection",
-		"Directory Traversal",
-		"Remote File Inclusion",
-		"Command Injection",
-		"Open Redirect",
-		"CSRF",
-		"Sensitive Data Exposure",
-		"Security Misconfiguration",
-		"Broken Authentication",
+	// Map vulnerability names to appropriate CWE IDs that map to OWASP categories
+	type webVulnTemplate struct {
+		name   string
+		cweIDs []string // Multiple possible CWE IDs for variety
 	}
 
-	realisticCWEIDs := RealisticCWEIDs()
-	sizeWebVulns := gofakeit.Number(1, len(webVulnNames))
+	webVulnTemplates := []webVulnTemplate{
+		// A03:2021 – Injection
+		{
+			name:   "Cross Site Scripting",
+			cweIDs: []string{"CWE-79", "CWE-80", "CWE-83", "CWE-87"},
+		},
+		{
+			name:   "SQL Injection",
+			cweIDs: []string{"CWE-89", "CWE-564", "89"}, // Include numeric format
+		},
+		{
+			name:   "Command Injection",
+			cweIDs: []string{"CWE-77", "CWE-78", "CWE-88"},
+		},
+		// A01:2021 – Broken Access Control
+		{
+			name:   "Directory Traversal",
+			cweIDs: []string{"CWE-22", "CWE-23", "CWE-35"},
+		},
+		{
+			name:   "CSRF",
+			cweIDs: []string{"CWE-352"},
+		},
+		// A02:2021 – Cryptographic Failures
+		{
+			name:   "Sensitive Data Exposure",
+			cweIDs: []string{"CWE-311", "CWE-312", "CWE-319", "CWE-327"},
+		},
+		// A05:2021 – Security Misconfiguration
+		{
+			name:   "Security Misconfiguration",
+			cweIDs: []string{"CWE-16", "CWE-611", "CWE-756", "CWE-942"},
+		},
+		// A07:2021 – Identification and Authentication Failures
+		{
+			name:   "Broken Authentication",
+			cweIDs: []string{"CWE-287", "CWE-384", "CWE-798"},
+		},
+		// A04:2021 – Insecure Design
+		{
+			name:   "Open Redirect",
+			cweIDs: []string{"CWE-601"},
+		},
+		// A03:2021 – Injection (another type)
+		{
+			name:   "Remote File Inclusion",
+			cweIDs: []string{"CWE-98", "CWE-434"},
+		},
+		// Edge cases - these will map to "Other" or "No Info"
+		{
+			name:   "Unknown Vulnerability Type 1",
+			cweIDs: []string{"CWE-99999", "12345", ""}, // Deliberately invalid CWE IDs to test mapping fallback behavior
+		},
+		{
+			name:   "Unknown Vulnerability Type 2",
+			cweIDs: []string{"", "INVALID", "None"}, // Deliberately invalid or empty CWE IDs to test mapping fallback behavior
+		},
+	}
+
+	sizeWebVulns := gofakeit.Number(6, len(webVulnTemplates)) // Ensure we get a good variety
 	webVulns := make([]tools.WebVulnerability, 0, sizeWebVulns)
-	gofakeit.ShuffleAnySlice(webVulnNames)
-	for i := 0; i < sizeWebVulns; i++ {
-		// Use realistic CWE IDs that reference the pre-populated knowledge base
-		randomCWEID := realisticCWEIDs[gofakeit.IntRange(0, len(realisticCWEIDs)-1)]
+	gofakeit.ShuffleAnySlice(webVulnTemplates)
+
+	for i := 0; i < sizeWebVulns && i < len(webVulnTemplates); i++ {
+		template := webVulnTemplates[i]
+		// Pick a random CWE ID from the template's list
+		cweID := template.cweIDs[gofakeit.Number(0, len(template.cweIDs)-1)]
+
 		webVuln := tools.WebVulnerability{
-			Name:       webVulnNames[i],
+			Name:       template.name,
 			Risk:       enums.RiskCodeType(gofakeit.RandomString([]string{"Low", "Medium", "High", "Informational"})),
-			Instances:  generateInstancesWebVuln(gofakeit.Number(1, 50)),
+			Instances:  generateInstancesWebVuln(gofakeit.Number(1, 10)), // Reduced for performance
 			Confidence: enums.ConfidenceWebScanType(gofakeit.RandomString([]string{"Low", "Medium", "High", "FalsePositive"})),
-			Solution:   gofakeit.LoremIpsumWord(),
-			Reference:  gofakeit.URL(),
-			CweID:      randomCWEID, // Now using realistic CWE IDs from pre-populated database
-			WascID:     "WASC-" + strconv.Itoa(gofakeit.Number(1, 100)),
+			Solution:   generateRealisticSolution(template.name),
+			Reference:  generateRealisticReference(template.name),
+			CweID:      cweID,
+			WascID:     "WASC-" + strconv.Itoa(gofakeit.Number(1, 49)), // WASC has 49 threat classifications
 		}
 		webVulns = append(webVulns, webVuln)
 	}
@@ -407,4 +461,48 @@ func generateInstancesWebVuln(sizeInstances int) []tools.InstanceAlert {
 		instances = append(instances, instance)
 	}
 	return instances
+}
+
+// generateRealisticSolution returns appropriate remediation guidance for common vulnerability types.
+// Returns a generic security guidance message for unknown vulnerability types.
+func generateRealisticSolution(vulnName string) string {
+	solutions := map[string]string{
+		"Cross Site Scripting":      "Encode all user input before rendering it in HTML context. Use Content Security Policy (CSP) headers. Validate and sanitize all input data.",
+		"SQL Injection":             "Use parameterized queries or prepared statements. Never concatenate user input directly into SQL queries. Apply principle of least privilege to database accounts.",
+		"Command Injection":         "Avoid system calls with user input. If necessary, use strict input validation with allowlists. Use language-specific safe APIs instead of shell commands.",
+		"Directory Traversal":       "Validate file paths against an allowlist. Use chroot jails or similar sandboxing. Normalize paths and reject those containing '..' sequences.",
+		"CSRF":                      "Implement anti-CSRF tokens. Use SameSite cookie attribute. Verify referrer headers for state-changing operations.",
+		"Sensitive Data Exposure":   "Encrypt sensitive data at rest and in transit. Use strong, up-to-date cryptographic algorithms. Implement proper key management.",
+		"Security Misconfiguration": "Disable unnecessary features and services. Keep all software up to date. Review and harden all configuration settings.",
+		"Broken Authentication":     "Implement multi-factor authentication. Use secure session management. Enforce strong password policies.",
+		"Open Redirect":             "Validate redirect URLs against an allowlist. Avoid using user input directly in redirect locations.",
+		"Remote File Inclusion":     "Disable remote file inclusion in configuration. Validate and sanitize all file paths. Use allowlists for acceptable file locations.",
+	}
+
+	if solution, exists := solutions[vulnName]; exists {
+		return solution
+	}
+	return "Review and update the application to address this security vulnerability. Consult security best practices for your specific framework and technology stack."
+}
+
+// generateRealisticReference returns relevant OWASP reference URLs for common vulnerability types.
+// Returns the OWASP Top 10 URL for unknown vulnerability types.
+func generateRealisticReference(vulnName string) string {
+	references := map[string]string{
+		"Cross Site Scripting":      "https://owasp.org/www-community/attacks/xss/",
+		"SQL Injection":             "https://owasp.org/www-community/attacks/SQL_Injection",
+		"Command Injection":         "https://owasp.org/www-community/attacks/Command_Injection",
+		"Directory Traversal":       "https://owasp.org/www-community/attacks/Path_Traversal",
+		"CSRF":                      "https://owasp.org/www-community/attacks/csrf",
+		"Sensitive Data Exposure":   "https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure",
+		"Security Misconfiguration": "https://owasp.org/www-project-top-ten/2017/A6_2017-Security_Misconfiguration",
+		"Broken Authentication":     "https://owasp.org/www-project-top-ten/2017/A2_2017-Broken_Authentication",
+		"Open Redirect":             "https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",
+		"Remote File Inclusion":     "https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/07-Input_Validation_Testing/11.2-Testing_for_Remote_File_Inclusion",
+	}
+
+	if reference, exists := references[vulnName]; exists {
+		return reference
+	}
+	return "https://owasp.org/www-project-top-ten/"
 }

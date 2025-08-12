@@ -34,3 +34,7 @@ func NewReportRoom(scanID string) *ReportRoom {
 		AmountOfClients: 0,
 	}
 }
+
+func (r *ReportRoom) GetScanID() string {
+	return r.scanID
+}

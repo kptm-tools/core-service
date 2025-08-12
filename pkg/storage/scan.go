@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kptm-tools/common/common/pkg/enums"
+	"github.com/kptm-tools/common/common/pkg/results/tools"
 	repository "github.com/kptm-tools/core-service/db"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
@@ -69,11 +70,20 @@ func (r *ScanRepo) GetScansForTenant(ctx context.Context, tenantID uuid.UUID) ([
 	scanSummaries := make([]domain.ScanSummary, len(dbScans))
 	for i, dbScan := range dbScans {
 		scanSummaries[i] = domain.ScanSummary{
-			ScanID:   dbScan.ScanID,
-			ScanDate: dbScan.ScanDate.Time.Format(time.RFC822),
-			Host:     dbScan.HostAlias,
-			Duration: dbScan.DurationInSeconds,
-			Status:   string(dbScan.Status),
+			ScanID:          dbScan.ScanID,
+			ScanDate:        dbScan.ScanDate.Time.Format(time.RFC822),
+			Host:            dbScan.HostAlias,
+			Duration:        dbScan.DurationInSeconds,
+			Status:          string(dbScan.Status),
+			Vulnerabilities: int(dbScan.TotalVulnerabilities),
+			Severities: tools.SeverityCounts{
+				Critical: int(dbScan.CriticalVulnerabilities),
+				High:     int(dbScan.HighVulnerabilities),
+				Medium:   int(dbScan.MediumVulnerabilities),
+				Low:      int(dbScan.LowVulnerabilities),
+				None:     int(dbScan.NoneVulnerabilities),
+				Unknown:  int(dbScan.UnknownVulnerabilities),
+			},
 		}
 	}
 	return scanSummaries, nil

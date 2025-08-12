@@ -25,11 +25,6 @@ func (m *MockReportClient) GetID() string {
 	return ""
 }
 
-func (m *MockReportClient) GetHub() interfaces.IHub {
-	// TODO implement me
-	panic("implement me")
-}
-
 func (m *MockReportClient) GetSend() chan []byte {
 	return m.Outgoing
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/kptm-tools/core-service/pkg/ws/common"
 )
 
@@ -72,10 +71,15 @@ func (c *ScanClient) ReadMessages() {
 		// in the connection
 		_, _, err := c.connection.ReadMessage()
 		if err != nil {
-			// If Connection is closed, we will Recieve an error here
+			// If Connection is closed, we will Receive an error here
 			// We only want to log Strange errors, but simple Disconnection
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				slog.Error("Error reading message", slog.String("client_id", c.ID), slog.Any("error", err))
+				slog.Error("Unexpected websocket close error",
+					slog.String("client_id", c.ID),
+					slog.Any("error", err))
+			} else {
+				slog.Debug("Client connection closed normally",
+					slog.String("client_id", c.ID))
 			}
 			break // Break the loop to close conn & Cleanup
 		}
@@ -140,11 +144,11 @@ func (c *ScanClient) GetID() string {
 	return c.ID
 }
 
-func (c *ScanClient) GetHub() interfaces.IHub {
-	return c.hub
-}
-
 func (c *ScanClient) Close() error {
 	close(c.outgoing)
 	return c.connection.Close()
+}
+
+func (c *ScanClient) GetTenantID() uuid.UUID {
+	return c.tenantID
 }

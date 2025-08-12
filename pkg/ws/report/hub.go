@@ -82,6 +82,7 @@ func (h *ReportHub) Serve(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new client
 	client := NewReportClient(h.cfg, conn, h)
+
 	// Register the new client to the hub
 	h.Register(client)
 
@@ -156,9 +157,12 @@ func (h *ReportHub) AddToRoom(scanID string) {
 			slog.Error("Failed to fetch vulnerabilities from DB when adding client to room", slog.Any("error", err))
 			return
 		}
+
+		// Vulnerabilities now have their Type field properly populated from database OWASP categories
+		// No need for runtime enhancement - the repository layer handles this
 		room.Vulnerabilities = vulns
 		room.AmountOfClients = 1
-		slog.Info("Vulnerabilities loaded for scanID", slog.String("scan_id", scanID))
+		slog.Info("Vulnerabilities loaded for scanID with database-driven OWASP categories", slog.String("scan_id", scanID))
 	} else {
 		room.AmountOfClients += 1
 		slog.Info("Increasing the amount of clients for scanID", slog.String("scan_id", scanID))
@@ -167,19 +171,32 @@ func (h *ReportHub) AddToRoom(scanID string) {
 }
 
 func (h *ReportHub) RemoveFromRoom(scanID string) {
-	roomInterface, _ := h.rooms.Load(scanID)
+	if scanID == "" {
+		slog.Debug("RemoveFromRoom called with empty scanID, skipping")
+		return
+	}
+
+	roomInterface, exists := h.rooms.Load(scanID)
+	if !exists {
+		slog.Debug("Room not found for scanID", slog.String("scanID", scanID))
+		return
+	}
+
 	room, ok := roomInterface.(*ReportRoom)
+	if !ok {
+		slog.Error("Hub's room is not of type ReportRoom", slog.String("scanID", scanID))
+		return
+	}
+
+	room.mu.Lock()
+	defer room.mu.Unlock()
 	slog.Info("Clients connected before remove", slog.Int("amount", room.AmountOfClients))
-	if ok {
-		room.mu.Lock()
-		defer room.mu.Unlock()
-		slog.Info("Removing client from room", slog.String("scanID", scanID))
-		room.AmountOfClients = room.AmountOfClients - 1
-		h.rooms.Store(scanID, room)
-		if room.AmountOfClients == 0 {
-			slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
-			ExecuteAfterDelay(5*time.Second, scanID, h)
-		}
+	slog.Info("Removing client from room", slog.String("scanID", scanID))
+	room.AmountOfClients = room.AmountOfClients - 1
+	h.rooms.Store(scanID, room)
+	if room.AmountOfClients == 0 {
+		slog.Info("Send to channel that should delete scanID", slog.String("scanID", scanID))
+		ExecuteAfterDelay(5*time.Second, scanID, h)
 	}
 }
 

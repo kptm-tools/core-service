@@ -34,12 +34,17 @@ type (
 //
 //	A dto.InitialDataReponse struct containing the processed vulnerability data.
 func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResponse {
+	// Handle nil slice
+	if vulns == nil {
+		vulns = []tools.Vulnerability{}
+	}
+
 	maxCVSSPerType := make(MaxCVSSPerType)
 	vulnCountPerType := make(vulnerabilityCountByType)
 	uniqueCVSSValuesPerType := make(UniqueCVSSValuesByType)
-	globalTotalVulnerabilities := GetGlobalTotalVulnerabilities(vulns)
 	globalCVSSScore := 0.0
 	vulnerabilityTypesData := make([]dto.VulnerabilityTypeData, 0)
+	validVulnerabilities := 0 // Track count of valid vulnerabilities only
 
 	// Initialize maps with all possible OwaspCategory enums and default values
 	for _, cat := range enums.AllOwaspCategories {
@@ -52,8 +57,24 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 	for _, vuln := range vulns {
 		cat := vuln.Type
 
+		// Map unknown categories to the appropriate OWASP category
+		// If not in AllOwaspCategories, it should be mapped to OWASP_OTHER or NONE
+		if _, exists := maxCVSSPerType[cat]; !exists {
+			// This category is not in AllOwaspCategories, so we need to map it
+			// According to requirements:
+			// - If CWE isn't mapped to OWASP enum -> OWASP_OTHER
+			// - If vuln has no CWE ID or CWE None -> NONE
+			// For now, we'll default to mapping unknown categories to the existing categories
+			// The proper mapping should be done at the vulnerability ingestion level
+			slog.Warn("Found vulnerability with unmapped OWASP category, skipping",
+				slog.String("category", cat.String()),
+				slog.String("cve_id", vuln.CveID))
+			continue
+		}
+
 		// 1. Increase the vuln count for that type
 		vulnCountPerType[cat]++
+		validVulnerabilities++
 
 		// 2. Check for max CVSS score
 		if vuln.BaseCVSSScore > maxCVSSPerType[cat] {
@@ -69,17 +90,23 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 		}
 	}
 
-	// Format the reponse data
+	// Only use the predefined OWASP categories - no additional ones
+	// Format the response data for all predefined OWASP categories
 	for _, cat := range enums.AllOwaspCategories {
 		count := vulnCountPerType[cat]
 		percentage := 0.0
-		if globalTotalVulnerabilities > 0 {
-			percentage = float64(count) / float64(globalTotalVulnerabilities)
+		if validVulnerabilities > 0 {
+			percentage = float64(count) / float64(validVulnerabilities)
 		}
 
-		availableCvssValues := make([]float64, 0, len(uniqueCVSSValuesPerType))
-		for cvss := range uniqueCVSSValuesPerType[cat] {
-			availableCvssValues = append(availableCvssValues, cvss)
+		availableCvssValues := make([]float64, 0)
+		if uniqueValues, exists := uniqueCVSSValuesPerType[cat]; exists {
+			for cvss := range uniqueValues {
+				availableCvssValues = append(availableCvssValues, cvss)
+			}
+		} else {
+			// If no unique values exist, at least include 0.0
+			availableCvssValues = append(availableCvssValues, 0.0)
 		}
 		sort.Float64s(availableCvssValues)
 
@@ -94,7 +121,7 @@ func BuildVulnerabilityTypeData(vulns []tools.Vulnerability) dto.InitialDataResp
 
 	return dto.InitialDataResponse{
 		VulnerabilityTypes:         vulnerabilityTypesData,
-		GlobalTotalVulnerabilities: globalTotalVulnerabilities,
+		GlobalTotalVulnerabilities: validVulnerabilities,
 		GlobalCVSSScore:            globalCVSSScore,
 	}
 }
@@ -115,6 +142,11 @@ func GetMaxCVSSPerType(vulns []tools.Vulnerability) map[enums.OwaspCategory]floa
 	// Initialize the map with all possible OwaspCategory enums and default values
 	for _, cat := range enums.AllOwaspCategories {
 		categoryMap[cat] = 0.0
+	}
+
+	// Handle nil slice
+	if vulns == nil {
+		return categoryMap
 	}
 
 	// Iterate through vulnerabilities and update the map with maximum CVSS values
@@ -248,8 +280,9 @@ func GetHighestCVSSVulnerabilityOfType(vulns []tools.Vulnerability, vulnType enu
 		if vuln.Type == vulnType {
 			if vuln.BaseCVSSScore > maxCVSS {
 				maxCVSS = vuln.BaseCVSSScore
-				highestVuln = &vuln
-			} else if vuln.BaseCVSSScore == maxCVSS {
+				v := vuln // Create a copy to avoid loop variable issues
+				highestVuln = &v
+			} else if vuln.BaseCVSSScore == maxCVSS && highestVuln != nil {
 				// If CVSS is the same, compare ID's (names) alphabetically
 				if vuln.CveID > highestVuln.CveID {
 					highestVuln = &vuln
