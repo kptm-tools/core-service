@@ -134,7 +134,7 @@ func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.
 			}
 		case 1: // with emails but an empty subdomains slice.
 			result = &tools.HarvesterResult{
-				Emails:     generateEmails(gofakeit.Number(0, sizeEmail)),
+				Emails:     generateEmails(gofakeit.Number(1, sizeEmail)),
 				Subdomains: []string{},
 			}
 		default: // with an empty emails slice but with subdomains.
@@ -192,7 +192,7 @@ func generateSampleDomainStruct(created time.Time, updated time.Time, expired ti
 		Domain:               gofakeit.DomainName(),
 		Punycode:             gofakeit.DomainName(),
 		Name:                 gofakeit.Word(),
-		Extension:            gofakeit.FileExtension(),
+		Extension:            "." + gofakeit.DomainSuffix(),
 		WhoisServer:          gofakeit.DomainName(),
 		Status:               []string{gofakeit.Word(), gofakeit.Word()},
 		NameServers:          []string{gofakeit.DomainName(), gofakeit.DomainName()},
