@@ -101,30 +101,33 @@ func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.
 	return result
 }
 
-func SampleInformationGatheringScanResults(scans []domain.Scan) []domain.ScanResult {
+func SampleInformationGatheringScanResultsForSingleScan(scan domain.Scan) []domain.ScanResult {
 	toolNames := make([]enums.ToolName, 3)
 	toolNames[0] = enums.ToolDNSLookup
 	toolNames[1] = enums.ToolHarvester
 	toolNames[2] = enums.ToolWhoIs
 
-	domainScanResult := make([]domain.ScanResult, len(toolNames)*len(scans))
+	domainScanResult := make([]domain.ScanResult, len(toolNames))
 	var indexSR int
-	for _, scan := range scans {
-		for _, tool := range toolNames {
-			domainScanResult[indexSR] = *domain.NewScanResult(
-				scan.ID,
-				tools.ToolResult{
-					Tool:      tool,
-					Result:    generateInfoGather(tool, scan.Target.Type),
-					Err:       nil,
-					Timestamp: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
-				},
-			)
-			indexSR++
-		}
+
+	for _, tool := range toolNames {
+		domainScanResult[indexSR] = *sampleScanResultForSingleScan(scan, tool)
+		indexSR++
 	}
 
 	return domainScanResult
+}
+
+func sampleScanResultForSingleScan(scan domain.Scan, tool enums.ToolName) *domain.ScanResult {
+	return domain.NewScanResult(
+		scan.ID,
+		tools.ToolResult{
+			Tool:      tool,
+			Result:    generateInfoGather(tool, scan.Target.Type),
+			Err:       nil,
+			Timestamp: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
+		},
+	)
 }
 
 func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment {
