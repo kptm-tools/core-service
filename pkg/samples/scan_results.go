@@ -15,12 +15,20 @@ import (
 	"github.com/kptm-tools/core-service/pkg/domain"
 )
 
-func generateEmails(size int) []string {
+// generateEmails creates emails using a name and a random number, e.g., john.1234@example.com
+func generateEmails(name string, size int) []string {
 	emails := make([]string, size)
-	for i := range size {
-		emails[i] = gofakeit.Email()
+	for i := 0; i < size; i++ {
+		emails[i] = customEmail(name, gofakeit.Int())
 	}
 	return emails
+}
+
+// customEmail generates an email address using the given name and number.
+func customEmail(name string, num int) string {
+	// Lowercase and sanitize the name for email use
+	sanitized := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+	return fmt.Sprintf("%s.%d@example.com", sanitized, num)
 }
 
 func generateSubDomains(size int) []string {
@@ -126,22 +134,14 @@ func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.
 			sizeEmail = 0
 		}
 		caseData := gofakeit.IntRange(0, 2)
+		randomName := gofakeit.Name()
 		switch caseData {
 		case 0: // with both emails and subdomains.
-			result = &tools.HarvesterResult{
-				Emails:     generateEmails(gofakeit.Number(1, sizeEmail)),
-				Subdomains: generateSubDomains(gofakeit.Number(1, sizeEmail)),
-			}
+			result = generateSampleHarvesterTool(randomName, sizeEmail, sizeEmail)
 		case 1: // with emails but an empty subdomains slice.
-			result = &tools.HarvesterResult{
-				Emails:     generateEmails(gofakeit.Number(1, sizeEmail)),
-				Subdomains: []string{},
-			}
+			result = generateSampleHarvesterTool(randomName, sizeEmail, 0)
 		default: // with an empty emails slice but with subdomains.
-			result = &tools.HarvesterResult{
-				Emails:     []string{},
-				Subdomains: generateSubDomains(gofakeit.Number(1, sizeEmail)),
-			}
+			result = generateSampleHarvesterTool(randomName, 0, sizeEmail)
 		}
 
 	case enums.ToolDNSLookup:
@@ -184,6 +184,21 @@ func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.
 		}
 	}
 	return result
+}
+
+func generateSampleHarvesterTool(randomName string, sizeEmail int, sizeSubdomain int) *tools.HarvesterResult {
+	minSizeSubDomain := 0
+	minSizeEmail := 0
+	if sizeSubdomain > 0 {
+		minSizeSubDomain = 1
+	}
+	if sizeEmail > 0 {
+		minSizeEmail = 1
+	}
+	return &tools.HarvesterResult{
+		Emails:     generateEmails(randomName, gofakeit.Number(minSizeEmail, sizeEmail)),
+		Subdomains: generateSubDomains(gofakeit.Number(minSizeSubDomain, sizeSubdomain)),
+	}
 }
 
 func generateSampleDomainStruct(created time.Time, updated time.Time, expired time.Time) *whoisparser.Domain {
