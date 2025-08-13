@@ -205,7 +205,10 @@ func populateScans(
 		if err := deps.ScanRepo.UpdateProtectionScore(ctx, scan.ID, randScore); err != nil {
 			return fmt.Errorf("error updating protection score: %w", err)
 		}
+	}
 
+	if err := populateScanResults(ctx, deps, sampleScans); err != nil {
+		return fmt.Errorf("error populating scan results: %w", err)
 	}
 
 	return nil
@@ -238,6 +241,24 @@ func populateWebScanVulnerabilities(
 			return fmt.Errorf("failed to create webScanVulnerability: %w", err)
 		}
 	}
+	return nil
+}
+
+func populateScanResults(
+	ctx context.Context,
+	deps PopulatorDependencies,
+	scans []domain.Scan,
+) error {
+	for _, scan := range scans {
+		sampleScanResults := samples.SampleInformationGatheringScanResultsForSingleScan(scan)
+		for _, scanResult := range sampleScanResults {
+			err := deps.ScanService.InsertScanResult(ctx, scanResult)
+			if err != nil {
+				return fmt.Errorf("failed to create scan_result: %w", err)
+			}
+		}
+	}
+	fmt.Println("✅ Scan results for all scans populated successfully")
 	return nil
 }
 

@@ -2,6 +2,7 @@ package samples
 
 import (
 	"fmt"
+	whoisparser "github.com/likexian/whois-parser"
 	"math"
 	"strconv"
 	"strings"
@@ -12,23 +13,30 @@ import (
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/common/common/pkg/results/tools"
 	"github.com/kptm-tools/core-service/pkg/domain"
-	whoisparser "github.com/likexian/whois-parser"
 )
 
-func generateEmails(size int) []string {
+// generateEmails creates emails using a name and a random number, e.g., john.1234@example.com
+func generateEmails(name string, size int) []string {
 	emails := make([]string, size)
-	for i := range size {
-		emails[i] = gofakeit.Email()
+	for i := 0; i < size; i++ {
+		emails[i] = customEmail(name, gofakeit.Int())
 	}
 	return emails
 }
 
+// customEmail generates an email address using the given name and number.
+func customEmail(name string, num int) string {
+	// Lowercase and sanitize the name for email use
+	sanitized := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+	return fmt.Sprintf("%s.%d@example.com", sanitized, num)
+}
+
 func generateSubDomains(size int) []string {
-	emails := make([]string, size)
+	domains := make([]string, size)
 	for i := range size {
-		emails[i] = gofakeit.DomainName()
+		domains[i] = gofakeit.DomainName()
 	}
-	return emails
+	return domains
 }
 
 func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.IToolResult {
@@ -38,27 +46,104 @@ func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.
 		if target == enums.IP {
 			result = &tools.WhoIsResult{}
 		} else {
-			result = &tools.WhoIsResult{
-				RawData: &whoisparser.WhoisInfo{
-					Domain: &whoisparser.Domain{
-						Domain: gofakeit.DomainName(),
+			useCase := gofakeit.Number(0, 1)
+			switch useCase {
+			case 0: // partial data
+				created := gofakeit.Date()
+				updated := gofakeit.Date()
+				expired := gofakeit.Date()
+				result = &tools.WhoIsResult{
+					RawData: &whoisparser.WhoisInfo{
+						Domain: generateSampleDomainStruct(created, updated, expired),
+						Registrar: &whoisparser.Contact{
+							Name:        gofakeit.Company(),
+							ReferralURL: gofakeit.DomainName(),
+						},
 					},
-					Registrar: &whoisparser.Contact{
-						Name:        gofakeit.Company(),
-						ReferralURL: gofakeit.DomainName(),
+				}
+			default:
+				created := gofakeit.Date()
+				updated := gofakeit.Date()
+				expired := gofakeit.Date()
+				result = &tools.WhoIsResult{
+					RawData: &whoisparser.WhoisInfo{
+						Domain: generateSampleDomainStruct(created, updated, expired),
+						Registrar: &whoisparser.Contact{
+							ID:          gofakeit.UUID(),
+							Name:        gofakeit.Company(),
+							Email:       gofakeit.Email(),
+							Phone:       gofakeit.Phone(),
+							ReferralURL: gofakeit.URL(),
+						},
+						Registrant: &whoisparser.Contact{
+							ID:           gofakeit.UUID(),
+							Name:         gofakeit.Name(),
+							Organization: gofakeit.Company(),
+							Street:       gofakeit.Street(),
+							City:         gofakeit.City(),
+							PostalCode:   gofakeit.Zip(),
+							Country:      gofakeit.Country(),
+							Email:        gofakeit.Email(),
+							Phone:        gofakeit.Phone(),
+							Fax:          gofakeit.Phone(),
+						},
+						Administrative: &whoisparser.Contact{
+							ID:           gofakeit.UUID(),
+							Name:         gofakeit.Name(),
+							Organization: gofakeit.Company(),
+							Street:       gofakeit.Street(),
+							City:         gofakeit.City(),
+							PostalCode:   gofakeit.Zip(),
+							Country:      gofakeit.Country(),
+							Email:        gofakeit.Email(),
+							Phone:        gofakeit.Phone(),
+							Fax:          gofakeit.Phone(),
+						},
+						Technical: &whoisparser.Contact{
+							ID:           gofakeit.UUID(),
+							Name:         gofakeit.Name(),
+							Organization: gofakeit.Company(),
+							Street:       gofakeit.Street(),
+							City:         gofakeit.City(),
+							PostalCode:   gofakeit.Zip(),
+							Country:      gofakeit.Country(),
+							Email:        gofakeit.Email(),
+							Phone:        gofakeit.Phone(),
+							Fax:          gofakeit.Phone(),
+						},
+						Billing: &whoisparser.Contact{
+							ID:           gofakeit.UUID(),
+							Name:         gofakeit.Name(),
+							Organization: gofakeit.Company(),
+							Street:       gofakeit.Street(),
+							City:         gofakeit.City(),
+							PostalCode:   gofakeit.Zip(),
+							Country:      gofakeit.Country(),
+							Email:        gofakeit.Email(),
+							Phone:        gofakeit.Phone(),
+							Fax:          gofakeit.Phone(),
+						},
 					},
-				},
+				}
 			}
+
 		}
 	case enums.ToolHarvester:
 		sizeEmail := 5
 		if target == enums.IP {
 			sizeEmail = 0
 		}
-		result = &tools.HarvesterResult{
-			Emails:     generateEmails(gofakeit.Number(0, sizeEmail)),
-			Subdomains: generateSubDomains(gofakeit.Number(0, sizeEmail)),
+		caseData := gofakeit.IntRange(0, 2)
+		randomName := gofakeit.Name()
+		switch caseData {
+		case 0: // with both emails and subdomains.
+			result = generateSampleHarvesterTool(randomName, sizeEmail, sizeEmail)
+		case 1: // with emails but an empty subdomains slice.
+			result = generateSampleHarvesterTool(randomName, sizeEmail, 0)
+		default: // with an empty emails slice but with subdomains.
+			result = generateSampleHarvesterTool(randomName, 0, sizeEmail)
 		}
+
 	case enums.ToolDNSLookup:
 		if target == enums.IP {
 			result = &tools.DNSLookupResult{
@@ -101,30 +186,85 @@ func generateInfoGather(toolName enums.ToolName, target enums.TargetType) tools.
 	return result
 }
 
-func SampleInformationGatheringScanResults(scans []domain.Scan) []domain.ScanResult {
+func generateSampleHarvesterTool(randomName string, sizeEmail int, sizeSubdomain int) *tools.HarvesterResult {
+	minSizeSubDomain := 0
+	minSizeEmail := 0
+	if sizeSubdomain > 0 {
+		minSizeSubDomain = 1
+	}
+	if sizeEmail > 0 {
+		minSizeEmail = 1
+	}
+	return &tools.HarvesterResult{
+		Emails:     generateEmails(randomName, gofakeit.Number(minSizeEmail, sizeEmail)),
+		Subdomains: generateSubDomains(gofakeit.Number(minSizeSubDomain, sizeSubdomain)),
+	}
+}
+
+func generateSampleDomainStruct(created time.Time, updated time.Time, expired time.Time) *whoisparser.Domain {
+	return &whoisparser.Domain{
+		ID:                   gofakeit.UUID(),
+		Domain:               gofakeit.DomainName(),
+		Punycode:             gofakeit.DomainName(),
+		Name:                 gofakeit.Word(),
+		Extension:            "." + gofakeit.DomainSuffix(),
+		WhoisServer:          gofakeit.DomainName(),
+		Status:               []string{gofakeit.Word(), gofakeit.Word()},
+		NameServers:          []string{gofakeit.DomainName(), gofakeit.DomainName()},
+		DNSSec:               gofakeit.Bool(),
+		CreatedDate:          created.String(),
+		CreatedDateInTime:    &created,
+		UpdatedDate:          updated.String(),
+		UpdatedDateInTime:    &updated,
+		ExpirationDate:       expired.String(),
+		ExpirationDateInTime: &expired,
+	}
+}
+
+func SampleInformationGatheringScanResultsForSingleScan(scan domain.Scan) []domain.ScanResult {
 	toolNames := make([]enums.ToolName, 3)
 	toolNames[0] = enums.ToolDNSLookup
 	toolNames[1] = enums.ToolHarvester
 	toolNames[2] = enums.ToolWhoIs
 
-	domainScanResult := make([]domain.ScanResult, len(toolNames)*len(scans))
+	domainScanResult := make([]domain.ScanResult, len(toolNames))
 	var indexSR int
-	for _, scan := range scans {
-		for _, tool := range toolNames {
-			domainScanResult[indexSR] = *domain.NewScanResult(
-				scan.ID,
-				tools.ToolResult{
-					Tool:      tool,
-					Result:    generateInfoGather(tool, scan.Target.Type),
-					Err:       nil,
-					Timestamp: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
-				},
-			)
-			indexSR++
-		}
+
+	for _, tool := range toolNames {
+		domainScanResult[indexSR] = *sampleScanResultForSingleScan(scan, tool)
+		indexSR++
 	}
 
 	return domainScanResult
+}
+
+func sampleScanResultForSingleScan(scan domain.Scan, tool enums.ToolName) *domain.ScanResult {
+	useCase := gofakeit.Number(0, 1)
+	switch useCase {
+	case 0: // result empty with error
+		return domain.NewScanResult(
+			scan.ID,
+			tools.ToolResult{
+				Tool:   tool,
+				Result: nil,
+				Err: &tools.ToolError{
+					Code:    "400",
+					Message: "Wrong scan result",
+				},
+				Timestamp: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
+			},
+		)
+	default: // result with success false
+		return domain.NewScanResult(
+			scan.ID,
+			tools.ToolResult{
+				Tool:      tool,
+				Result:    generateInfoGather(tool, scan.Target.Type),
+				Err:       nil,
+				Timestamp: gofakeit.DateRange(scan.StartedAt, scan.UpdatedAt),
+			},
+		)
+	}
 }
 
 func generateVendorComments(size int, fromDate time.Time) []tools.VendorComment {
