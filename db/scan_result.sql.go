@@ -36,7 +36,7 @@ func (q *Queries) CreateScanResult(ctx context.Context, arg CreateScanResultPara
 }
 
 const getScanResultsByScanID = `-- name: GetScanResultsByScanID :many
-SELECT id, scan_id, tool, success, result, created_at, updated_at FROM scan_results where scan_id=$1 and tool = ANY($2::tool_enum[]) and success=true
+SELECT id, scan_id, tool, success, result, created_at, updated_at FROM scan_results where scan_id=$1 and tool = ANY($2::tool_enum[])
 `
 
 type GetScanResultsByScanIDParams struct {

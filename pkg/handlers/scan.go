@@ -861,19 +861,18 @@ func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request
 	return api.WriteJSON(w, http.StatusOK, result)
 }
 
-
 // GetScanResultsByScanID returns information gathering results for a given scan ID.
 // @Summary      GetScanResultsByScanID
 // @Description  Retrieve information gathering results (e.g., whois, DNS, subdomains, etc.) for a given scan ID.
 // @Tags         Scans
 // @Produce      json
 // @Param        id   path      string  true  "Scan ID"
-// @Success      201  {object}  dto.InformationGatheredResultsResponse
+// @Success      201  {object}  dto.ScanInformationGatheredDTO
 // @Failure      400  {object}  api.APIError         "Invalid scan ID"
 // @Failure      404  {object}  api.APIError         "Scan not found"
 // @Failure      500  {object}  api.APIError         "Internal server error"
 // @Security     BearerAuth
-// @Router       /api/scans/{id}/results [get]
+// @Router      /api/scans/{id}/information-gathered [get]
 func (h *ScanHandlers) GetScanResultsByScanID(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
@@ -892,5 +891,7 @@ func (h *ScanHandlers) GetScanResultsByScanID(w http.ResponseWriter, r *http.Req
 		}
 		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
 	}
-	return api.WriteJSON(w, http.StatusCreated, scanResults)
+
+	dtoScanResult := dto.ConvertScanResultDomToDtoScanInformationGathered(scanResults)
+	return api.WriteJSON(w, http.StatusCreated, dtoScanResult)
 }

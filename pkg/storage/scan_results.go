@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	tools2 "github.com/kptm-tools/common/common/pkg/results/tools"
-
+	"github.com/kptm-tools/common/common/pkg/enums"
 	repository "github.com/kptm-tools/core-service/db"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"github.com/kptm-tools/core-service/pkg/domain"
 	"github.com/kptm-tools/core-service/pkg/interfaces"
 	"github.com/sqlc-dev/pqtype"
@@ -61,16 +61,25 @@ func (r *ScanResultsRepo) GetScanResultsByScanID(ctx context.Context, scanID uui
 		params.Column2 = append(params.Column2, repository.ToolEnum(t))
 	}
 	dbResults, err := queries.GetScanResultsByScanID(ctx, params)
+	if dbResults == nil {
+		return nil, customerrors.ErrScanNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	scanResults := make([]domain.ScanResult, len(dbResults))
 	for i, db := range dbResults {
+		result, errUnmarshal := unmarshalToolResult(db.Result, enums.ToolName(db.Tool))
+		if errUnmarshal != nil {
+			return nil, errUnmarshal
+		}
 		scanResults[i] = domain.ScanResult{
-			ScanID:  db.ScanID,
-			Success: db.Success,
-			Result:  tools2.ToolResult{},
+			ScanID:    db.ScanID,
+			ToolName:  string(db.Tool),
+			Success:   db.Success,
+			Result:    *result,
+			CreatedAt: db.CreatedAt.Time,
 		}
 	}
 	return scanResults, nil

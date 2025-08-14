@@ -461,11 +461,11 @@ func (s *ScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Context,
 
 func (s ScanService) GetInformationGatheredResults(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
 	// 1. Get base data from the main query
-	tools := []string{enums.ToolDNSLookup.String(), enums.ToolWhoIs.String(), enums.ToolHarvester.String()}
-	result, err := s.scanResultsRepo.GetScanResultsByScanID(ctx, scanID, tools)
+	toolNames := []string{enums.ToolDNSLookup.String(), enums.ToolWhoIs.String(), enums.ToolHarvester.String()}
+	result, err := s.scanResultsRepo.GetScanResultsByScanID(ctx, scanID, toolNames)
 	if err != nil {
-		slog.Debug("Failed to get scan results", slog.String("scanID", scanID.String()))
-		return nil, fmt.Errorf("failed to get scan results: %w", err)
+		slog.Debug("Failed to get scan results", slog.String("scanID", scanID.String()), slog.Any("toolNames", toolNames))
+		return nil, err
 	}
 	return result, nil
 }
