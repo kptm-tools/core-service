@@ -867,7 +867,7 @@ func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request
 // @Tags         Scans
 // @Produce      json
 // @Param        id   path      string  true  "Scan ID"
-// @Success      201  {object}  dto.ScanInformationGatheredDTO
+// @Success      200  {object}  dto.ScanInformationGatheredDTO
 // @Failure      400  {object}  api.APIError         "Invalid scan ID"
 // @Failure      404  {object}  api.APIError         "Scan not found"
 // @Failure      500  {object}  api.APIError         "Internal server error"
@@ -893,5 +893,5 @@ func (h *ScanHandlers) GetScanResultsByScanID(w http.ResponseWriter, r *http.Req
 	}
 
 	dtoScanResult := dto.ConvertScanResultDomToDtoScanInformationGathered(scanResults)
-	return api.WriteJSON(w, http.StatusCreated, dtoScanResult)
+	return api.WriteJSON(w, http.StatusOK, dtoScanResult)
 }

@@ -148,11 +148,14 @@ func unmarshalNvdVendorComments(nvdRaw pqtype.NullRawMessage) ([]tools.VendorCom
 }
 
 func unmarshalToolResult(toolResultRawMessage pqtype.NullRawMessage, toolName enums.ToolName) (*tools.ToolResult, error) {
+	toolResult := tools.ToolResult{
+		Tool: toolName,
+	}
 	if !toolResultRawMessage.Valid {
-		return nil, nil
+		return &toolResult, nil
 	}
 	if len(toolResultRawMessage.RawMessage) == 0 || string(toolResultRawMessage.RawMessage) == "null" {
-		return nil, nil
+		return &toolResult, nil
 	}
 
 	var result tools.IToolResult
@@ -177,10 +180,6 @@ func unmarshalToolResult(toolResultRawMessage pqtype.NullRawMessage, toolName en
 		result = &dns
 	}
 
-	toolResult := tools.ToolResult{
-		Tool:   toolName,
-		Result: result,
-		Err:    nil,
-	}
+	toolResult.Result = result
 	return &toolResult, nil
 }
