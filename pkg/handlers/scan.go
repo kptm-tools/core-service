@@ -562,9 +562,6 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 	}
 
 	severityCounts := h.scanService.GetSeverityCountsFromDomainVulnDetail(ctx, vulnerabilities)
-
-	// Prepare total collections
-	totalRemediations := make([]dto.CWERemediation, 0)
 	totalReferences := make([]string, 0)
 
 	// Prepare vulnerability items slice
@@ -572,45 +569,31 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 
 	// Parse vulners
 	for i, vuln := range vulnerabilities {
+		doRemediations := make([]dto.CWERemediation, 0)
+		doRemediations = h.getDomRemediationsToDto(vuln, doRemediations)
 		// Populate ScanVulnerabilityItem
 		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
-			ID:             vuln.ID,
-			Name:           vuln.Name,
-			Type:           vuln.OS.Type,
-			Severity:       vuln.Severity,
-			MaxCVSS:        vuln.MaxCVSS,
-			RiskScore:      vuln.RiskScore,
-			ImpactScore:    vuln.ImpactScore,
-			Likelihood:     vuln.Likelihood,
-			Access:         vuln.Likelihood, // Consider if this is intentional or a mistake
-			Complexity:     vuln.Complexity,
-			Privileges:     vuln.Privileges,
-			Exploitability: vuln.Exploitability,
-			Description:    vuln.Description,
-			Comment:        vuln.Comment,
-			VendorComments: vuln.VendorComments,
-			References:     vuln.References,
+			ID:              vuln.ID,
+			Name:            vuln.Name,
+			Type:            vuln.OS.Type,
+			Severity:        vuln.Severity,
+			MaxCVSS:         vuln.MaxCVSS,
+			RiskScore:       vuln.RiskScore,
+			ImpactScore:     vuln.ImpactScore,
+			Likelihood:      vuln.Likelihood,
+			Access:          vuln.Likelihood, // Consider if this is intentional or a mistake
+			Complexity:      vuln.Complexity,
+			Privileges:      vuln.Privileges,
+			Exploitability:  vuln.Exploitability,
+			Description:     vuln.Description,
+			Comment:         vuln.Comment,
+			VendorComments:  vuln.VendorComments,
+			References:      vuln.References,
+			CWERemediations: doRemediations,
 		}
 
 		// Aggregate references
 		totalReferences = append(totalReferences, vuln.References...)
-
-		// Aggregate valid remediations
-		for _, remediation := range vuln.CWERemediation {
-			if remediation.Description != "" {
-				cweRemediation := dto.CWERemediation{
-					ID:                 remediation.ID,
-					MitigationID:       &remediation.MitigationID,
-					Title:              remediation.Title,
-					Phase:              &remediation.Phase[0], // safe if Phase is non-empty - consider adding validation
-					Description:        remediation.Description,
-					Effectiveness:      &remediation.Effectiveness,
-					EffectivenessNotes: &remediation.EffectivenessNotes,
-					LastUpdated:        remediation.LastUpdated,
-				}
-				totalRemediations = append(totalRemediations, cweRemediation)
-			}
-		}
 	}
 
 	// Aggregate response object
@@ -622,7 +605,6 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		OSName:               "",
 		OSType:               "",
 		Vulnerabilities:      scanVulnerabilityItems,
-		CWERemediations:      totalRemediations,
 		References:           totalReferences,
 		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low + severityCounts.None + severityCounts.Unknown,
 		SeverityCounts:       severityCounts,
@@ -760,8 +742,6 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 	for i, vuln := range vulnerabilities {
 		// Populate ScanVulnerabilityItem
 		doRemediations := make([]dto.CWERemediation, 0)
-		// Aggregate valid remediations
-
 		doRemediations = h.getDomRemediationsToDto(vuln, doRemediations)
 
 		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
