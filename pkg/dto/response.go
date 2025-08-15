@@ -266,7 +266,6 @@ type ScanVulnerabilityDetectedOSResponse struct {
 	TotalVulnerabilities int                     `json:"total_vulnerabilities"`
 	SeverityCounts       tools.SeverityCounts    `json:"severity_counts"`
 	Vulnerabilities      []ScanVulnerabilityItem `json:"vulnerabilities"`
-	CWERemediations      []CWERemediation        `json:"remediations"`
 	References           []string                `json:"references"`
 }
 

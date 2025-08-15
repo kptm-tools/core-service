@@ -1374,12 +1374,6 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "remediations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
-                    }
-                },
                 "scan_date": {
                     "type": "string"
                 },
