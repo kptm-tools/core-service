@@ -12,7 +12,7 @@ import (
 )
 
 type MockScanScheduleService struct {
-	MockCreateScanSchedule         func(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) (*domain.ScanSchedule, error)
+	MockCreateScanSchedule         func(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule, hostID uuid.UUID) (*domain.ScanSchedule, error)
 	MockDeleteScanScheduleByID     func(context.Context, int32) (bool, error)
 	MockPatchScanSchedule          func(ctx context.Context, scanScheduleID int32, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID, operatorID, hostID uuid.UUID) error
 	MockGetScanSchedulesByTenantID func(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanScheduleSummary, error)
@@ -23,9 +23,9 @@ type MockScanScheduleService struct {
 
 var _ interfaces.IScanScheduleService = (*MockScanScheduleService)(nil)
 
-func (m *MockScanScheduleService) CreateScanSchedule(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) (*domain.ScanSchedule, error) {
+func (m *MockScanScheduleService) CreateScanSchedule(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule, hostID uuid.UUID) (*domain.ScanSchedule, error) {
 	if m.MockCreateScanSchedule != nil {
-		return m.MockCreateScanSchedule(ctx, scanID, scheduleAt, frequency)
+		return m.MockCreateScanSchedule(ctx, scanID, scheduleAt, frequency, hostID)
 	}
 	panic(fmt.Sprintf("MockScanScheduleService: method CreateScanSchedule called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

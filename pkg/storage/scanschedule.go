@@ -66,6 +66,7 @@ func (r *ScanScheduleRepository) CreateScanSchedule(
 	}
 
 	params := repository.CreateScanScheduleParams{
+		HostID:         schedule.HostID,
 		ScanID:         schedule.ScanID,
 		PeriodName:     sqlPeriodName,
 		PeriodQuantity: sqlPeriodQuantity,

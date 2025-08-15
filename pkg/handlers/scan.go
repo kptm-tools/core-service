@@ -130,7 +130,7 @@ func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) erro
 			slog.Error("Failed to create scans", slog.Any("error", err))
 			return api.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		}
-		_, errScanSchedule := h.scanScheduleService.CreateScanSchedule(ctx, scan.ID, dateSchedule, scanRequest.Frequency)
+		_, errScanSchedule := h.scanScheduleService.CreateScanSchedule(ctx, scan.ID, dateSchedule, scanRequest.Frequency, scanRequest.HostID)
 		if errScanSchedule != nil {
 			slog.Error("Error inserting scan schedule",
 				slog.String("scan_id", scan.ID.String()),

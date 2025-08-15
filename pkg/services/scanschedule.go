@@ -38,6 +38,7 @@ func (s *ScanScheduleService) CreateScanSchedule(
 	scanID uuid.UUID,
 	scheduleAt time.Time,
 	frequency *domain.RepeatSchedule,
+	hostID uuid.UUID,
 ) (*domain.ScanSchedule, error) {
 	var hasPeriod bool
 	var cronExpr string
@@ -55,6 +56,7 @@ func (s *ScanScheduleService) CreateScanSchedule(
 	}
 
 	scheduleToCreate := domain.ScanSchedule{
+		HostID:         hostID,
 		ScanID:         scanID,
 		CronExpression: cronExpr,
 		HasPeriod:      hasPeriod,
