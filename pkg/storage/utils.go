@@ -178,6 +178,8 @@ func unmarshalToolResult(toolResultRawMessage pqtype.NullRawMessage, toolName en
 			return nil, fmt.Errorf("failed to unmarshal DNSLookupResult: %w", err)
 		}
 		result = &dns
+	default:
+		return nil, fmt.Errorf("unsupported tool name: %v", toolName)
 	}
 
 	toolResult.Result = result

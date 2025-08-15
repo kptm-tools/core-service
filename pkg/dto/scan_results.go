@@ -69,10 +69,7 @@ func ConvertScanResultDomToDtoScanInformationGathered(results []domain.ScanResul
 						Subdomains: harvester.Subdomains,
 					}
 				} else {
-					response.HarvesterResult = &HarvesterResultDTO{
-						Emails:     nil,
-						Subdomains: nil,
-					}
+					response.HarvesterResult = nil
 				}
 			}
 
@@ -118,11 +115,7 @@ func ConvertScanResultDomToDtoScanInformationGathered(results []domain.ScanResul
 						Registrant: registrant,
 					}
 				} else {
-					response.WhoisResult = &WhoisResultDTO{
-						Domain:     WhoIsDomain{},
-						Registrar:  WhoIsRegistrar{},
-						Registrant: WhoIsRegistrant{},
-					}
+					response.WhoisResult = nil
 				}
 			}
 		case enums.ToolDNSLookup.String():
@@ -143,10 +136,7 @@ func ConvertScanResultDomToDtoScanInformationGathered(results []domain.ScanResul
 						DNSSECEnabled: dnsLookup.DNSSECEnabled,
 					}
 				} else {
-					response.DNSLookupResult = &DNSLookupResultDTO{
-						DNSRecords:    []DNSRecordDTO{},
-						DNSSECEnabled: false,
-					}
+					response.DNSLookupResult = nil
 				}
 			}
 		}
