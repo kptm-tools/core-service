@@ -125,6 +125,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/scans/{id}/information-gathered": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve information gathering results (e.g., whois, DNS, subdomains, etc.) for a given scan ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scans"
+                ],
+                "summary": "GetScanResultsByScanID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanInformationGatheredDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid scan ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Scan not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/scans/{id}/operating-system/vulnerabilities": {
             "get": {
                 "security": [
@@ -678,6 +730,46 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_domain.CWEDetailWithMitigations": {
+            "type": "object",
+            "properties": {
+                "cwe_id": {
+                    "description": "CWE Detail fields (from cwe_details table)",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "effectiveness": {
+                    "type": "string"
+                },
+                "effectiveness_notes": {
+                    "type": "string"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "mitigation_created_at": {
+                    "type": "string"
+                },
+                "mitigation_description": {
+                    "type": "string"
+                },
+                "mitigation_id": {
+                    "description": "Mitigation fields (from cwe_mitigations table)",
+                    "type": "string"
+                },
+                "owasp_top10_category": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_domain.WebVulnerabilityInstance": {
             "type": "object",
             "properties": {
@@ -733,6 +825,49 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.DNSLookupResultDTO": {
+            "type": "object",
+            "properties": {
+                "dns_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.DNSRecordDTO"
+                    }
+                },
+                "dnssec_enabled": {
+                    "type": "boolean"
+                },
+                "domain": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.DNSRecordDTO": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "value": {}
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO": {
+            "type": "object",
+            "properties": {
+                "emails": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "subdomains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -924,6 +1059,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanInformationGatheredDTO": {
+            "type": "object",
+            "properties": {
+                "dns_lookup_result": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.DNSLookupResultDTO"
+                },
+                "harvester_result": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO"
+                },
+                "whois_result": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse": {
             "type": "object",
             "properties": {
@@ -978,12 +1127,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
-                },
-                "remediations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
                     }
                 },
                 "scan_date": {
@@ -1078,6 +1221,12 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "remediations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
+                    }
+                },
                 "risk_score": {
                     "type": "number"
                 },
@@ -1116,6 +1265,12 @@ const docTemplate = `{
                 "reference": {
                     "type": "string"
                 },
+                "remediations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.CWEDetailWithMitigations"
+                    }
+                },
                 "scan_id": {
                     "type": "string"
                 },
@@ -1145,6 +1300,12 @@ const docTemplate = `{
                 "instances_count": {
                     "type": "integer"
                 },
+                "remediations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.CWEDetailWithMitigations"
+                    }
+                },
                 "scan_id": {
                     "type": "string"
                 },
@@ -1159,6 +1320,56 @@ const docTemplate = `{
                 },
                 "vulnerability_id": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "name_servers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain"
+                },
+                "registrant": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant"
+                },
+                "registrar": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar"
                 }
             }
         },
