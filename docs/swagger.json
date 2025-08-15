@@ -56,6 +56,63 @@
                 }
             }
         },
+        "/api/scans": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new scan for a given host. Optionally schedule the scan for a future time.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scans"
+                ],
+                "summary": "CreateScan",
+                "parameters": [
+                    {
+                        "description": "Scan request payload",
+                        "name": "scan",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.Scan"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Host not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/scans/{id}/assets": {
             "get": {
                 "security": [
@@ -403,6 +460,19 @@
         }
     },
     "definitions": {
+        "enums.TargetType": {
+            "type": "string",
+            "enum": [
+                "IP",
+                "Domain",
+                "Subdomain"
+            ],
+            "x-enum-varnames": [
+                "IP",
+                "Domain",
+                "Subdomain"
+            ]
+        },
         "fusionauth.AuthenticatorConfiguration": {
             "type": "object",
             "properties": {
@@ -807,6 +877,70 @@
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_domain.PeriodEnum": {
+            "type": "string",
+            "enum": [
+                "Day",
+                "Month",
+                "Week",
+                "Year"
+            ],
+            "x-enum-varnames": [
+                "Day",
+                "Month",
+                "Week",
+                "Year"
+            ]
+        },
+        "github_com_kptm-tools_core-service_pkg_domain.RepeatSchedule": {
+            "type": "object",
+            "properties": {
+                "quantity": {
+                    "type": "integer"
+                },
+                "unit_of_frequency": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.PeriodEnum"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_domain.Scan": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "ended_at": {
+                    "type": "string"
+                },
+                "host_ids": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "operator_id": {
+                    "type": "string"
+                },
+                "protection_score": {
+                    "type": "number"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "targets": {
+                    "$ref": "#/definitions/results.Target"
+                },
+                "tenant_id": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1227,118 +1361,17 @@
                 }
             }
         },
-        "github_com_kptm-tools_core-service_pkg_dto.ScanInformationGatheredDTO": {
+        "github_com_kptm-tools_core-service_pkg_dto.ScanRequest": {
             "type": "object",
             "properties": {
-                "dns_lookup_result": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.DNSLookupResultDTO"
-                },
-                "harvester_result": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO"
-                },
-                "whois_result": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO"
-                }
-            }
-        },
-        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse": {
-            "type": "object",
-            "properties": {
-                "access": {
+                "host_id": {
                     "type": "string"
                 },
-                "comment": {
+                "repeat_frequency": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.RepeatSchedule"
+                },
+                "schedule_at": {
                     "type": "string"
-                },
-                "complexity": {
-                    "type": "string"
-                },
-                "date": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.DateInfo"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "epss_date": {
-                    "type": "string"
-                },
-                "epss_percentile": {
-                    "type": "number"
-                },
-                "epss_score": {
-                    "type": "number"
-                },
-                "exploitability": {
-                    "type": "string"
-                },
-                "host": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.HostItem"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "impact_score": {
-                    "type": "number"
-                },
-                "likelihood": {
-                    "type": "string"
-                },
-                "max_cvss": {
-                    "type": "number"
-                },
-                "metrics": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CVSSMetric"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "operating_system": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.OSItem"
-                },
-                "plugin": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.PluginInfo"
-                },
-                "port": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.PortItem"
-                },
-                "privileges": {
-                    "type": "string"
-                },
-                "references": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "remediations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
-                    }
-                },
-                "risk": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.RiskInfo"
-                },
-                "risk_score": {
-                    "type": "number"
-                },
-                "scan_date": {
-                    "type": "string"
-                },
-                "severity": {
-                    "type": "string"
-                },
-                "vendor_comments": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tools.VendorComment"
-                    }
-                },
-                "vpr_key_d": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.VPRKeyInfo"
                 }
             }
         },
@@ -1604,53 +1637,24 @@
                 }
             }
         },
-        "github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain": {
+        "results.Target": {
             "type": "object",
             "properties": {
-                "domain": {
+                "alias": {
+                    "description": "Alias is a user-friendly name for the target",
                     "type": "string"
                 },
-                "name_servers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
+                "type": {
+                    "description": "Type specifies whether the target is an IP or a Domain.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/enums.TargetType"
+                        }
+                    ]
                 },
-                "organization": {
+                "value": {
+                    "description": "Value is the actual IP address or domain name of the target.",
                     "type": "string"
-                }
-            }
-        },
-        "github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO": {
-            "type": "object",
-            "properties": {
-                "domain": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain"
-                },
-                "registrant": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant"
-                },
-                "registrar": {
-                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar"
                 }
             }
         },

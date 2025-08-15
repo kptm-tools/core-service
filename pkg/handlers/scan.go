@@ -50,6 +50,19 @@ func NewScanHandlers(
 	}
 }
 
+// CreateScan creates a new scan for a given host, with optional scheduling.
+// @Summary      CreateScan
+// @Description  Create a new scan for a given host. Optionally schedule the scan for a future time.
+// @Tags         Scans
+// @Accept       json
+// @Produce      json
+// @Param        scan  body      dto.ScanRequest  true  "Scan request payload"
+// @Success      201   {object}  domain.Scan
+// @Failure      400   {object}  api.APIError         "Invalid request payload"
+// @Failure      404   {object}  api.APIError         "Host not found"
+// @Failure      500   {object}  api.APIError         "Internal server error"
+// @Security     BearerAuth
+// @Router       /api/scans [post]
 func (h *ScanHandlers) CreateScan(w http.ResponseWriter, req *http.Request) error {
 	ctx := req.Context()
 	tenantID, ok := ctx.Value(middleware.ContextTenantID).(uuid.UUID)
