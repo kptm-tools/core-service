@@ -288,6 +288,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/vulnerabilities/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve detailed information about a vulnerability for a given Vulnerability ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vulnerabilities"
+                ],
+                "summary": "GetVulnerability",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vulnerability ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format for Vulnerability ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Vulnerability not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/web-vulnerabilities/{id}": {
             "get": {
                 "security": [
@@ -799,6 +851,44 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_dto.CVSSMetric": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "string"
+                },
+                "availability_impact": {
+                    "type": "string"
+                },
+                "base_score": {
+                    "type": "number"
+                },
+                "complexity": {
+                    "type": "string"
+                },
+                "exploitability": {
+                    "type": "string"
+                },
+                "exploitability_score": {
+                    "type": "number"
+                },
+                "impact_score": {
+                    "type": "number"
+                },
+                "integrity_impact": {
+                    "type": "string"
+                },
+                "privileges_required": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.CWERemediation": {
             "type": "object",
             "properties": {
@@ -854,6 +944,17 @@ const docTemplate = `{
                 "value": {}
             }
         },
+        "github_com_kptm-tools_core-service_pkg_dto.DateInfo": {
+            "type": "object",
+            "properties": {
+                "last_updated": {
+                    "type": "string"
+                },
+                "published": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO": {
             "type": "object",
             "properties": {
@@ -868,6 +969,17 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.HostItem": {
+            "type": "object",
+            "properties": {
+                "alias": {
+                    "type": "string"
+                },
+                "ip_address": {
+                    "type": "string"
                 }
             }
         },
@@ -890,6 +1002,73 @@ const docTemplate = `{
                 "password": {
                     "description": "Password is the user's plaintext password.\nexample: password",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.OSItem": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.PluginInfo": {
+            "type": "object",
+            "properties": {
+                "cpe": {
+                    "description": "CPE",
+                    "type": "string"
+                },
+                "family": {
+                    "description": "OS = family, Sevice = Product",
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "AccessType",
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.PortItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "protocol": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.RiskInfo": {
+            "type": "object",
+            "properties": {
+                "availability_impact": {
+                    "type": "string"
+                },
+                "cvss_v3_base": {
+                    "description": "Can be nullable",
+                    "type": "number"
+                },
+                "cvss_v3_vector": {
+                    "description": "Can be nullable",
+                    "type": "string"
+                },
+                "integrity_impact": {
+                    "type": "string"
+                },
+                "risk_score": {
+                    "type": "number"
                 }
             }
         },
@@ -1070,6 +1249,107 @@ const docTemplate = `{
                 },
                 "whois_result": {
                     "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "complexity": {
+                    "type": "string"
+                },
+                "date": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.DateInfo"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "epss_date": {
+                    "type": "string"
+                },
+                "epss_percentile": {
+                    "type": "number"
+                },
+                "epss_score": {
+                    "type": "number"
+                },
+                "exploitability": {
+                    "type": "string"
+                },
+                "host": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.HostItem"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "impact_score": {
+                    "type": "number"
+                },
+                "likelihood": {
+                    "type": "string"
+                },
+                "max_cvss": {
+                    "type": "number"
+                },
+                "metrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CVSSMetric"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "operating_system": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.OSItem"
+                },
+                "plugin": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.PluginInfo"
+                },
+                "port": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.PortItem"
+                },
+                "privileges": {
+                    "type": "string"
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "remediations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation"
+                    }
+                },
+                "risk": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.RiskInfo"
+                },
+                "risk_score": {
+                    "type": "number"
+                },
+                "scan_date": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "vendor_comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tools.VendorComment"
+                    }
+                },
+                "vpr_key_d": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.VPRKeyInfo"
                 }
             }
         },
@@ -1287,6 +1567,24 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "wasc_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_dto.VPRKeyInfo": {
+            "type": "object",
+            "properties": {
+                "age_of_vuln": {
+                    "type": "integer"
+                },
+                "exploit_code_maturity": {
+                    "type": "string"
+                },
+                "product_coverage": {
+                    "description": "Availability impact",
+                    "type": "string"
+                },
+                "threat_intensity": {
                     "type": "string"
                 }
             }

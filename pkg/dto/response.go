@@ -429,7 +429,7 @@ type ScanVulnerabilityDetailResponse struct {
 
 	Metrics []CVSSMetric `json:"metrics"`
 
-	CWERemediations []CWERemediation `json:"remediation"`
+	CWERemediations []CWERemediation `json:"remediations"`
 
 	EPSSScore      *float64   `json:"epss_score,omitempty"`
 	EPSSPercentile *float64   `json:"epss_percentile,omitempty"`
