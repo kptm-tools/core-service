@@ -60,10 +60,7 @@ func ConvertScanResultDomToDtoScanInformationGathered(results []domain.ScanResul
 		switch scanResult.ToolName {
 		case enums.ToolHarvester.String():
 			if !scanResult.Success {
-				response.HarvesterResult = &HarvesterResultDTO{
-					Emails:     nil,
-					Subdomains: nil,
-				}
+				response.HarvesterResult = nil
 			} else {
 				// Cast IToolResult to *tools.HarvesterResult
 				if harvester, ok := scanResult.Result.Result.(*tools.HarvesterResult); ok && harvester != nil {
@@ -80,48 +77,76 @@ func ConvertScanResultDomToDtoScanInformationGathered(results []domain.ScanResul
 			}
 
 		case enums.ToolWhoIs.String():
-			// Cast IToolResult to *tools.WhoIsResult
-			if whois, ok := scanResult.Result.Result.(*tools.WhoIsResult); ok && whois != nil {
-				response.WhoisResult = &WhoisResultDTO{
-					Domain: WhoIsDomain{
-						Name:        whois.RawData.Domain.Domain,
-						NameServers: whois.RawData.Domain.NameServers,
-					},
-					Registrar: WhoIsRegistrar{
-						Name:  whois.RawData.Registrar.Name,
-						Email: whois.RawData.Registrar.Email,
-					},
-					Registrant: WhoIsRegistrant{
-						Name:         whois.RawData.Registrant.Name,
-						Organization: whois.RawData.Registrant.Organization,
-					},
-				}
+			if !scanResult.Success {
+				response.WhoisResult = nil
 			} else {
-				response.WhoisResult = &WhoisResultDTO{
-					Domain:     WhoIsDomain{},
-					Registrar:  WhoIsRegistrar{},
-					Registrant: WhoIsRegistrant{},
+				// Cast IToolResult to *tools.WhoIsResult
+				if whois, ok := scanResult.Result.Result.(*tools.WhoIsResult); ok && whois != nil {
+					var domain WhoIsDomain
+					if whois.RawData != nil && whois.RawData.Domain != nil {
+						domain = WhoIsDomain{
+							Name:        whois.RawData.Domain.Domain,
+							NameServers: whois.RawData.Domain.NameServers,
+						}
+					} else {
+						domain = WhoIsDomain{}
+					}
+
+					var registrar WhoIsRegistrar
+					if whois.RawData != nil && whois.RawData.Registrar != nil {
+						registrar = WhoIsRegistrar{
+							Name:  whois.RawData.Registrar.Name,
+							Email: whois.RawData.Registrar.Email,
+						}
+					} else {
+						registrar = WhoIsRegistrar{}
+					}
+
+					var registrant WhoIsRegistrant
+					if whois.RawData != nil && whois.RawData.Registrant != nil {
+						registrant = WhoIsRegistrant{
+							Name:         whois.RawData.Registrant.Name,
+							Organization: whois.RawData.Registrant.Organization,
+						}
+					} else {
+						registrant = WhoIsRegistrant{}
+					}
+
+					response.WhoisResult = &WhoisResultDTO{
+						Domain:     domain,
+						Registrar:  registrar,
+						Registrant: registrant,
+					}
+				} else {
+					response.WhoisResult = &WhoisResultDTO{
+						Domain:     WhoIsDomain{},
+						Registrar:  WhoIsRegistrar{},
+						Registrant: WhoIsRegistrant{},
+					}
 				}
 			}
-
 		case enums.ToolDNSLookup.String():
-			if dnsLookup, ok := scanResult.Result.Result.(*tools.DNSLookupResult); ok && dnsLookup != nil {
-				dnsRecords := make([]DNSRecordDTO, 0, len(dnsLookup.DNSRecords))
-				for _, rec := range dnsLookup.DNSRecords {
-					dnsRecords = append(dnsRecords, DNSRecordDTO{
-						Type:  string(rec.Type),
-						Value: rec.Value,
-					})
-				}
-				response.DNSLookupResult = &DNSLookupResultDTO{
-					Domain:        dnsLookup.Domain,
-					DNSRecords:    dnsRecords,
-					DNSSECEnabled: dnsLookup.DNSSECEnabled,
-				}
+			if !scanResult.Success {
+				response.DNSLookupResult = nil
 			} else {
-				response.DNSLookupResult = &DNSLookupResultDTO{
-					DNSRecords:    []DNSRecordDTO{},
-					DNSSECEnabled: false,
+				if dnsLookup, ok := scanResult.Result.Result.(*tools.DNSLookupResult); ok && dnsLookup != nil {
+					dnsRecords := make([]DNSRecordDTO, 0, len(dnsLookup.DNSRecords))
+					for _, rec := range dnsLookup.DNSRecords {
+						dnsRecords = append(dnsRecords, DNSRecordDTO{
+							Type:  string(rec.Type),
+							Value: rec.Value,
+						})
+					}
+					response.DNSLookupResult = &DNSLookupResultDTO{
+						Domain:        dnsLookup.Domain,
+						DNSRecords:    dnsRecords,
+						DNSSECEnabled: dnsLookup.DNSSECEnabled,
+					}
+				} else {
+					response.DNSLookupResult = &DNSLookupResultDTO{
+						DNSRecords:    []DNSRecordDTO{},
+						DNSSECEnabled: false,
+					}
 				}
 			}
 		}

@@ -25,7 +25,7 @@ func (m *MockScanResultRepo) CreateScanResult(ctx context.Context, result domain
 }
 
 func (m *MockScanResultRepo) GetScanResultsByScanID(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error) {
-	if m.MockCreateScanResult != nil {
+	if m.MockGetScanResultsByScanID != nil {
 		return m.MockGetScanResultsByScanID(ctx, scanID, tools)
 	}
 	panic(fmt.Sprintf("MockScanResultRepo: method GetScanResultsByScanID called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
