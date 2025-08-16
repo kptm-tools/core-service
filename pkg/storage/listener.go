@@ -84,13 +84,12 @@ func NewPostgresListener(
 func (pl *PostgresListener) startListening() {
 	for {
 		notification := <-pl.listener.Notify
-
 		slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
-
-		// Create a new context with cancel for each event
 		ctx, cancel := context.WithCancel(context.Background())
-		pl.handleNotification(ctx, notification)
-		cancel()
+		go func(ctx context.Context, n *pq.Notification) {
+			pl.handleNotification(ctx, n)
+			cancel()
+		}(ctx, notification)
 	}
 }
 
