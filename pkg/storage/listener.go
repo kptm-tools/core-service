@@ -101,8 +101,8 @@ func (pl *PostgresListener) startListening(parentCtx context.Context) {
 			eventCtx, eventCancel := context.WithTimeout(parentCtx, notificationEventTimeout)
 			go func(ctx context.Context, n *pq.Notification) {
 				defer func() {
-					eventCancel()
 					<-semaphore
+					eventCancel()
 				}() // Ensure eventCancel happens before releasing the slot
 				pl.handleNotification(ctx, n)
 
