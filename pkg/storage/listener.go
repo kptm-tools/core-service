@@ -76,20 +76,27 @@ func NewPostgresListener(
 		eventBus:        eventBus,
 	}
 
-	go postgresListener.startListening()
+	go postgresListener.startListening(context.Background())
 
 	return postgresListener, nil
 }
 
-func (pl *PostgresListener) startListening() {
+// startListening listens for notifications until the parent context is cancelled.
+func (pl *PostgresListener) startListening(parentCtx context.Context) {
 	for {
-		notification := <-pl.listener.Notify
-		slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
-		ctx, cancel := context.WithCancel(context.Background())
-		go func(ctx context.Context, n *pq.Notification) {
-			pl.handleNotification(ctx, n)
-			cancel()
-		}(ctx, notification)
+		select {
+		case <-parentCtx.Done():
+			slog.Info("PostgresListener: parent context cancelled, stopping listener loop")
+			return
+		case notification := <-pl.listener.Notify:
+			slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
+			// Each event gets its own context with timeout (e.g., 2 minutes)
+			eventCtx, eventCancel := context.WithTimeout(parentCtx, 10*time.Minute)
+			go func(ctx context.Context, n *pq.Notification) {
+				pl.handleNotification(ctx, n)
+				eventCancel()
+			}(eventCtx, notification)
+		}
 	}
 }
 
