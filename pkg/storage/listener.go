@@ -83,16 +83,20 @@ func NewPostgresListener(
 
 // startListening listens for notifications until the parent context is cancelled.
 func (pl *PostgresListener) startListening(parentCtx context.Context) {
+	const maxConcurrentNotifications = 10 // Adjust as needed
+	semaphore := make(chan struct{}, maxConcurrentNotifications)
 	for {
 		select {
 		case <-parentCtx.Done():
 			slog.Info("PostgresListener: parent context cancelled, stopping listener loop")
 			return
 		case notification := <-pl.listener.Notify:
+			semaphore <- struct{}{} // Acquire a slot
 			slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
-			// Each event gets its own context with timeout (e.g., 2 minutes)
+			// Each event gets its own context with timeout (e.g., 10 minutes)
 			eventCtx, eventCancel := context.WithTimeout(parentCtx, 10*time.Minute)
 			go func(ctx context.Context, n *pq.Notification) {
+				defer func() { <-semaphore }() // Release the slot when done
 				pl.handleNotification(ctx, n)
 				eventCancel()
 			}(eventCtx, notification)
