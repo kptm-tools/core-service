@@ -36,6 +36,10 @@ type ScanCron struct {
 	NextSchedule   time.Time `json:"next_schedule"`
 }
 
+const (
+	notificationEventTimeout = 10 * time.Minute
+)
+
 func NewPostgresListener(
 	cfg *config.Config,
 	scanService interfaces.IScanService,
@@ -93,12 +97,15 @@ func (pl *PostgresListener) startListening(parentCtx context.Context) {
 		case notification := <-pl.listener.Notify:
 			semaphore <- struct{}{} // Acquire a slot
 			slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
-			// Each event gets its own context with timeout (e.g., 10 minutes)
-			eventCtx, eventCancel := context.WithTimeout(parentCtx, 10*time.Minute)
+			// Each event gets its own context with timeout
+			eventCtx, eventCancel := context.WithTimeout(parentCtx, notificationEventTimeout)
 			go func(ctx context.Context, n *pq.Notification) {
-				defer func() { <-semaphore }() // Release the slot when done
+				defer func() {
+					eventCancel()
+					<-semaphore
+				}() // Ensure eventCancel happens before releasing the slot
 				pl.handleNotification(ctx, n)
-				eventCancel()
+
 			}(eventCtx, notification)
 		}
 	}
