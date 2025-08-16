@@ -653,6 +653,15 @@ definitions:
         description: version of the service or product.
         type: string
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanInformationGatheredDTO:
+    properties:
+      dns_lookup_result:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.DNSLookupResultDTO'
+      harvester_result:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO'
+      whois_result:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO'
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.ScanRequest:
     properties:
       host_id:
@@ -661,6 +670,73 @@ definitions:
         $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_domain.RepeatSchedule'
       schedule_at:
         type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse:
+    properties:
+      access:
+        type: string
+      comment:
+        type: string
+      complexity:
+        type: string
+      date:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.DateInfo'
+      description:
+        type: string
+      epss_date:
+        type: string
+      epss_percentile:
+        type: number
+      epss_score:
+        type: number
+      exploitability:
+        type: string
+      host:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.HostItem'
+      id:
+        type: string
+      impact_score:
+        type: number
+      likelihood:
+        type: string
+      max_cvss:
+        type: number
+      metrics:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CVSSMetric'
+        type: array
+      name:
+        type: string
+      operating_system:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.OSItem'
+      plugin:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.PluginInfo'
+      port:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.PortItem'
+      privileges:
+        type: string
+      references:
+        items:
+          type: string
+        type: array
+      remediations:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
+        type: array
+      risk:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.RiskInfo'
+      risk_score:
+        type: number
+      scan_date:
+        type: string
+      severity:
+        type: string
+      vendor_comments:
+        items:
+          $ref: '#/definitions/tools.VendorComment'
+        type: array
+      vpr_key_d:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.VPRKeyInfo'
     type: object
   github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse:
     properties:
@@ -834,6 +910,38 @@ definitions:
         type: string
       vulnerability_id:
         type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain:
+    properties:
+      domain:
+        type: string
+      name_servers:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant:
+    properties:
+      name:
+        type: string
+      organization:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO:
+    properties:
+      domain:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain'
+      registrant:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant'
+      registrar:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar'
     type: object
   results.Target:
     properties:
