@@ -6,6 +6,8 @@ import (
 	"errors"
 	"github.com/kptm-tools/common/common/pkg/enums"
 	"github.com/kptm-tools/core-service/pkg/customerrors"
+	whoisparser "github.com/likexian/whois-parser"
+	"strings"
 
 	"net/http"
 	"net/http/httptest"
@@ -949,6 +951,464 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				assert.Equal(t, enums.SeverityTypeHigh.String(), resp.WebVulnerabilities[0].Severity)
 				assert.Equal(t, mitigationID, resp.WebVulnerabilities[0].CWERemediations[0].MitigationID)
 				assert.Equal(t, cweID, resp.WebVulnerabilities[0].CWERemediations[0].CweID)
+			}
+		})
+	}
+}
+
+func TestScanHandlers_GetScanResultsByScanID(t *testing.T) {
+	scanID := uuid.New()
+	tests := []struct {
+		name                string
+		scanService         interfaces.IScanService
+		scanScheduleService interfaces.IScanScheduleService
+		vulnerability       interfaces.IVulnerabilityService
+		hostService         interfaces.IHostService
+		emailService        interfaces.IEmailService
+		eventBus            events.EventBus
+		r                   *http.Request
+		wantStatus          int
+		wantBodyContains    []string
+		wantBodyNotContains []string
+	}{
+		{
+			name:                "Scan Bad Request → 400",
+			scanService:         &mock_services.MockScanService{},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans//information-gathered", nil)
+				r.SetPathValue("id", "")
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Scan In Progress with no scan results yet → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return []domain.ScanResult{}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/assets", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusOK,
+		},
+		{
+			name: "Scan Not Found → 404",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return nil, customerrors.ErrScanNotFound
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/information-gathered", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name: "Empty Scan Result in every info-gathered tool → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return []domain.ScanResult{
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolDNSLookup.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolDNSLookup,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolWhoIs.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolWhoIs,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolHarvester.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolHarvester,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/information-gathered", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:       http.StatusOK,
+			wantBodyContains: []string{"{}"},
+		},
+		{
+			name: "DNSLookup Result only → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return []domain.ScanResult{
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolDNSLookup.String(),
+							Success:  true,
+							Result: tools.ToolResult{
+								Tool: enums.ToolDNSLookup,
+								Result: &tools.DNSLookupResult{
+									Domain: "domain1",
+									DNSRecords: []tools.DNSRecord{{
+										Type:     "A",
+										Name:     "",
+										TTL:      0,
+										Value:    "93.184.216.34",
+										Priority: nil,
+									},
+									},
+									DNSSECEnabled:  true,
+									LookupDuration: 10,
+								},
+								Err: nil,
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolWhoIs.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolWhoIs,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolHarvester.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolHarvester,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/information-gathered", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:          http.StatusOK,
+			wantBodyContains:    []string{"dns_lookup_result"},
+			wantBodyNotContains: []string{"harvester_result", "whois_result"},
+		},
+		{
+			name: "WhoIs Result only with partial data → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return []domain.ScanResult{
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolWhoIs.String(),
+							Success:  true,
+							Result: tools.ToolResult{
+								Tool: enums.ToolWhoIs,
+								Result: &tools.WhoIsResult{
+									RawData: &whoisparser.WhoisInfo{
+										Domain: nil,
+										Registrar: &whoisparser.Contact{
+											Name:  "jose",
+											Email: "jose@co.co",
+										},
+										Registrant:     nil,
+										Administrative: nil,
+										Technical:      nil,
+										Billing:        nil,
+									},
+								},
+								Err: nil,
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolDNSLookup.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolDNSLookup,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolHarvester.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolHarvester,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/information-gathered", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:          http.StatusOK,
+			wantBodyContains:    []string{"whois_result", "jose", "jose@co.co"},
+			wantBodyNotContains: []string{"harvester_result", "dns_lookup_result"},
+		},
+		{
+			name: "WhoIs Result only with all data → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return []domain.ScanResult{
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolWhoIs.String(),
+							Success:  true,
+							Result: tools.ToolResult{
+								Tool: enums.ToolWhoIs,
+								Result: &tools.WhoIsResult{
+									RawData: &whoisparser.WhoisInfo{
+										Domain: &whoisparser.Domain{
+											Domain:      "domain",
+											NameServers: []string{"name1"},
+										},
+										Registrar: &whoisparser.Contact{
+											Name:  "jose",
+											Email: "jose@co.co",
+										},
+										Registrant: &whoisparser.Contact{
+											Name:         "martin",
+											Organization: "peru",
+										},
+										Administrative: nil,
+										Technical:      nil,
+										Billing:        nil,
+									},
+								},
+								Err: nil,
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolDNSLookup.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolDNSLookup,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolHarvester.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolHarvester,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/information-gathered", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:          http.StatusOK,
+			wantBodyContains:    []string{"whois_result", "jose", "jose@co.co", "name1", "domain", "martin", "peru"},
+			wantBodyNotContains: []string{"harvester_result", "dns_lookup_result"},
+		},
+		{
+			name: "Harvester Result only → 200",
+			scanService: &mock_services.MockScanService{
+				MockGetInformationGatheredResults: func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+					return []domain.ScanResult{
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolHarvester.String(),
+							Success:  true,
+							Result: tools.ToolResult{
+								Tool: enums.ToolHarvester,
+								Result: &tools.HarvesterResult{
+									Emails:     []string{"jose@co.co"},
+									Subdomains: []string{"subdomain1"},
+								},
+								Err: nil,
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolWhoIs.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolWhoIs,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+						{
+							ScanID:   scanID,
+							ToolName: enums.ToolDNSLookup.String(),
+							Success:  false,
+							Result: tools.ToolResult{
+								Tool:   enums.ToolDNSLookup,
+								Result: nil,
+								Err: &tools.ToolError{
+									Code:    "400",
+									Message: "No connection",
+								},
+							},
+						},
+					}, nil
+				},
+			},
+			scanScheduleService: &mock_services.MockScanScheduleService{},
+			hostService:         &mock_services.MockHostService{},
+			emailService:        &mock_services.MockEmailService{},
+			eventBus:            &events.NatsEventBus{},
+			r: func() *http.Request {
+				r := httptest.NewRequest("GET", "/api/scans/"+scanID.String()+"/information-gathered", nil)
+				r.SetPathValue("id", scanID.String())
+				r = r.WithContext(context.WithValue(r.Context(), middleware.ContextRoles, []domain.Role{domain.RoleAdmin}))
+				return r
+			}(),
+			wantStatus:          http.StatusOK,
+			wantBodyContains:    []string{"harvester_result", "jose@co.co", "subdomain1"},
+			wantBodyNotContains: []string{"dns_lookup_result", "whois_result"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			h := hh.NewScanHandlers(
+				tt.scanService,
+				tt.vulnerability,
+				tt.scanScheduleService,
+				tt.hostService,
+				tt.emailService,
+				tt.eventBus,
+			)
+			err := h.GetScanResultsByScanID(rr, tt.r)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantStatus, rr.Code, "Expected http response code %d, got %d", tt.wantStatus, rr.Code)
+			body := rr.Body.String()
+			for _, substr := range tt.wantBodyContains {
+				assert.Contains(t, body, substr, "Response body should contain %q", substr)
+			}
+			for _, substr := range tt.wantBodyNotContains {
+				assert.NotContains(t, body, substr, "Response body should not contain %q", substr)
+			}
+			if len(tt.wantBodyContains) > 0 && rr.Code == http.StatusOK {
+				var resp dto.ScanInformationGatheredDTO
+				err := json.Unmarshal(rr.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				switch tt.wantBodyContains[0] {
+				case "harvester_result":
+					assert.Greater(t, len(resp.HarvesterResult.Emails), 0)
+					assert.Greater(t, len(resp.HarvesterResult.Subdomains), 0)
+				case "dns_lookup_result":
+					assert.Greater(t, len(resp.DNSLookupResult.DNSRecords), 0)
+					assert.Greater(t, len(resp.DNSLookupResult.Domain), 0)
+					assert.Equal(t, true, resp.DNSLookupResult.DNSSECEnabled)
+				case "whois_result":
+					if strings.Contains(tt.name, "partial") {
+						assert.Equal(t, len(resp.WhoisResult.Domain.Name), 0)
+						assert.Equal(t, len(resp.WhoisResult.Registrant.Name), 0)
+						assert.Equal(t, len(resp.WhoisResult.Registrant.Organization), 0)
+						assert.Greater(t, len(resp.WhoisResult.Registrar.Name), 0)
+						assert.Greater(t, len(resp.WhoisResult.Registrar.Email), 0)
+					} else {
+						assert.Greater(t, len(resp.WhoisResult.Domain.Name), 0)
+						assert.Greater(t, len(resp.WhoisResult.Registrant.Name), 0)
+						assert.Greater(t, len(resp.WhoisResult.Registrant.Organization), 0)
+					}
+				}
+
 			}
 		})
 	}

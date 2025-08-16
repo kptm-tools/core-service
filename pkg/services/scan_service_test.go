@@ -3,6 +3,7 @@ package services_test
 import (
 	"context"
 	"errors"
+	"github.com/kptm-tools/core-service/pkg/customerrors"
 	"testing"
 	"time"
 
@@ -173,4 +174,40 @@ func Test_UpdateScanScheduling_Success(t *testing.T) {
 
 	errUpdate := scansService.UpdateScanScheduleScanID(context.Background(), uuid.Nil, 1)
 	assert.NoError(t, errUpdate)
+}
+
+func Test_GetInformationGatheredResults_ErrorScanNotFound(t *testing.T) {
+	mockScaResultsRepo := &mock.MockScanResultRepo{
+		MockGetScanResultsByScanID: func(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error) {
+			return nil, customerrors.ErrScanNotFound
+		},
+	}
+
+	scanService := services.NewScanService(
+		&mock.MockVulnerabilityRepo{},
+		&mock.MockScanRepo{},
+		&mock.MockHostRepo{},
+		mockScaResultsRepo,
+	)
+	_, errGetScan := scanService.GetInformationGatheredResults(context.Background(), uuid.New())
+	assert.Error(t, errGetScan)
+	assert.Contains(t, errGetScan.Error(), "scan not found")
+}
+
+func Test_GetInformationGatheredResults_Success(t *testing.T) {
+	mockScaResultsRepo := &mock.MockScanResultRepo{
+		MockGetScanResultsByScanID: func(ctx context.Context, scanID uuid.UUID, tools []string) ([]domain.ScanResult, error) {
+			return []domain.ScanResult{}, nil
+		},
+	}
+
+	scanService := services.NewScanService(
+		&mock.MockVulnerabilityRepo{},
+		&mock.MockScanRepo{},
+		&mock.MockHostRepo{},
+		mockScaResultsRepo,
+	)
+	results, errGetScan := scanService.GetInformationGatheredResults(context.Background(), uuid.New())
+	assert.NoError(t, errGetScan)
+	assert.Empty(t, results)
 }

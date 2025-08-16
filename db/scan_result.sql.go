@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sqlc-dev/pqtype"
 )
 
@@ -32,4 +33,44 @@ func (q *Queries) CreateScanResult(ctx context.Context, arg CreateScanResultPara
 		arg.Result,
 	)
 	return err
+}
+
+const getScanResultsByScanID = `-- name: GetScanResultsByScanID :many
+SELECT id, scan_id, tool, success, result, created_at, updated_at FROM scan_results where scan_id=$1 and tool = ANY($2::tool_enum[])
+`
+
+type GetScanResultsByScanIDParams struct {
+	ScanID  uuid.UUID  `json:"scan_id"`
+	Column2 []ToolEnum `json:"column_2"`
+}
+
+func (q *Queries) GetScanResultsByScanID(ctx context.Context, arg GetScanResultsByScanIDParams) ([]ScanResult, error) {
+	rows, err := q.db.QueryContext(ctx, getScanResultsByScanID, arg.ScanID, pq.Array(arg.Column2))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ScanResult
+	for rows.Next() {
+		var i ScanResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.ScanID,
+			&i.Tool,
+			&i.Success,
+			&i.Result,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

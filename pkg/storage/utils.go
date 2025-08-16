@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/kptm-tools/common/common/pkg/enums"
 	"strconv"
 	"time"
 
@@ -144,4 +145,43 @@ func unmarshalNvdVendorComments(nvdRaw pqtype.NullRawMessage) ([]tools.VendorCom
 		return nil, fmt.Errorf("failed to unmarshal NvdVendorComments: %w", err)
 	}
 	return vendorComments, nil
+}
+
+func unmarshalToolResult(toolResultRawMessage pqtype.NullRawMessage, toolName enums.ToolName) (*tools.ToolResult, error) {
+	toolResult := tools.ToolResult{
+		Tool: toolName,
+	}
+	if !toolResultRawMessage.Valid {
+		return &toolResult, nil
+	}
+	if len(toolResultRawMessage.RawMessage) == 0 || string(toolResultRawMessage.RawMessage) == "null" {
+		return &toolResult, nil
+	}
+
+	var result tools.IToolResult
+	switch toolName {
+	case enums.ToolWhoIs:
+		var whois tools.WhoIsResult
+		if err := json.Unmarshal(toolResultRawMessage.RawMessage, &whois); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal WhoIsResult: %w", err)
+		}
+		result = &whois
+	case enums.ToolHarvester:
+		var harvester tools.HarvesterResult
+		if err := json.Unmarshal(toolResultRawMessage.RawMessage, &harvester); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal HarvesterResult: %w", err)
+		}
+		result = &harvester
+	case enums.ToolDNSLookup:
+		var dns tools.DNSLookupResult
+		if err := json.Unmarshal(toolResultRawMessage.RawMessage, &dns); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal DNSLookupResult: %w", err)
+		}
+		result = &dns
+	default:
+		return nil, fmt.Errorf("unsupported tool name: %v", toolName)
+	}
+
+	toolResult.Result = result
+	return &toolResult, nil
 }

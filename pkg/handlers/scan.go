@@ -562,9 +562,6 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 	}
 
 	severityCounts := h.scanService.GetSeverityCountsFromDomainVulnDetail(ctx, vulnerabilities)
-
-	// Prepare total collections
-	totalRemediations := make([]dto.CWERemediation, 0)
 	totalReferences := make([]string, 0)
 
 	// Prepare vulnerability items slice
@@ -572,45 +569,31 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 
 	// Parse vulners
 	for i, vuln := range vulnerabilities {
+		doRemediations := make([]dto.CWERemediation, 0)
+		doRemediations = h.getDomRemediationsToDto(vuln, doRemediations)
 		// Populate ScanVulnerabilityItem
 		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
-			ID:             vuln.ID,
-			Name:           vuln.Name,
-			Type:           vuln.OS.Type,
-			Severity:       vuln.Severity,
-			MaxCVSS:        vuln.MaxCVSS,
-			RiskScore:      vuln.RiskScore,
-			ImpactScore:    vuln.ImpactScore,
-			Likelihood:     vuln.Likelihood,
-			Access:         vuln.Likelihood, // Consider if this is intentional or a mistake
-			Complexity:     vuln.Complexity,
-			Privileges:     vuln.Privileges,
-			Exploitability: vuln.Exploitability,
-			Description:    vuln.Description,
-			Comment:        vuln.Comment,
-			VendorComments: vuln.VendorComments,
-			References:     vuln.References,
+			ID:              vuln.ID,
+			Name:            vuln.Name,
+			Type:            vuln.OS.Type,
+			Severity:        vuln.Severity,
+			MaxCVSS:         vuln.MaxCVSS,
+			RiskScore:       vuln.RiskScore,
+			ImpactScore:     vuln.ImpactScore,
+			Likelihood:      vuln.Likelihood,
+			Access:          vuln.Likelihood, // Consider if this is intentional or a mistake
+			Complexity:      vuln.Complexity,
+			Privileges:      vuln.Privileges,
+			Exploitability:  vuln.Exploitability,
+			Description:     vuln.Description,
+			Comment:         vuln.Comment,
+			VendorComments:  vuln.VendorComments,
+			References:      vuln.References,
+			CWERemediations: doRemediations,
 		}
 
 		// Aggregate references
 		totalReferences = append(totalReferences, vuln.References...)
-
-		// Aggregate valid remediations
-		for _, remediation := range vuln.CWERemediation {
-			if remediation.Description != "" {
-				cweRemediation := dto.CWERemediation{
-					ID:                 remediation.ID,
-					MitigationID:       &remediation.MitigationID,
-					Title:              remediation.Title,
-					Phase:              &remediation.Phase[0], // safe if Phase is non-empty - consider adding validation
-					Description:        remediation.Description,
-					Effectiveness:      &remediation.Effectiveness,
-					EffectivenessNotes: &remediation.EffectivenessNotes,
-					LastUpdated:        remediation.LastUpdated,
-				}
-				totalRemediations = append(totalRemediations, cweRemediation)
-			}
-		}
 	}
 
 	// Aggregate response object
@@ -622,7 +605,6 @@ func (h *ScanHandlers) GetScanOperatingSystemVulnerabilitiesByID(w http.Response
 		OSName:               "",
 		OSType:               "",
 		Vulnerabilities:      scanVulnerabilityItems,
-		CWERemediations:      totalRemediations,
 		References:           totalReferences,
 		TotalVulnerabilities: severityCounts.Critical + severityCounts.High + severityCounts.Medium + severityCounts.Low + severityCounts.None + severityCounts.Unknown,
 		SeverityCounts:       severityCounts,
@@ -760,8 +742,6 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 	for i, vuln := range vulnerabilities {
 		// Populate ScanVulnerabilityItem
 		doRemediations := make([]dto.CWERemediation, 0)
-		// Aggregate valid remediations
-
 		doRemediations = h.getDomRemediationsToDto(vuln, doRemediations)
 
 		scanVulnerabilityItems[i] = dto.ScanVulnerabilityItem{
@@ -859,4 +839,39 @@ func (h *ScanHandlers) DeleteScanSchedule(w http.ResponseWriter, r *http.Request
 		result["deleted"] = "false"
 	}
 	return api.WriteJSON(w, http.StatusOK, result)
+}
+
+// GetScanResultsByScanID returns information gathering results for a given scan ID.
+// @Summary      GetScanResultsByScanID
+// @Description  Retrieve information gathering results (e.g., whois, DNS, subdomains, etc.) for a given scan ID.
+// @Tags         Scans
+// @Produce      json
+// @Param        id   path      string  true  "Scan ID"
+// @Success      200  {object}  dto.ScanInformationGatheredDTO
+// @Failure      400  {object}  api.APIError         "Invalid scan ID"
+// @Failure      404  {object}  api.APIError         "Scan not found"
+// @Failure      500  {object}  api.APIError         "Internal server error"
+// @Security     BearerAuth
+// @Router      /api/scans/{id}/information-gathered [get]
+func (h *ScanHandlers) GetScanResultsByScanID(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	scanID, err := GetUUID(r)
+	if err != nil {
+		return api.WriteJSON(w, http.StatusBadRequest, api.APIError{Error: "Invalid scan ID"})
+	}
+
+	scanResults, err := h.scanService.GetInformationGatheredResults(ctx, scanID)
+	if err != nil {
+		slog.Error("Failed to get scan by ID",
+			slog.String("scan_id", scanID.String()),
+			slog.Any("error", err))
+		if errors.Is(err, customerrors.ErrScanNotFound) {
+			return api.WriteJSON(w, http.StatusNotFound, api.APIError{Error: fmt.Sprintf("Scan %s not found", scanID.String())})
+		}
+		return api.WriteJSON(w, http.StatusInternalServerError, api.APIError{Error: http.StatusText(http.StatusInternalServerError)})
+	}
+
+	dtoScanResult := dto.ConvertScanResultDomToDtoScanInformationGathered(scanResults)
+	return api.WriteJSON(w, http.StatusOK, dtoScanResult)
 }

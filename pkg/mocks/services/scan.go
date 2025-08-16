@@ -38,6 +38,7 @@ type MockScanService struct {
 	MockGetScanRapporteursAndHostAlias             func(ctx context.Context, scanID uuid.UUID) ([]domain.Rapporteur, string, error)
 	MockGetSeverityCountsFromToolVulns             func(ctx context.Context, vulns []tools.Vulnerability) tools.SeverityCounts
 	MockGetSeverityCountsFromDomainVulnDetail      func(ctx context.Context, vulns []domain.ScanVulnerabilityDetail) tools.SeverityCounts
+	MockGetInformationGatheredResults              func(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error)
 }
 
 // Ensure MockScanService satisfies the IScanService interface at compile time.
@@ -202,4 +203,11 @@ func (m *MockScanService) GetSeverityCountsFromDomainVulnDetail(ctx context.Cont
 		return m.MockGetSeverityCountsFromDomainVulnDetail(ctx, vulns)
 	}
 	panic(fmt.Sprintf("MockScanService: method GetSeverityCountsFromDomainVulnDetail called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
+}
+
+func (m *MockScanService) GetInformationGatheredResults(ctx context.Context, scanID uuid.UUID) ([]domain.ScanResult, error) {
+	if m.MockGetInformationGatheredResults != nil {
+		return m.MockGetInformationGatheredResults(ctx, scanID)
+	}
+	panic(fmt.Sprintf("MockScanService: method GetInformationGatheredResults called but not implemented for test: %s", ctx.Value(testutil.TestNameKey)))
 }

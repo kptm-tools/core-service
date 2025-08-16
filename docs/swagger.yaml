@@ -260,6 +260,33 @@ definitions:
           User contains basic information about the authenticated user.
           Uses our local wrapper so swag can generate a schema for it.
     type: object
+  github_com_kptm-tools_core-service_pkg_domain.CWEDetailWithMitigations:
+    properties:
+      cwe_id:
+        description: CWE Detail fields (from cwe_details table)
+        type: string
+      description:
+        type: string
+      effectiveness:
+        type: string
+      effectiveness_notes:
+        type: string
+      last_updated:
+        type: string
+      mitigation_created_at:
+        type: string
+      mitigation_description:
+        type: string
+      mitigation_id:
+        description: Mitigation fields (from cwe_mitigations table)
+        type: string
+      owasp_top10_category:
+        type: string
+      phase:
+        type: string
+      title:
+        type: string
+    type: object
   github_com_kptm-tools_core-service_pkg_domain.WebVulnerabilityInstance:
     properties:
       attack:
@@ -279,6 +306,31 @@ definitions:
       uri:
         type: string
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.CVSSMetric:
+    properties:
+      access:
+        type: string
+      availability_impact:
+        type: string
+      base_score:
+        type: number
+      complexity:
+        type: string
+      exploitability:
+        type: string
+      exploitability_score:
+        type: number
+      impact_score:
+        type: number
+      integrity_impact:
+        type: string
+      privileges_required:
+        type: string
+      severity:
+        type: string
+      version:
+        type: string
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.CWERemediation:
     properties:
       cwe_id:
@@ -296,6 +348,48 @@ definitions:
       phase:
         type: string
       title:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.DNSLookupResultDTO:
+    properties:
+      dns_records:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.DNSRecordDTO'
+        type: array
+      dnssec_enabled:
+        type: boolean
+      domain:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.DNSRecordDTO:
+    properties:
+      type:
+        type: string
+      value: {}
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.DateInfo:
+    properties:
+      last_updated:
+        type: string
+      published:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO:
+    properties:
+      emails:
+        items:
+          type: string
+        type: array
+      subdomains:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.HostItem:
+    properties:
+      alias:
+        type: string
+      ip_address:
         type: string
     type: object
   github_com_kptm-tools_core-service_pkg_dto.LoginRequest:
@@ -319,6 +413,51 @@ definitions:
     - application_id
     - loginId
     - password
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.OSItem:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.PluginInfo:
+    properties:
+      cpe:
+        description: CPE
+        type: string
+      family:
+        description: OS = family, Sevice = Product
+        type: string
+      severity:
+        type: string
+      type:
+        description: AccessType
+        type: string
+      version:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.PortItem:
+    properties:
+      id:
+        type: integer
+      protocol:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.RiskInfo:
+    properties:
+      availability_impact:
+        type: string
+      cvss_v3_base:
+        description: Can be nullable
+        type: number
+      cvss_v3_vector:
+        description: Can be nullable
+        type: string
+      integrity_impact:
+        type: string
+      risk_score:
+        type: number
     type: object
   github_com_kptm-tools_core-service_pkg_dto.ScanAssetsOperatingSystem:
     properties:
@@ -460,6 +599,82 @@ definitions:
         description: version of the service or product.
         type: string
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanInformationGatheredDTO:
+    properties:
+      dns_lookup_result:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.DNSLookupResultDTO'
+      harvester_result:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.HarvesterResultDTO'
+      whois_result:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO'
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse:
+    properties:
+      access:
+        type: string
+      comment:
+        type: string
+      complexity:
+        type: string
+      date:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.DateInfo'
+      description:
+        type: string
+      epss_date:
+        type: string
+      epss_percentile:
+        type: number
+      epss_score:
+        type: number
+      exploitability:
+        type: string
+      host:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.HostItem'
+      id:
+        type: string
+      impact_score:
+        type: number
+      likelihood:
+        type: string
+      max_cvss:
+        type: number
+      metrics:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CVSSMetric'
+        type: array
+      name:
+        type: string
+      operating_system:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.OSItem'
+      plugin:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.PluginInfo'
+      port:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.PortItem'
+      privileges:
+        type: string
+      references:
+        items:
+          type: string
+        type: array
+      remediations:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
+        type: array
+      risk:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.RiskInfo'
+      risk_score:
+        type: number
+      scan_date:
+        type: string
+      severity:
+        type: string
+      vendor_comments:
+        items:
+          $ref: '#/definitions/tools.VendorComment'
+        type: array
+      vpr_key_d:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.VPRKeyInfo'
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetectedOSResponse:
     properties:
       alias:
@@ -473,10 +688,6 @@ definitions:
       references:
         items:
           type: string
-        type: array
-      remediations:
-        items:
-          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
         type: array
       scan_date:
         type: string
@@ -496,10 +707,6 @@ definitions:
       references:
         items:
           type: string
-        type: array
-      remediations:
-        items:
-          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
         type: array
       scan_date:
         type: string
@@ -562,6 +769,10 @@ definitions:
         items:
           type: string
         type: array
+      remediations:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.CWERemediation'
+        type: array
       risk_score:
         type: number
       severity:
@@ -587,6 +798,10 @@ definitions:
         type: array
       reference:
         type: string
+      remediations:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_domain.CWEDetailWithMitigations'
+        type: array
       scan_id:
         type: string
       service_id:
@@ -600,12 +815,28 @@ definitions:
       wasc_id:
         type: string
     type: object
+  github_com_kptm-tools_core-service_pkg_dto.VPRKeyInfo:
+    properties:
+      age_of_vuln:
+        type: integer
+      exploit_code_maturity:
+        type: string
+      product_coverage:
+        description: Availability impact
+        type: string
+      threat_intensity:
+        type: string
+    type: object
   github_com_kptm-tools_core-service_pkg_dto.WebVulnerabilitySummary:
     properties:
       host_id:
         type: string
       instances_count:
         type: integer
+      remediations:
+        items:
+          $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_domain.CWEDetailWithMitigations'
+        type: array
       scan_id:
         type: string
       service_id:
@@ -616,6 +847,38 @@ definitions:
         type: string
       vulnerability_id:
         type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain:
+    properties:
+      domain:
+        type: string
+      name_servers:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant:
+    properties:
+      name:
+        type: string
+      organization:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_kptm-tools_core-service_pkg_dto.WhoisResultDTO:
+    properties:
+      domain:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsDomain'
+      registrant:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrant'
+      registrar:
+        $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar'
     type: object
   tools.SeverityCounts:
     properties:
@@ -716,6 +979,40 @@ paths:
       summary: GetScanAssetsByID
       tags:
       - Scans
+  /api/scans/{id}/information-gathered:
+    get:
+      description: Retrieve information gathering results (e.g., whois, DNS, subdomains,
+        etc.) for a given scan ID.
+      parameters:
+      - description: Scan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanInformationGatheredDTO'
+        "400":
+          description: Invalid scan ID
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "404":
+          description: Scan not found
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      security:
+      - BearerAuth: []
+      summary: GetScanResultsByScanID
+      tags:
+      - Scans
   /api/scans/{id}/operating-system/vulnerabilities:
     get:
       description: Retrieve operating system vulnerabilities along with severity counts
@@ -789,6 +1086,40 @@ paths:
       summary: GetScanServicesVulnerabilitiesByServiceID
       tags:
       - Scans
+  /api/vulnerabilities/{id}:
+    get:
+      description: Retrieve detailed information about a vulnerability for a given
+        Vulnerability ID.
+      parameters:
+      - description: Vulnerability ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse'
+        "400":
+          description: Invalid UUID format for Vulnerability ID
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "404":
+          description: Vulnerability not found
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError'
+      security:
+      - BearerAuth: []
+      summary: GetVulnerability
+      tags:
+      - Vulnerabilities
   /api/web-vulnerabilities/{id}:
     get:
       description: Retrieve a web vulnerability information with a list of instances

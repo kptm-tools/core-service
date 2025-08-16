@@ -1,0 +1,15 @@
+meta {
+  name: GetScanResultsInformationGatheredByScanID
+  type: http
+  seq: 32
+}
+
+get {
+  url: http://localhost:8000/api/scans/{{scanID}}/information-gathered
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
