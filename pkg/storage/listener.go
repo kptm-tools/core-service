@@ -36,6 +36,10 @@ type ScanCron struct {
 	NextSchedule   time.Time `json:"next_schedule"`
 }
 
+const (
+	notificationEventTimeout = 10 * time.Minute
+)
+
 func NewPostgresListener(
 	cfg *config.Config,
 	scanService interfaces.IScanService,
@@ -76,19 +80,34 @@ func NewPostgresListener(
 		eventBus:        eventBus,
 	}
 
-	go postgresListener.startListening()
+	go postgresListener.startListening(context.Background())
 
 	return postgresListener, nil
 }
 
-func (pl *PostgresListener) startListening() {
-	ctx := context.Background()
+// startListening listens for notifications until the parent context is cancelled.
+func (pl *PostgresListener) startListening(parentCtx context.Context) {
+	const maxConcurrentNotifications = 10 // Adjust as needed
+	semaphore := make(chan struct{}, maxConcurrentNotifications)
 	for {
-		notification := <-pl.listener.Notify
+		select {
+		case <-parentCtx.Done():
+			slog.Info("PostgresListener: parent context cancelled, stopping listener loop")
+			return
+		case notification := <-pl.listener.Notify:
+			semaphore <- struct{}{} // Acquire a slot
+			slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
+			// Each event gets its own context with timeout
+			eventCtx, eventCancel := context.WithTimeout(parentCtx, notificationEventTimeout)
+			go func(ctx context.Context, n *pq.Notification) {
+				defer func() {
+					<-semaphore
+					eventCancel()
+				}() // Ensure eventCancel happens before releasing the slot
+				pl.handleNotification(ctx, n)
 
-		slog.Debug("Received PostgresListener notification", slog.Any("notification", notification))
-
-		pl.handleNotification(ctx, notification)
+			}(eventCtx, notification)
+		}
 	}
 }
 

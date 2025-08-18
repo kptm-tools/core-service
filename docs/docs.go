@@ -67,6 +67,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/scans": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new scan for a given host. Optionally schedule the scan for a future time.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Scans"
+                ],
+                "summary": "CreateScan",
+                "parameters": [
+                    {
+                        "description": "Scan request payload",
+                        "name": "scan",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.ScanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.Scan"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Host not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_api.APIError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/scans/{id}/assets": {
             "get": {
                 "security": [
@@ -414,6 +471,19 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "enums.TargetType": {
+            "type": "string",
+            "enum": [
+                "IP",
+                "Domain",
+                "Subdomain"
+            ],
+            "x-enum-varnames": [
+                "IP",
+                "Domain",
+                "Subdomain"
+            ]
+        },
         "fusionauth.AuthenticatorConfiguration": {
             "type": "object",
             "properties": {
@@ -818,6 +888,70 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_domain.PeriodEnum": {
+            "type": "string",
+            "enum": [
+                "Day",
+                "Month",
+                "Week",
+                "Year"
+            ],
+            "x-enum-varnames": [
+                "Day",
+                "Month",
+                "Week",
+                "Year"
+            ]
+        },
+        "github_com_kptm-tools_core-service_pkg_domain.RepeatSchedule": {
+            "type": "object",
+            "properties": {
+                "quantity": {
+                    "type": "integer"
+                },
+                "unit_of_frequency": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.PeriodEnum"
+                }
+            }
+        },
+        "github_com_kptm-tools_core-service_pkg_domain.Scan": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "ended_at": {
+                    "type": "string"
+                },
+                "host_ids": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "operator_id": {
+                    "type": "string"
+                },
+                "protection_score": {
+                    "type": "number"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "targets": {
+                    "$ref": "#/definitions/results.Target"
+                },
+                "tenant_id": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1252,6 +1386,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kptm-tools_core-service_pkg_dto.ScanRequest": {
+            "type": "object",
+            "properties": {
+                "host_id": {
+                    "type": "string"
+                },
+                "repeat_frequency": {
+                    "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_domain.RepeatSchedule"
+                },
+                "schedule_at": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kptm-tools_core-service_pkg_dto.ScanVulnerabilityDetailResponse": {
             "type": "object",
             "properties": {
@@ -1662,6 +1810,27 @@ const docTemplate = `{
                 },
                 "registrar": {
                     "$ref": "#/definitions/github_com_kptm-tools_core-service_pkg_dto.WhoIsRegistrar"
+                }
+            }
+        },
+        "results.Target": {
+            "type": "object",
+            "properties": {
+                "alias": {
+                    "description": "Alias is a user-friendly name for the target",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type specifies whether the target is an IP or a Domain.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/enums.TargetType"
+                        }
+                    ]
+                },
+                "value": {
+                    "description": "Value is the actual IP address or domain name of the target.",
+                    "type": "string"
                 }
             }
         },

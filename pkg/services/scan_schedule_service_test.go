@@ -27,7 +27,7 @@ func Test_InsertScanScheduling_Success(t *testing.T) {
 			},
 		},
 	)
-	_, errInsert := scanScheduleService.CreateScanSchedule(context.Background(), uuid.Nil, time.Now().UTC(), nil)
+	_, errInsert := scanScheduleService.CreateScanSchedule(context.Background(), uuid.Nil, time.Now().UTC(), nil, uuid.Nil)
 	assert.NoError(t, errInsert)
 }
 
@@ -43,7 +43,7 @@ func Test_InsertScanScheduling_Error(t *testing.T) {
 			},
 		},
 	)
-	_, errInsert := scanScheduleService.CreateScanSchedule(context.Background(), uuid.Nil, time.Now().UTC(), nil)
+	_, errInsert := scanScheduleService.CreateScanSchedule(context.Background(), uuid.Nil, time.Now().UTC(), nil, uuid.Nil)
 	assert.Error(t, errInsert)
 	assert.Contains(t, errInsert.Error(), "failed to insert scan scheduling")
 }

@@ -10,7 +10,7 @@ import (
 )
 
 type IScanScheduleService interface {
-	CreateScanSchedule(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule) (*domain.ScanSchedule, error)
+	CreateScanSchedule(ctx context.Context, scanID uuid.UUID, scheduleAt time.Time, frequency *domain.RepeatSchedule, hostID uuid.UUID) (*domain.ScanSchedule, error)
 	DeleteScanScheduleByID(context.Context, int32) (bool, error)
 	PatchScanSchedule(ctx context.Context, scanScheduleID int32, frequency *domain.RepeatSchedule, scheduleAt time.Time, tenantID, operatorID, hostID uuid.UUID) error
 	GetScanSchedulesByTenantID(ctx context.Context, tenantID uuid.UUID) ([]domain.ScanScheduleSummary, error)
