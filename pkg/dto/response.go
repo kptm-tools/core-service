@@ -704,7 +704,6 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 		case "os":
 			cpeSplit := strings.Split(r.Cpe, ":")
 			version := cpeSplit[len(cpeSplit)-1]
-			name := cpeSplit[len(cpeSplit)-2]
 
 			// Map OS
 			response.OperatingSystem = ScanAssetsOperatingSystem{
@@ -712,7 +711,7 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 				HostID:   r.HostID.String(),
 				ScanID:   r.ScanID.String(),
 				FullName: r.Name,
-				Name:     name,
+				Name:     r.Name,
 				Version:  version,
 				Family:   r.Family,
 				OSType:   r.OsType,
