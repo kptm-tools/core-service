@@ -703,10 +703,7 @@ func ConvertScanOSandServicesResultToResponse(results []domain.ScanOSandServices
 		switch r.AssetType {
 		case "os":
 			cpeSplit := strings.Split(r.Cpe, ":")
-			var version string
-			if len(cpeSplit) > 0 {
-				version = cpeSplit[len(cpeSplit)-1]
-			}
+			version := cpeSplit[len(cpeSplit)-1]
 
 			// Map OS
 			response.OperatingSystem = ScanAssetsOperatingSystem{
