@@ -732,10 +732,10 @@ func (h *ScanHandlers) GetScanServicesVulnerabilitiesByServiceID(w http.Response
 
 	severityCounts, err := h.scanService.GetSeverityServiceCountsByScanAndServiceID(ctx, scanID, serviceID)
 	if err != nil {
-		if errors.Is(err, customerrors.ErrScanNotFound) {
-			slog.Error("Service not found for scanID", slog.String("scan_id", scanID.String()), slog.String("service_id", strconv.Itoa(int(serviceID))))
+		if errors.Is(err, customerrors.ErrServiceNotFound) {
+			slog.Error("Service not found for scan", slog.String("scan_id", scanID.String()), slog.String("service_id", strconv.Itoa(int(serviceID))))
 			return api.WriteJSON(w, http.StatusNotFound, api.APIError{
-				Error: "Service not found for scanID",
+				Error: "Service not found for scan",
 			})
 		}
 		slog.Error("Failed to fetch severity counts",

@@ -578,7 +578,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 					return &domain.Scan{Status: "Completed"}, nil
 				},
 				MockGetSeverityServiceCountsByScanAndServiceID: func(ctx context.Context, scanID uuid.UUID, serviceID int32) (tools.SeverityCounts, error) {
-					return tools.SeverityCounts{}, customerrors.ErrScanNotFound
+					return tools.SeverityCounts{}, customerrors.ErrServiceNotFound
 				},
 			},
 			vulnService: &mock_services.MockVulnerabilityService{
@@ -606,7 +606,7 @@ func TestScanHandlers_GetScanServicesVulnerabilitiesByServiceID(t *testing.T) {
 				return r
 			}(),
 			wantStatus:       http.StatusNotFound,
-			wantBodyContains: []string{"Service not found for scanID"},
+			wantBodyContains: []string{"Service not found for scan"},
 		},
 		{
 			name: "Error Getting Service Vulnerability Details → 500",
